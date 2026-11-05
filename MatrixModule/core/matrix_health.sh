@@ -1,0 +1,97 @@
+#!/system/bin/sh
+##########################################################################################
+# MatrixModule - Boot Health & Diagnostics Engine
+##########################################################################################
+
+_CORE_DIR="${0%/*}"
+[ -f "$_CORE_DIR/matrix_log.sh" ] && . "$_CORE_DIR/matrix_log.sh"
+[ -f "$_CORE_DIR/matrix_store.sh" ] && . "$_CORE_DIR/matrix_store.sh"
+[ -f "$_CORE_DIR/matrix_env.sh" ] && . "$_CORE_DIR/matrix_env.sh"
+
+MATRIX_HEALTH_FILE="/data/adb/matrix_module/health.json"
+
+matrix_health_mark_boot_start() {
+    matrix_store_init
+    _ts=$(date +%s 2>/dev/null || echo 0)
+    matrix_state_set "boot_start_time" "$_ts"
+    matrix_state_set "boot_stage" "post-fs-data"
+    log_info "Health" "Early boot stage registered (post-fs-data)"
+}
+
+matrix_health_mark_boot_complete() {
+    _ts=$(date +%s 2>/dev/null || echo 0)
+    _start_ts=$(matrix_state_get "boot_start_time" "0")
+    _duration=0
+    if [ "$_start_ts" -gt 0 ] && [ "$_ts" -ge "$_start_ts" ]; then
+        _duration=$((_ts - _start_ts))
+    fi
+
+    matrix_state_set "boot_complete_time" "$_ts"
+    matrix_state_set "boot_duration_sec" "$_duration"
+    matrix_state_set "boot_stage" "completed"
+    matrix_state_set "boot_failure_count" "0"
+
+    log_info "Health" "Boot completed in ${_duration}s"
+    matrix_health_generate_report
+}
+
+matrix_health_check_recovery_mode() {
+    _mode=$(getprop ro.boot.mode 2>/dev/null)
+    [ -z "$_mode" ] && _mode=$(getprop ro.bootmode 2>/dev/null)
+    case "$_mode" in
+        recovery*|rescue*)
+            log_warn "Health" "Device detected in recovery/rescue mode ($_mode)"
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+matrix_scan_conflicts() {
+    # Non-destructive conflict scan: reports findings, never removes files
+    _conflicts=""
+    _known_mods="tricky_store tricky_store_v2 TrickyStore TEESimulator TEESimulator-RS hma_oss_zygisk playintegrityfix playintegrityfork"
+
+    for mod in $_known_mods; do
+        if [ "$mod" != "matrix_module" ] && [ -d "/data/adb/modules/$mod" ]; then
+            if [ ! -f "/data/adb/modules/$mod/disable" ] && [ ! -f "/data/adb/modules/$mod/remove" ]; then
+                _conflicts="$_conflicts $mod"
+            fi
+        fi
+    done
+
+    echo "$_conflicts" | sed 's/^[[:space:]]*//'
+}
+
+matrix_health_generate_report() {
+    mkdir -p "/data/adb/matrix_module" 2>/dev/null
+    _root=$(matrix_detect_root)
+    _arch=$(matrix_get_arch)
+    _sdk=$(matrix_get_sdk)
+    _model=$(matrix_get_device_model)
+    _zygisk=$(matrix_check_zygisk)
+    _selinux=$(matrix_get_selinux)
+    _boot_stage=$(matrix_state_get "boot_stage" "unknown")
+    _boot_dur=$(matrix_state_get "boot_duration_sec" "0")
+    _conflicts=$(matrix_scan_conflicts)
+    _ts=$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "N/A")
+
+    cat << EOF > "$MATRIX_HEALTH_FILE"
+{
+  "timestamp": "$_ts",
+  "root_manager": "$_root",
+  "architecture": "$_arch",
+  "sdk_level": $_sdk,
+  "device_model": "$_model",
+  "zygisk_host": "$_zygisk",
+  "selinux_mode": "$_selinux",
+  "boot_stage": "$_boot_stage",
+  "boot_duration_sec": $_boot_dur,
+  "active_conflicts": "$_conflicts",
+  "status": "HEALTHY"
+}
+EOF
+    chmod 644 "$MATRIX_HEALTH_FILE" 2>/dev/null
+}

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MatrixModule Dashboard</title>
+    <link rel="stylesheet" href="app.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-brand">
+                <div class="logo-icon">M</div>
+                <div>
+                    <h1>MatrixModule</h1>
+                    <p class="subtitle">Unified KernelSU Architecture & Diagnostics</p>
+                </div>
+            </div>
+            <div class="header-badge">
+                <span class="badge" id="module-status-badge">HEALTHY</span>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+            <button class="nav-tab" data-tab="diagnostics">Diagnostics</button>
+            <button class="nav-tab" data-tab="config">Configuration</button>
+            <button class="nav-tab" data-tab="logs">Logs</button>
+            <button class="nav-tab" data-tab="security">Security</button>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+            <!-- TAB: Dashboard -->
+            <section class="tab-pane active" id="pane-dashboard">
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-title">Root Environment</div>
+                        <div class="card-value" id="val-root">KernelSU</div>
+                        <div class="card-sub" id="val-ksu-sync">Driver & Manager Checked</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">System Architecture</div>
+                        <div class="card-value" id="val-arch">arm64-v8a</div>
+                        <div class="card-sub" id="val-sdk">Android SDK --</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Zygisk Framework</div>
+                        <div class="card-value" id="val-zygisk">Detecting...</div>
+                        <div class="card-sub" id="val-zygisk-sub">Checking providers</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">SELinux Status</div>
+                        <div class="card-value" id="val-selinux">Enforcing</div>
+                        <div class="card-sub" id="val-boot-dur">Boot duration: --</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>System Health Summary</h3>
+                    <div class="health-checklist" id="health-checklist">
+                        <div class="check-item"><span class="check-icon ok">✓</span> <span>Core initialization completed</span></div>
+                        <div class="check-item"><span class="check-icon ok">✓</span> <span>Storage permissions verified (/data/adb/matrix_module)</span></div>
+                        <div class="check-item"><span class="check-icon ok">✓</span> <span>Configuration backup synchronized</span></div>
+                        <div class="check-item"><span class="check-icon ok">✓</span> <span>Non-destructive coexistence enabled</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: Diagnostics -->
+            <section class="tab-pane" id="pane-diagnostics">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>Detailed Environment Probe</h3>
+                        <button class="btn btn-sm" id="btn-refresh-diag">Refresh</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="diag-table">
+                            <tbody>
+                                <tr><th>Device Model</th><td id="diag-model">--</td></tr>
+                                <tr><th>Android Release</th><td id="diag-release">--</td></tr>
+                                <tr><th>Android SDK</th><td id="diag-sdk">--</td></tr>
+                                <tr><th>CPU Architecture</th><td id="diag-arch">--</td></tr>
+                                <tr><th>Root Manager</th><td id="diag-root">--</td></tr>
+                                <tr><th>KernelSU Kernel Driver</th><td id="diag-ksu-kernel">--</td></tr>
+                                <tr><th>KernelSU Manager App</th><td id="diag-ksu-app">--</td></tr>
+                                <tr><th>Zygisk Host Provider</th><td id="diag-zygisk">--</td></tr>
+                                <tr><th>SELinux Policy Mode</th><td id="diag-selinux">--</td></tr>
+                                <tr><th>Active Coexisting Modules</th><td id="diag-conflicts">None</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: Configuration -->
+            <section class="tab-pane" id="pane-config">
+                <div class="panel">
+                    <h3>Module Settings</h3>
+                    <form id="config-form">
+                        <div class="form-group">
+                            <label for="cfg-diag">System Diagnostics Logging</label>
+                            <input type="checkbox" id="cfg-diag" checked>
+                            <small>Enables structured system environment probes during boot stages.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-watchdog">Health Monitoring Watchdog</label>
+                            <input type="checkbox" id="cfg-watchdog" checked>
+                            <small>Runs background periodic health telemetry checks.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-interval">Watchdog Interval (Seconds)</label>
+                            <input type="number" id="cfg-interval" value="300" min="60" max="3600">
+                            <small>Frequency of background telemetry updates (minimum 60s).</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-backup">Backup Configuration on Boot</label>
+                            <input type="checkbox" id="cfg-backup" checked>
+                            <small>Automatically synchronizes config to config.bak on successful boot.</small>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-primary" id="btn-save-cfg">Apply Changes</button>
+                            <button type="button" class="btn btn-secondary" id="btn-reset-cfg">Restore Defaults</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- TAB: Logs -->
+            <section class="tab-pane" id="pane-logs">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3>Module Execution Log</h3>
+                        <div class="log-actions">
+                            <button class="btn btn-sm" id="btn-refresh-log">Refresh</button>
+                            <button class="btn btn-sm btn-secondary" id="btn-clear-log">Clear</button>
+                        </div>
+                    </div>
+                    <pre class="log-viewer" id="log-content">Loading module logs...</pre>
+                </div>
+            </section>
+
+            <!-- TAB: Security -->
+            <section class="tab-pane" id="pane-security">
+                <div class="panel">
+                    <h3>Phase 4 Security Policy & Architecture</h3>
+                    <div class="security-card">
+                        <h4>Security Boundaries Enforced:</h4>
+                        <ul>
+                            <li><strong>No Hardware Attestation Forgery:</strong> Does not inject into Keystore HAL or spoof TEE certificates.</li>
+                            <li><strong>No Keybox Integration:</strong> Never extracts, stores, or utilizes unauthorized private key material.</li>
+                            <li><strong>No Play Integrity Bypass:</strong> Does not falsify DroidGuard verdicts or DroidGuard tokens.</li>
+                            <li><strong>No Package Cloaking:</strong> Does not hook <code>system_server</code> or <code>PackageManager</code> to deceive banking applications.</li>
+                            <li><strong>Non-Destructive Coexistence:</strong> Never automatically removes or disables third-party modules.</li>
+                        </ul>
+                    </div>
+                    <div class="security-card">
+                        <h4>Auditing Reference Modules:</h4>
+                        <p>Source archives for <em>AlwaysStrong-v1.0.5</em> and <em>HMA-OSS-oss-173</em> are maintained under <code>references/</code> solely for static code auditing and architectural inspection.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>
