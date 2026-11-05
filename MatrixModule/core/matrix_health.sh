@@ -18,11 +18,12 @@ command -v log_debug >/dev/null 2>&1 || log_debug() { :; }
 MATRIX_HEALTH_FILE="${MATRIX_HEALTH_FILE:-/data/adb/matrix_module/health.json}"
 
 matrix_health_mark_boot_start() {
-    matrix_store_init
+    matrix_store_init || return 1
     _ts=$(date +%s 2>/dev/null || echo 0)
-    matrix_state_set "boot_start_time" "$_ts"
-    matrix_state_set "boot_stage" "post-fs-data"
+    matrix_state_set "boot_start_time" "$_ts" || return 1
+    matrix_state_set "boot_stage" "post-fs-data" || return 1
     log_info "Health" "Early boot stage registered (post-fs-data)"
+    return 0
 }
 
 matrix_health_mark_boot_complete() {
@@ -33,13 +34,14 @@ matrix_health_mark_boot_complete() {
         _duration=$((_ts - _start_ts))
     fi
 
-    matrix_state_set "boot_complete_time" "$_ts"
-    matrix_state_set "boot_duration_sec" "$_duration"
-    matrix_state_set "boot_stage" "completed"
-    matrix_state_set "boot_failure_count" "0"
+    matrix_state_set "boot_complete_time" "$_ts" || return 1
+    matrix_state_set "boot_duration_sec" "$_duration" || return 1
+    matrix_state_set "boot_stage" "completed" || return 1
+    matrix_state_set "boot_failure_count" "0" || return 1
 
     log_info "Health" "Boot completed in ${_duration}s"
-    matrix_health_generate_report
+    matrix_health_generate_report || return 1
+    return 0
 }
 
 matrix_health_mark_boot_timeout() {
@@ -68,9 +70,16 @@ matrix_health_mark_boot_failed() {
         _duration=$((_ts - _start_ts))
     fi
 
+    _curr_stage=$(matrix_state_get "boot_stage" "unknown")
     _prev_failures=$(matrix_state_get "boot_failure_count" "0")
     echo "$_prev_failures" | grep -Eq '^[0-9]+$' || _prev_failures=0
-    _new_failures=$((_prev_failures + 1))
+
+    # Do not increment failure counter more than once for the same lifecycle failure event
+    if [ "$_curr_stage" = "failed" ]; then
+        _new_failures="$_prev_failures"
+    else
+        _new_failures=$((_prev_failures + 1))
+    fi
 
     matrix_state_set "boot_stage" "failed"
     matrix_state_set "boot_failure_reason" "$_reason"
@@ -310,6 +319,9 @@ matrix_health_generate_report() {
     echo "$_k_code" | grep -Eq '^[0-9]+$' || _k_code=0
     echo "$_ksu_match" | grep -Eq '^-?[0-9]+$' || _ksu_match=-1
 
+    _fail_count=$(matrix_state_get "boot_failure_count" "0")
+    echo "$_fail_count" | grep -Eq '^[0-9]+$' || _fail_count=0
+
     # Dynamically determine honest health status
     _status=$(matrix_health_determine_status "$_root" "$_boot_stage" "$_conflicts" "$_ksu_match" "$_selinux" "$_arch" "$_sdk")
     _status_esc=$(matrix_json_escape "$_status")
@@ -328,6 +340,7 @@ matrix_health_generate_report() {
   \"ksu_manager_code\": $_m_code,
   \"ksu_kernel_code\": $_k_code,
   \"ksu_version_match\": $_ksu_match,
+  \"boot_failure_count\": $_fail_count,
   \"status\": \"$_status_esc\"
 }"
 

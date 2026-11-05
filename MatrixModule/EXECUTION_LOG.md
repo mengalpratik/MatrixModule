@@ -1,15 +1,17 @@
 # MatrixModule Project Execution & Validation Log
 
 > [!IMPORTANT]
-> **CURRENT PRODUCTION RELEASE STATUS: v1.0.5 (ACTIVE & FOLLOW-UP AUDIT REMEDIATION VERIFIED)**  
-> - **Release Archive:** [`dist/MatrixModule-v1.0.5.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.5.zip)  
-> - **SHA-256 Checksum:** `6c2454dc91dd5e8e57c46d04114e1826397f1c7e4c7dee73dbb3ec8476bfe174`  
-> - **Archive Size:** 24,344 bytes (21 files, verified via `unzip -t` and `unzip -l`)  
+> **CURRENT PRODUCTION RELEASE STATUS: v1.0.6 (ACTIVE & FINAL PERMISSION & LIFECYCLE AUDIT REMEDIATION VERIFIED)**  
+> - **Release Archive:** [`dist/MatrixModule-v1.0.6.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.6.zip)  
+> - **SHA-256 Checksum:** `5f1c43df9a56280db676ebd612712c711195cd508ccb9148d3f24826b746ad2b`  
+> - **Archive Size:** 25,148 bytes (21 files, verified via `unzip -t` and `unzip -l`)  
 > - **Automated Test Coverage:** 12/12 Test Suites Passing (100% Pass Rate across 23 Shell Scripts, Node.js VM, & Python JSON Oracles)  
-> - **Exact Permission Verification:** Exact octal mode verification in customize.sh (0755 scripts, 0644 assets, 0700 persistent data/logs, root ownership)  
-> - **Honest Unknown Boot-State Reporting:** Strict four-state precedence (ERROR > UNKNOWN > WARNING > HEALTHY) preventing masked states  
-> - **Boot Completion Timeout Handling:** Never marks complete on timeout; records boot_stage=timeout (WARNING) and lifecycle error counters  
-> - **Historical Builds Preserved in Log:** v1.0.0 (19,179 B), v1.0.1 (19,179 B), v1.0.2 (21,118 B), v1.0.3 (21,118 B), v1.0.4 (23,023 B)  
+> - **Special Bits Rejection:** In `customize.sh`, 4-digit `normalize_mode()` preserves and strictly rejects special bits (`4755`, `2755`, `1755`, `2775`, `4644`, `4700`) and fails closed on `ls -ld` special characters  
+> - **Mandatory File Checks:** Missing scripts/assets/directories are unconditionally fatal with strict regular file vs directory type enforcement  
+> - **Lifecycle Failure Wiring & Deduplication:** Genuine failure handling in `post-fs-data.sh` and `service.sh`, with deduplication preventing multiple increments for the same lifecycle event  
+> - **Deterministic ZIP Staging:** All directory entries normalized to exact `0755` (`drwxr-xr-x`), eliminating host umask `0775` directory modes  
+> - **Exact Boot Timeout Boundary:** Deterministic 150 intervals of 2s sleep (exact 300s) verified in `service.sh`  
+> - **Historical Builds Preserved in Log:** v1.0.0 (19,179 B), v1.0.1 (19,179 B), v1.0.2 (21,118 B), v1.0.3 (21,118 B), v1.0.4 (23,023 B), v1.0.5 (24,344 B)  
 > - **Reference Projects Integrity:** `AlwaysStrong-v1.0.5` and `HMA-OSS-oss-173` remain quarantined and unmodified.
 
 ---
@@ -19,7 +21,7 @@
 - **Project Name**: MatrixModule
 - **Location**: `/home/neuro/Projects/MatrixModule/MatrixModule/`
 - **Specification**: Unified KernelSU Module Architecture
-- **Active Release Version**: v1.0.5 (versionCode: 105)
+- **Active Release Version**: v1.0.6 (versionCode: 106)
 - **Historical Milestones**:
   - v1.0.0 (versionCode: 100) - Initial Architectural Unification (4 suites passing)
   - v1.0.1 (versionCode: 101) - Milestone 2 Remediation of MM-DEF-01 to 06 (11 suites passing)
@@ -27,7 +29,8 @@
   - v1.0.3 (versionCode: 103) - Milestone 5 Release Version Hygiene & Packaging (12 suites passing)
   - v1.0.4 (versionCode: 104) - Milestone 6 Final Quality Remediation & Hardening (12 suites passing)
   - v1.0.5 (versionCode: 105) - Milestone 7 Follow-up Audit Remediation & Hardening (12 suites passing)
-- **Execution Date**: 2026-11-05
+  - v1.0.6 (versionCode: 106) - Milestone 8 Final Permission & Lifecycle Audit Remediation (12 suites passing)
+- **Execution Date**: 2026-11-06
 - **Status**: Production Release Verified & Cryptographically Validated
 
 ---
@@ -458,13 +461,14 @@ Because production source files were materially updated during the Milestone 4 p
 ### 10.4 Complete Release Archives Registry
 | Milestone | Version | Package Path | Size (Bytes) | SHA-256 Checksum |
 | :--- | :--- | :--- | :--- | :--- |
-| **Milestone 7 (Active)** | **v1.0.5** | [`dist/MatrixModule-v1.0.5.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.5.zip) | **24,344** | `6c2454dc91dd5e8e57c46d04114e1826397f1c7e4c7dee73dbb3ec8476bfe174` |
+| **Milestone 8 (Active)** | **v1.0.6** | [`dist/MatrixModule-v1.0.6.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.6.zip) | **25,148** | `5f1c43df9a56280db676ebd612712c711195cd508ccb9148d3f24826b746ad2b` |
+| Milestone 7 (Preserved) | v1.0.5 | [`dist/MatrixModule-v1.0.5.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.5.zip) | 24,344 | `6c2454dc91dd5e8e57c46d04114e1826397f1c7e4c7dee73dbb3ec8476bfe174` |
 | Milestone 6 (Preserved) | v1.0.4 | [`dist/MatrixModule-v1.0.4.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.4.zip) | 23,023 | `8d7278849ab61eeebf0619c7933ef0369101cb33b09566af8d6097c9826f0d5f` |
 | Milestone 5 (Preserved) | v1.0.3 | [`dist/MatrixModule-v1.0.3.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.3.zip) | 21,118 | `75a8569ab84058cebc9019d1d3d83f7bd9c4803618a53a7971ecceeb8731b12b` |
 | Milestone 4 (Preserved) | v1.0.2 | [`dist/MatrixModule-v1.0.2.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.2.zip) | 21,118 | `1d4387bab8de44aa8275feca4a4c503d605187b3afd41bd191b7b04485b5e88a` |
 | Milestone 2 (Preserved) | v1.0.1 | [`dist/MatrixModule-v1.0.1.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.1.zip) | 19,179 | `367c1eb2875bae7b3c3906eeb531eec57538ae30d144d665d463c97e63acc91b` |
 | Milestone 1 (Preserved) | v1.0.0 | [`dist/MatrixModule-v1.0.0.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.0.zip) | 19,179 | `965cc7714228c21f23f05f63b1ca62e5a67e69ac55fbbea2887b41037124c1bd` |
-| **Review Bundle** | **v1.0.5** | [`PROJECT_REVIEW_BUNDLE.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/PROJECT_REVIEW_BUNDLE.zip) | Verified | Master Review Bundle (Production, Tests, Docs, v1.0.5 ZIP) |
+| **Review Bundle** | **v1.0.6** | [`PROJECT_REVIEW_BUNDLE.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/PROJECT_REVIEW_BUNDLE.zip) | Verified | Master Review Bundle (Production, Tests, Docs, v1.0.6 ZIP) |
 | Quarantined Reference | v1.7.3 | `HMA-OSS-oss-173.zip` | 1,461,848 | `47b53727ae03c38ae145c5e45c3ebfea73d6e691b31078031f4c0d904305286e` |
 | Quarantined Reference | v1.0.5 | `AlwaysStrong-v1.0.5.zip` | 4,374,385 | `fa3ac0d3405288c659f4bca337574137219af958493501f206acdb4cb418f003` |
 
@@ -521,6 +525,65 @@ Because production source files were materially updated during the Milestone 4 p
   8. `test_uninstall_boundaries.sh` -> PASS
   9. `test_installer_failures.sh` -> PASS (including 21 installer abort & permission tests)
   10. `test_webui_api.sh` -> PASS (including v1.0.5 preview logs & async bridge)
+  11. `test_action_dynamic.sh` -> PASS (including space paths & KSU mismatch WARNING)
+  12. `test_json_roundtrip.sh` -> PASS (24/24 tests with Python JSON oracle)
+
+---
+
+## 12. Milestone 8: Final Permission & Lifecycle Audit Remediation (v1.0.6)
+
+### 12.1 Technical Remediation Breakdown
+1. **Preserve and Reject Special Permission Bits (`customize.sh`):**
+   - Implemented `normalize_mode()` that preserves 4-digit octal representations, keeping special permission bits (`4...`, `2...`, `1...`) intact rather than stripping them down to 3 digits.
+   - Strictly rejects special permission modes (`4755`, `2755`, `1755`, `2775`, `4644`, `4700`) during `verify_installed_permissions()`.
+   - Updated `get_octal_mode()` `ls -ld` fallback to check for `[sStT]` and fail closed immediately (`return 1`).
+   - Added Tests 22–28 in `tests/test_installer_failures.sh`.
+2. **Wire Production Lifecycle Failure Handling & Deduplication:**
+   - In [`post-fs-data.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/post-fs-data.sh), connected storage init, log init, boot start registration, and config recovery failure checks to `matrix_health_mark_boot_failed`.
+   - In [`service.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/service.sh), connected late boot storage and log initialization failures to `matrix_health_mark_boot_failed`.
+   - In [`core/matrix_health.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/core/matrix_health.sh), updated `matrix_health_mark_boot_failed()` to deduplicate failure counts within the same failed stage, preventing multiple increments for the same lifecycle event.
+   - Verified self-healing: upon successful boot completion, `matrix_health_mark_boot_complete` resets `boot_failure_count` to `0` and sets `boot_stage="completed"`.
+   - Preserved distinct boundaries: timeout remains `WARNING` (count=0), recovery abort remains `ERROR` / `"aborted"`.
+   - Added Tests 3c–3f in `tests/test_boot_mock.sh`.
+3. **Deterministic Release ZIP Staging & Directory Mode Normalization (`build.sh`):**
+   - Refactored `build.sh` to stage in an isolated directory (`STAGE_DIR`), normalizing all directories to exact mode `0755` (`drwxr-xr-x`), eliminating host umask `0775` modes.
+   - Normalized scripts and `update-binary` to `0755`, assets/metadata to `0644`.
+   - Normalized local working tree directory permissions to `0755`.
+   - Added Test 5 in `tests/test_packaging.sh` inspecting `zipinfo` external attributes.
+4. **Mandatory File Existence Enforcement (`customize.sh`):**
+   - Removed conditional existence checks (`[ -f ]`, `[ -d ]`) from `verify_installed_permissions()`.
+   - Made all scripts, assets, and directories unconditionally mandatory with strict file vs directory type verification.
+   - Added Tests 29–33 in `tests/test_installer_failures.sh`.
+5. **Boot Completion Timeout Boundary (`service.sh`):**
+   - Refactored timeout loop to `[ "$_wait_ticks" -lt "$_max_ticks" ]` with `_max_ticks=150`, guaranteeing exactly 150 intervals of 2s sleep (deterministic 300s timeout).
+   - Added tick counter verification in `tests/test_boot_mock.sh` asserting exactly 150 sleep invocations.
+6. **Version Synchronization:**
+   - Updated `module.prop` to `version=v1.0.6`, `versionCode=106`.
+   - Updated `webroot/main.js` to `MODULE_VERSION = 'v1.0.6'`.
+   - Updated `tests/test_webui_api.sh` to assert `v1.0.6`.
+
+### 12.2 Build Execution & Cryptographic Verification
+- **Build Command**: `./build.sh`
+- **Output Artifact**: [`dist/MatrixModule-v1.0.6.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.6.zip)
+- **Archive Size**: 25,148 bytes
+- **File Count**: 21 files (clean ZIP root, zero directory nesting)
+- **SHA-256 Checksum**: `5f1c43df9a56280db676ebd612712c711195cd508ccb9148d3f24826b746ad2b`
+- **Source-to-ZIP Parity**: Extracted and verified via recursive file-by-file `diff -r -u` — 100% bit-for-bit parity (15/15 production files).
+
+### 12.3 Master Test Suite Verification
+- **Execution Command**: `sh tests/run_all_tests.sh`
+- **Results**: 12/12 Test Suites PASSED (100% pass rate).
+- **Test Matrix Summary**:
+  1. `test_syntax.sh` -> PASS
+  2. `test_structure.sh` -> PASS
+  3. `test_permissions.sh` -> PASS
+  4. `test_packaging.sh` -> PASS (including zipinfo 0755 directory modes check)
+  5. `test_js_syntax.sh` -> PASS
+  6. `test_config_store.sh` -> PASS
+  7. `test_boot_mock.sh` -> PASS (including 150-tick boundary, deduplication, failure increments, fatal exits, and self-healing)
+  8. `test_uninstall_boundaries.sh` -> PASS
+  9. `test_installer_failures.sh` -> PASS (including 37 tests: special bits rejection 4755/2755/1755, missing files fatal, type mismatches)
+  10. `test_webui_api.sh` -> PASS (including v1.0.6 preview logs & async bridge)
   11. `test_action_dynamic.sh` -> PASS (including space paths & KSU mismatch WARNING)
   12. `test_json_roundtrip.sh` -> PASS (24/24 tests with Python JSON oracle)
 

@@ -82,7 +82,45 @@ else
     fail "Root placement failed: module.prop is nested or missing"
 fi
 
-# 5. Production release artifact verification in dist/
+# 5. Unix External Permission Attributes Verification
+echo "[*] Verifying ZIP entry Unix permission attributes via zipinfo..."
+_attr_err=0
+# Verify all directory entries have exact mode drwxr-xr-x (0755)
+while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    _entry_perm=$(echo "$line" | awk '{print $1}')
+    _entry_name=$(echo "$line" | awk '{print $NF}')
+    case "$_entry_name" in
+        */)
+            if [ "$_entry_perm" != "drwxr-xr-x" ]; then
+                fail "Directory entry $_entry_name has incorrect mode: $_entry_perm (expected drwxr-xr-x / 0755)"
+                _attr_err=$((_attr_err + 1))
+            fi
+            ;;
+        *.sh|*update-binary)
+            if [ "$_entry_perm" != "-rwxr-xr-x" ]; then
+                fail "Executable script $_entry_name has incorrect mode: $_entry_perm (expected -rwxr-xr-x / 0755)"
+                _attr_err=$((_attr_err + 1))
+            fi
+            ;;
+        *)
+            if [ "$_entry_perm" != "-rw-r--r--" ]; then
+                fail "Non-executable asset $_entry_name has incorrect mode: $_entry_perm (expected -rw-r--r-- / 0644)"
+                _attr_err=$((_attr_err + 1))
+            fi
+            ;;
+    esac
+done << EOF
+$(zipinfo "$ZIP_FILE" | grep -E '^[-d][rwx-]{9}')
+EOF
+
+if [ "$_attr_err" -eq 0 ]; then
+    pass "All ZIP directory entries normalized to exact 0755 and file modes strictly verified"
+else
+    fail "ZIP archive contains $_attr_err entries with improper permissions"
+fi
+
+# 6. Production release artifact verification in dist/
 PROD_ZIP="$BASE_DIR/dist/MatrixModule-${VERSION}.zip"
 if [ -f "$PROD_ZIP" ]; then
     echo "[*] Verifying production release artifact in dist/..."

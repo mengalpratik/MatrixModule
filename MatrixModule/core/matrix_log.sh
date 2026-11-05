@@ -9,12 +9,13 @@ MATRIX_LOG_OLD="${MATRIX_LOG_OLD:-$MATRIX_LOG_DIR/matrix.old.log}"
 MATRIX_MAX_LOG_SIZE=524288 # 512 KB
 
 matrix_log_init() {
-    mkdir -p "$MATRIX_LOG_DIR" 2>/dev/null
+    mkdir -p "$MATRIX_LOG_DIR" 2>/dev/null || return 1
     chmod 700 "$MATRIX_LOG_DIR" 2>/dev/null
     if [ ! -f "$MATRIX_LOG_FILE" ]; then
-        touch "$MATRIX_LOG_FILE" 2>/dev/null
+        touch "$MATRIX_LOG_FILE" 2>/dev/null || return 1
         chmod 600 "$MATRIX_LOG_FILE" 2>/dev/null
     fi
+    return 0
 }
 
 matrix_log_rotate() {

@@ -166,14 +166,19 @@ matrix_cfg_del() {
 matrix_state_set() {
     _key="$1"
     _val="$2"
-    mkdir -p "$MATRIX_DATA_DIR" 2>/dev/null
+    mkdir -p "$MATRIX_DATA_DIR" 2>/dev/null || return 1
     _tmp_file="${MATRIX_STATE_FILE}.tmp.$$"
     if [ -f "$MATRIX_STATE_FILE" ]; then
         grep -v "^${_key}=" "$MATRIX_STATE_FILE" 2>/dev/null > "$_tmp_file"
     fi
     echo "${_key}=${_val}" >> "$_tmp_file"
-    mv -f "$_tmp_file" "$MATRIX_STATE_FILE" 2>/dev/null
-    chmod 600 "$MATRIX_STATE_FILE" 2>/dev/null
+    if mv -f "$_tmp_file" "$MATRIX_STATE_FILE" 2>/dev/null; then
+        chmod 600 "$MATRIX_STATE_FILE" 2>/dev/null
+        return 0
+    else
+        rm -f "$_tmp_file" 2>/dev/null
+        return 1
+    fi
 }
 
 matrix_state_get() {

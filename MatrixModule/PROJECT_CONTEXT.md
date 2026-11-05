@@ -1,8 +1,8 @@
 # MatrixModule: Project Context & Master Handoff Documentation
 
 **Document Status:** LIVING ARCHITECTURE DOCUMENT  
-**Current Revision:** v1.0.5 (Active Production Release)  
-**Last Updated:** 2026-11-05  
+**Current Revision:** v1.0.6 (Active Production Release)  
+**Last Updated:** 2026-11-06  
 **Workspace Root:** `/home/neuro/Projects/MatrixModule`  
 **Project Path:** `/home/neuro/Projects/MatrixModule/MatrixModule/`  
 **Primary Target:** KernelSU Unified Module Architecture (Android 10+ / API 29+)  
@@ -103,6 +103,18 @@ Milestone 7: Follow-up Audit Remediation & Hardening (v1.0.5)
   │  ├─ Built active release package dist/MatrixModule-v1.0.5.zip (24,344 bytes, SHA-256: 6c2454dc91dd5e8e57c46d04114e1826397f1c7e4c7dee73dbb3ec8476bfe174)
   │  ├─ Master test runner verified 12/12 suites passing (100% pass rate)
   │  └─ Deliverables: docs/V1.0.5_REMEDIATION_REPORT.md, updated PROJECT_REVIEW_BUNDLE.zip
+  ▼
+Milestone 8: Final Permission & Lifecycle Audit Remediation (v1.0.6)
+  │  ├─ Implemented 4-digit normalize_mode() in customize.sh preserving/rejecting special bits (4755, 2755, 1755, 2775, 4644, 4700)
+  │  ├─ Updated get_octal_mode() ls fallback to fail closed upon encountering s, S, t, T
+  │  ├─ Wired genuine production boot failures in post-fs-data.sh and service.sh to matrix_health_mark_boot_failed
+  │  ├─ Deduplicated failure counting in core/matrix_health.sh within the same lifecycle event
+  │  ├─ Implemented deterministic staging in build.sh normalizing all ZIP directories to 0755
+  │  ├─ Enforced unconditional mandatory file existence checks with strict file/dir type validation in customize.sh
+  │  ├─ Corrected service.sh boot completion timeout loop to deterministic 150 intervals (300s)
+  │  ├─ Built active release package dist/MatrixModule-v1.0.6.zip (25,148 bytes, SHA-256: 5f1c43df9a56280db676ebd612712c711195cd508ccb9148d3f24826b746ad2b)
+  │  ├─ Master test runner verified 12/12 suites passing (100% pass rate)
+  │  └─ Deliverables: docs/V1.0.6_REMEDIATION_REPORT.md, updated PROJECT_REVIEW_BUNDLE.zip
 ```
 
 ---
@@ -207,14 +219,14 @@ The master test runner (`tests/run_all_tests.sh`) executes **12 specialized auto
           MatrixModule Master Test Suite          
 ==================================================
   1. Shell Syntax Validation              -> PASS (23 shell scripts)
-  2. Structure & Metadata Validation      -> PASS (v1.0.5, versionCode 105, references/README.md)
+  2. Structure & Metadata Validation      -> PASS (v1.0.6, versionCode 106, references/README.md)
   3. File Permissions Validation          -> PASS (0755 / 0644 / 0600)
   4. Packaging & ZIP Integrity Validation -> PASS (isolated sandbox packaging, release integrity)
   5. JavaScript Syntax Validation         -> PASS (node -c ok, DOM isolation)
   6. Centralized Configuration Store      -> PASS (atomic writes, backup preservation, injection rejection)
-  7. Boot Lifecycle Mock & Safety         -> PASS (post-fs-data, recovery, service completion, JSON escaping, 4-state health, timeout)
+  7. Boot Lifecycle Mock & Safety         -> PASS (post-fs-data, recovery, service completion, JSON escaping, 4-state health, timeout, deduplication)
   8. Uninstall Boundaries & Isolation     -> PASS (preserves config.bak, isolates data)
-  9. Installer Failure Scenarios          -> PASS (dynamic version detection, permission verification, exact octal post-install check)
+  9. Installer Failure Scenarios          -> PASS (special bits rejection 4755/2755/1755, missing files fatal, exact octal post-install check)
  10. WebUI API & Structure Validation     -> PASS (verified device data integration, error state handling, async callbacks, badge transitions)
  11. Action Interface & Dynamic Paths     -> PASS (space paths, dynamic MODDIR, WebUI reporting, mismatch display)
  12. JSON Escaping Round-Trip Oracle      -> PASS (24 tests, sentinel trailing newlines, BusyBox C0 parity, Python oracle)
@@ -229,8 +241,9 @@ The master test runner (`tests/run_all_tests.sh`) executes **12 specialized auto
 
 | Package | Status | Size | SHA-256 Checksum |
 | :--- | :--- | :--- | :--- |
-| **`PROJECT_REVIEW_BUNDLE.zip`** | **Master Review Bundle** | Verified Archive | Complete review archive containing production tree, tests, docs, and v1.0.5 release ZIP |
-| **`dist/MatrixModule-v1.0.5.zip`** | **Active Production Release** | **24,344 bytes** | `6c2454dc91dd5e8e57c46d04114e1826397f1c7e4c7dee73dbb3ec8476bfe174` |
+| **`PROJECT_REVIEW_BUNDLE.zip`** | **Master Review Bundle** | Verified Archive | Complete review archive containing production tree, tests, docs, and v1.0.6 release ZIP |
+| **`dist/MatrixModule-v1.0.6.zip`** | **Active Production Release** | **25,148 bytes** | `5f1c43df9a56280db676ebd612712c711195cd508ccb9148d3f24826b746ad2b` |
+| **`dist/MatrixModule-v1.0.5.zip`** | Preserved Milestone 7 Release | 24,344 bytes | `6c2454dc91dd5e8e57c46d04114e1826397f1c7e4c7dee73dbb3ec8476bfe174` |
 | **`dist/MatrixModule-v1.0.4.zip`** | Preserved Milestone 6 Release | 23,023 bytes | `8d7278849ab61eeebf0619c7933ef0369101cb33b09566af8d6097c9826f0d5f` |
 | **`dist/MatrixModule-v1.0.3.zip`** | Preserved Milestone 5 Release | 21,118 bytes | `75a8569ab84058cebc9019d1d3d83f7bd9c4803618a53a7971ecceeb8731b12b` |
 | **`dist/MatrixModule-v1.0.2.zip`** | Preserved Milestone 4 Release | 21,118 bytes | `1d4387bab8de44aa8275feca4a4c503d605187b3afd41bd191b7b04485b5e88a` |

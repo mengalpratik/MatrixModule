@@ -50,6 +50,10 @@ chmod +x "$SANDBOX/bin/log"
 
 cat << 'EOF' > "$SANDBOX/bin/sleep"
 #!/bin/sh
+if [ -n "$SLEEP_COUNT_FILE" ]; then
+    _cnt=$(cat "$SLEEP_COUNT_FILE" 2>/dev/null || echo 0)
+    echo $((_cnt + 1)) > "$SLEEP_COUNT_FILE"
+fi
 exit 0
 EOF
 chmod +x "$SANDBOX/bin/sleep"
@@ -170,10 +174,23 @@ echo "ro.product.model=MockPhone" >> "$PROPS_FILE"
 
 echo "boot_start_time=1000" > "$MOCK_DATADIR/state"
 echo "boot_stage=post-fs-data" >> "$MOCK_DATADIR/state"
+echo "boot_failure_count=0" >> "$MOCK_DATADIR/state"
+
+SLEEP_COUNT_FILE="$SANDBOX/sleep_count"
+rm -f "$SLEEP_COUNT_FILE"
+export SLEEP_COUNT_FILE
 
 if sh "$MOCK_MODDIR/service.sh"; then
     pass "service.sh handled timeout with exit code 0"
     
+    # Verify deterministic 150 ticks (300s) boundary
+    ticks_counted=$(cat "$SLEEP_COUNT_FILE" 2>/dev/null || echo 0)
+    if [ "$ticks_counted" -eq 150 ]; then
+        pass "Verified exact 300s timeout boundary: 150 iterations of 2s sleep executed"
+    else
+        fail "Expected exactly 150 timeout ticks (300s), got: '$ticks_counted'"
+    fi
+
     timeout_stage=$(grep "^boot_stage=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
     timeout_reason=$(grep "^boot_timeout_reason=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2-)
     if [ "$timeout_stage" = "timeout" ]; then
@@ -188,6 +205,14 @@ if sh "$MOCK_MODDIR/service.sh"; then
         fail "service.sh missing boot_timeout_reason on timeout"
     fi
 
+    # Timeout must remain distinct (WARNING) and not increment failure count
+    timeout_fail_count=$(grep "^boot_failure_count=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+    if [ "$timeout_fail_count" = "0" ]; then
+        pass "Boot timeout remained distinct: boot_failure_count not incremented (count=0)"
+    else
+        fail "Expected boot_failure_count=0 on timeout, got: '$timeout_fail_count'"
+    fi
+
     timeout_status=$(python3 -c "import json; print(json.load(open('$MOCK_DATADIR/health.json'))['status'])" 2>/dev/null)
     if [ "$timeout_status" = "WARNING" ]; then
         pass "health.json status on boot timeout is WARNING (never HEALTHY)"
@@ -197,9 +222,10 @@ if sh "$MOCK_MODDIR/service.sh"; then
 else
     fail "service.sh failed on timeout"
 fi
+unset SLEEP_COUNT_FILE
 
-# 3c. Test Lifecycle Failure Recording & boot_failure_count
-echo "[*] Test 3c: Lifecycle failure recording and boot_failure_count..."
+# 3c. Test Lifecycle Failure Recording & Deduplication
+echo "[*] Test 3c: Lifecycle failure recording and deduplication within same stage..."
 sh -c '
     MATRIX_HEALTH_FILE="'"$MOCK_DATADIR"'/health_fail.json"
     MATRIX_DATA_DIR="'"$MOCK_DATADIR"'"
@@ -208,6 +234,7 @@ sh -c '
     . "'"$MOCK_MODDIR"'/core/matrix_store.sh"
     . "'"$MOCK_MODDIR"'/core/matrix_health.sh"
     
+    matrix_state_set "boot_stage" "post-fs-data"
     matrix_state_set "boot_failure_count" "0"
     matrix_health_mark_boot_failed "simulated component crash"
 '
@@ -221,7 +248,7 @@ else
     fail "matrix_health_mark_boot_failed failed: count=$fail_count, stage=$fail_stage, reason=$fail_reason"
 fi
 
-# Second failure increment check
+# Same-stage deduplication check: second call in same failed stage must NOT double increment
 sh -c '
     MATRIX_HEALTH_FILE="'"$MOCK_DATADIR"'/health_fail.json"
     MATRIX_DATA_DIR="'"$MOCK_DATADIR"'"
@@ -229,13 +256,71 @@ sh -c '
     . "'"$MOCK_MODDIR"'/core/matrix_env.sh"
     . "'"$MOCK_MODDIR"'/core/matrix_store.sh"
     . "'"$MOCK_MODDIR"'/core/matrix_health.sh"
-    matrix_health_mark_boot_failed "second simulated crash"
+    matrix_health_mark_boot_failed "second simulated crash in same failure event"
+'
+fail_count_dedup=$(grep "^boot_failure_count=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+if [ "$fail_count_dedup" = "1" ]; then
+    pass "Deduplication verified: failure count remained 1 on repeated failure in same failed stage"
+else
+    fail "Deduplication failed: Expected boot_failure_count=1, got: '$fail_count_dedup'"
+fi
+
+# 3d. Test Multi-stage Failure Increment across boot cycles
+echo "[*] Test 3d: Failure increment on new boot lifecycle attempt..."
+sh -c '
+    MATRIX_HEALTH_FILE="'"$MOCK_DATADIR"'/health_fail.json"
+    MATRIX_DATA_DIR="'"$MOCK_DATADIR"'"
+    MATRIX_STATE_FILE="'"$MOCK_DATADIR"'/state"
+    . "'"$MOCK_MODDIR"'/core/matrix_env.sh"
+    . "'"$MOCK_MODDIR"'/core/matrix_store.sh"
+    . "'"$MOCK_MODDIR"'/core/matrix_health.sh"
+    # New boot stage initiated
+    matrix_state_set "boot_stage" "post-fs-data"
+    matrix_health_mark_boot_failed "failure in subsequent boot cycle"
 '
 fail_count2=$(grep "^boot_failure_count=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
 if [ "$fail_count2" = "2" ]; then
-    pass "matrix_health_mark_boot_failed correctly incremented failure count to 2"
+    pass "matrix_health_mark_boot_failed correctly incremented failure count to 2 across boot cycles"
 else
     fail "Expected boot_failure_count=2, got: '$fail_count2'"
+fi
+
+# 3e. Test Production Lifecycle Script Fatal Exit Handlers
+echo "[*] Test 3e: Production lifecycle script execution on fatal storage / recovery failure..."
+out_pfs=$(MATRIX_DATA_DIR="/dev/null/matrix_module" sh "$MOCK_MODDIR/post-fs-data.sh" 2>&1)
+code_pfs=$?
+if [ "$code_pfs" -eq 1 ]; then
+    pass "post-fs-data.sh exited with code 1 upon fatal storage initialization failure"
+else
+    fail "post-fs-data.sh failed to exit 1 on storage failure: code=$code_pfs, out=$out_pfs"
+fi
+
+out_svc=$(MATRIX_DATA_DIR="/dev/null/matrix_module" sh "$MOCK_MODDIR/service.sh" 2>&1)
+code_svc=$?
+if [ "$code_svc" -eq 1 ]; then
+    pass "service.sh exited with code 1 upon fatal storage initialization failure"
+else
+    fail "service.sh failed to exit 1 on storage failure: code=$code_svc, out=$out_svc"
+fi
+
+# 3f. Test Self-Healing / Failure Reset on Successful Boot Completion
+echo "[*] Test 3f: Self-healing failure count reset on successful boot completion..."
+echo "ro.boot.mode=normal" > "$PROPS_FILE"
+echo "sys.boot_completed=1" >> "$PROPS_FILE"
+echo "boot_stage=post-fs-data" > "$MOCK_DATADIR/state"
+echo "boot_failure_count=3" >> "$MOCK_DATADIR/state"
+
+if sh "$MOCK_MODDIR/service.sh"; then
+    pass "service.sh successfully recovered and executed on boot completion"
+    healed_stage=$(grep "^boot_stage=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+    healed_count=$(grep "^boot_failure_count=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+    if [ "$healed_stage" = "completed" ] && [ "$healed_count" = "0" ]; then
+        pass "Self-healing verified: boot_stage=completed and boot_failure_count reset to 0"
+    else
+        fail "Self-healing failed: stage=$healed_stage, count=$healed_count"
+    fi
+else
+    fail "service.sh recovery execution failed"
 fi
 
 # 4. Test MM-DEF-06: Unusual Property Values & Robust JSON Escaping

@@ -1,5 +1,37 @@
 # MatrixModule Changelog
 
+## [1.0.6] - 2026-11-06
+
+### Fixed (Final Permission & Lifecycle Audit Remediation)
+- **Preserve and Reject Special Permission Bits**:
+  - In `customize.sh`, implemented `normalize_mode()` that preserves 4-digit octal modes, retaining special bits (setuid `4...`, setgid `2...`, sticky `1...`) instead of truncating them to 3 digits.
+  - Reject special permission variants (e.g. `4755`, `2755`, `1755`, `2775`, `4644`, `4700`) during `verify_installed_permissions()`.
+  - Updated `get_octal_mode()` `ls -ld` fallback to immediately fail closed (`return 1`) upon encountering special permission characters (`s`, `S`, `t`, `T`).
+  - Added Tests 22–28 in `tests/test_installer_failures.sh` verifying strict rejection of special permission bits and fail-closed behavior.
+- **Wire Production Lifecycle Failure Handling & Deduplication**:
+  - In `post-fs-data.sh`, connected genuine failures to `matrix_health_mark_boot_failed`: storage init (`matrix_store_init`), log init (`matrix_log_init`), boot start marker registration (`matrix_health_mark_boot_start`), and configuration recovery failure.
+  - In `service.sh`, connected late boot storage and log initialization failures to `matrix_health_mark_boot_failed`.
+  - In `core/matrix_health.sh`, updated `matrix_health_mark_boot_failed()` to deduplicate failure counts within the same failed stage, preventing multiple increments for the same lifecycle event.
+  - Implemented self-healing in `service.sh`: successful boot completion resets `boot_failure_count` to `0` and transitions to `completed`.
+  - Distinct state boundaries preserved: timeout remains `WARNING` without incrementing failure count; recovery abort remains `ERROR` / `aborted`.
+- **Deterministic Release ZIP Staging & Directory Mode Normalization**:
+  - In `build.sh`, migrated packaging to an isolated staging directory where all directories are explicitly normalized to exact mode `0755` (`drwxr-xr-x`), eliminating host umask `0775` directory modes.
+  - Normalized scripts and `update-binary` to `0755`, and assets/metadata to `0644`.
+  - Added Test 5 in `tests/test_packaging.sh` inspecting `zipinfo` external attributes to ensure zero directories have `0775` or `0777`.
+- **Mandatory File Existence Enforcement**:
+  - In `customize.sh`, removed conditional existence checks (`[ -f ]`, `[ -d ]`) from `verify_installed_permissions()`.
+  - Made every production script, asset, and directory unconditionally mandatory with strict file vs directory type verification.
+  - Added Tests 29–33 in `tests/test_installer_failures.sh` verifying fatal installer aborts when required files, scripts, or directories are missing or mismatched in type.
+- **Boot Completion Timeout Boundary**:
+  - In `service.sh`, adjusted loop boundary condition to `[ "$_wait_ticks" -lt "$_max_ticks" ]` with `_max_ticks=150`, guaranteeing exactly 150 iterations of 2s sleep (deterministic 300-second timeout).
+  - Added mock tick counter verification in `tests/test_boot_mock.sh` asserting exactly 150 ticks.
+
+### Release Packaging
+- **Artifact:** `dist/MatrixModule-v1.0.6.zip` (25,148 bytes | SHA-256: `5f1c43df9a56280db676ebd612712c711195cd508ccb9148d3f24826b746ad2b`).
+- Verified bit-for-bit source-to-ZIP parity across all 21 files.
+- Preserved historical releases: `v1.0.0`, `v1.0.1`, `v1.0.2`, `v1.0.3`, `v1.0.4`, `v1.0.5`.
+- Master test runner reports 12/12 suites passed (100% pass rate).
+
 ## [1.0.5] - 2026-11-05
 
 ### Fixed (Follow-up Audit Remediation)

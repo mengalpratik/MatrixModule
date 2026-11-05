@@ -39,6 +39,30 @@ install_file() {
     unzip -qqjo "$ZIPFILE" "$1" -d "$2" || abort "! Failed to extract: $1"
 }
 
+normalize_mode() {
+    _raw="$1"
+    _clean=$(echo "$_raw" | tr -cd '0-7')
+    [ -z "$_clean" ] && return 1
+
+    # Strip extraneous leading zeroes if longer than 4 digits (e.g. 00755 -> 0755)
+    while [ "${#_clean}" -gt 4 ] && [ "${_clean#0}" != "$_clean" ]; do
+        _clean="${_clean#0}"
+    done
+
+    # 3 digits (standard permission with no special bits) -> prepend 0 (e.g. 755 -> 0755)
+    if [ "${#_clean}" -eq 3 ]; then
+        echo "0$_clean"
+    elif [ "${#_clean}" -eq 4 ]; then
+        # 4 digits: preserves leading special bit (e.g. 4755, 2755, 1755, 0755, 0644, 0700)
+        echo "$_clean"
+    else
+        while [ "${#_clean}" -lt 4 ]; do
+            _clean="0$_clean"
+        done
+        echo "$_clean"
+    fi
+}
+
 get_octal_mode() {
     _target="$1"
     [ ! -e "$_target" ] && return 1
@@ -56,6 +80,10 @@ get_octal_mode() {
         _ls=$(ls -ld "$_target" 2>/dev/null | awk '{print $1}')
         if [ -n "$_ls" ]; then
             _perm=${_ls#?}
+            # If ls encounters special permission markers (s, S, t, T), fail closed immediately
+            if echo "$_perm" | grep -Eq '[sStT]'; then
+                return 1
+            fi
             _oct_digit() {
                 case "$1" in
                     rwx) echo 7 ;;
@@ -65,14 +93,20 @@ get_octal_mode() {
                     -wx) echo 3 ;;
                     -w-) echo 2 ;;
                     --x) echo 1 ;;
-                    *)   echo 0 ;;
+                    ---) echo 0 ;;
+                    *)   return 1 ;;
                 esac
             }
-            _mode="$(_oct_digit "$(echo "$_perm" | cut -c1-3)")$(_oct_digit "$(echo "$_perm" | cut -c4-6)")$(_oct_digit "$(echo "$_perm" | cut -c7-9)")"
+            _u=$(_oct_digit "$(echo "$_perm" | cut -c1-3)") || return 1
+            _g=$(_oct_digit "$(echo "$_perm" | cut -c4-6)") || return 1
+            _o=$(_oct_digit "$(echo "$_perm" | cut -c7-9)") || return 1
+            _mode="0${_u}${_g}${_o}"
+        else
+            return 1
         fi
     fi
 
-    echo "$_mode" | sed 's/.*\(...\)$/\1/'
+    normalize_mode "$_mode"
 }
 
 get_file_owner() {
@@ -105,7 +139,7 @@ apply_perm() {
     fi
 
     # Mandatory exact mode verification & enforcement
-    _req_norm=$(echo "$_mode" | sed 's/.*\(...\)$/\1/')
+    _req_norm=$(normalize_mode "$_mode")
     _cur_mode=$(get_octal_mode "$_target")
     if [ "$_cur_mode" != "$_req_norm" ]; then
         if ! chmod "$_mode" "$_target" 2>/dev/null; then
@@ -113,7 +147,7 @@ apply_perm() {
         fi
         _cur_mode=$(get_octal_mode "$_target")
         if [ "$_cur_mode" != "$_req_norm" ]; then
-            abort "! Mandatory permission failure: mode mismatch on $_target (expected $_req_norm, got $_cur_mode)"
+            abort "! Mandatory permission failure: mode mismatch on $_target (expected $_req_norm, got ${_cur_mode:-<invalid>})"
         fi
     fi
 
@@ -260,10 +294,27 @@ verify_installed_permissions() {
             return 1
         fi
 
+        case "$_type" in
+            *directory*)
+                if [ ! -d "$_path" ]; then
+                    ui_print "! Critical: Expected directory but found non-directory at: $_path"
+                    _perm_err=$((_perm_err + 1))
+                    return 1
+                fi
+                ;;
+            *)
+                if [ ! -f "$_path" ]; then
+                    ui_print "! Critical: Expected regular file but found non-file at: $_path"
+                    _perm_err=$((_perm_err + 1))
+                    return 1
+                fi
+                ;;
+        esac
+
         _actual=$(get_octal_mode "$_path")
-        _exp_norm=$(echo "$_expected" | sed 's/.*\(...\)$/\1/')
+        _exp_norm=$(normalize_mode "$_expected")
         if [ "$_actual" != "$_exp_norm" ]; then
-            ui_print "! Critical: Exact mode mismatch on $_type $_path (expected $_exp_norm, got $_actual)"
+            ui_print "! Critical: Exact mode mismatch on $_type $_path (expected $_exp_norm, got ${_actual:-<invalid>})"
             _perm_err=$((_perm_err + 1))
         fi
 
@@ -276,34 +327,26 @@ verify_installed_permissions() {
         fi
     }
 
-    # 1. Shell scripts must be exactly 0755
+    # 1. Shell scripts must be exactly 0755 (mandatory)
     for f in "$MODPATH/post-fs-data.sh" "$MODPATH/service.sh" "$MODPATH/action.sh" "$MODPATH/uninstall.sh" \
              "$MODPATH/core/matrix_env.sh" "$MODPATH/core/matrix_store.sh" "$MODPATH/core/matrix_log.sh" "$MODPATH/core/matrix_health.sh"; do
-        if [ -f "$f" ]; then
-            _verify_exact_mode "$f" "755" "script"
-        fi
+        _verify_exact_mode "$f" "0755" "script"
     done
 
-    # 2. Non-executable assets must be exactly 0644
-    _verify_exact_mode "$MODPATH/module.prop" "644" "metadata"
+    # 2. Non-executable assets must be exactly 0644 (mandatory)
+    _verify_exact_mode "$MODPATH/module.prop" "0644" "metadata"
     for f in "$MODPATH/webroot/index.html" "$MODPATH/webroot/app.css" "$MODPATH/webroot/main.js"; do
-        if [ -f "$f" ]; then
-            _verify_exact_mode "$f" "644" "webroot asset"
-        fi
+        _verify_exact_mode "$f" "0644" "webroot asset"
     done
 
-    # 3. Module & code directories must be exactly 0755
+    # 3. Module & code directories must be exactly 0755 (mandatory)
     for d in "$MODPATH" "$MODPATH/core" "$MODPATH/webroot"; do
-        if [ -d "$d" ]; then
-            _verify_exact_mode "$d" "755" "directory"
-        fi
+        _verify_exact_mode "$d" "0755" "directory"
     done
 
-    # 4. Persistent data directory and logs directory must be exactly 0700
+    # 4. Persistent data directory and logs directory must be exactly 0700 (mandatory)
     for d in "$DATA_DIR" "$DATA_DIR/logs"; do
-        if [ -d "$d" ]; then
-            _verify_exact_mode "$d" "700" "persistent directory"
-        fi
+        _verify_exact_mode "$d" "0700" "persistent directory"
     done
 
     if [ "$_perm_err" -gt 0 ]; then

@@ -193,6 +193,7 @@ fi
 LOAD_INSTALLER_FUNCS='
     ui_print() { echo "[UI] $*"; }
     abort() { echo "[ABORT] $*"; exit 2; }
+    eval "$(sed -n "/^normalize_mode() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
     eval "$(sed -n "/^get_octal_mode() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
     eval "$(sed -n "/^get_file_owner() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
     eval "$(sed -n "/^apply_perm() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
@@ -431,6 +432,208 @@ if [ "$code" -eq 2 ] && echo "$out" | grep -q "Ownership mismatch"; then
     pass "verify_installed_permissions aborted on root ownership mismatch"
 else
     fail "verify_installed_permissions failed to abort on ownership mismatch: code=$code, output=$out"
+fi
+
+# 22. Test verify_installed_permissions rejection of setuid script (4755)
+echo "[*] Test 22: Testing verify_installed_permissions rejection of setuid script (4755)..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+chmod 4755 "$MOCK_VERIFY_DIR/service.sh"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Exact mode mismatch.*expected 0755, got 4755"; then
+    pass "verify_installed_permissions successfully rejected setuid script (4755)"
+else
+    fail "verify_installed_permissions failed to reject setuid script (4755): code=$code, output=$out"
+fi
+
+# 23. Test verify_installed_permissions rejection of setgid script (2755)
+echo "[*] Test 23: Testing verify_installed_permissions rejection of setgid script (2755)..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+chmod 2755 "$MOCK_VERIFY_DIR/service.sh"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Exact mode mismatch.*expected 0755, got 2755"; then
+    pass "verify_installed_permissions successfully rejected setgid script (2755)"
+else
+    fail "verify_installed_permissions failed to reject setgid script (2755): code=$code, output=$out"
+fi
+
+# 24. Test verify_installed_permissions rejection of sticky bit script (1755)
+echo "[*] Test 24: Testing verify_installed_permissions rejection of sticky bit script (1755)..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+chmod 1755 "$MOCK_VERIFY_DIR/service.sh"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Exact mode mismatch.*expected 0755, got 1755"; then
+    pass "verify_installed_permissions successfully rejected sticky bit script (1755)"
+else
+    fail "verify_installed_permissions failed to reject sticky bit script (1755): code=$code, output=$out"
+fi
+
+# 25. Test verify_installed_permissions rejection of setgid directory (2755 / 2775)
+echo "[*] Test 25: Testing verify_installed_permissions rejection of setgid directory (2755)..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+chmod 2755 "$MOCK_VERIFY_DIR/core"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Exact mode mismatch.*expected 0755, got 2755"; then
+    pass "verify_installed_permissions successfully rejected setgid directory (2755)"
+else
+    fail "verify_installed_permissions failed to reject setgid directory (2755): code=$code, output=$out"
+fi
+
+# 26. Test verify_installed_permissions rejection of setuid asset (4644)
+echo "[*] Test 26: Testing verify_installed_permissions rejection of setuid asset (4644)..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+chmod 4644 "$MOCK_VERIFY_DIR/module.prop"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Exact mode mismatch.*expected 0644, got 4644"; then
+    pass "verify_installed_permissions successfully rejected setuid asset (4644)"
+else
+    fail "verify_installed_permissions failed to reject setuid asset (4644): code=$code, output=$out"
+fi
+
+# 27. Test verify_installed_permissions rejection of special bits on data dir (4700)
+echo "[*] Test 27: Testing verify_installed_permissions rejection of special bits on data dir (4700)..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+chmod 4700 "$SANDBOX/data/mock_data"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Exact mode mismatch.*expected 0700, got 4700"; then
+    pass "verify_installed_permissions successfully rejected special bits on data dir (4700)"
+else
+    fail "verify_installed_permissions failed to reject special bits on data dir: code=$code, output=$out"
+fi
+
+# 28. Test get_octal_mode ls -ld fallback fails closed on special permission characters
+echo "[*] Test 28: Testing get_octal_mode ls -ld fallback fails closed on s, S, t, T..."
+TEST_LS_FILE="$SANDBOX/ls_special_test"
+touch "$TEST_LS_FILE"
+chmod 4755 "$TEST_LS_FILE"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    stat() { return 1; }
+    toybox() { return 1; }
+    busybox() { return 1; }
+    if get_octal_mode "'"$TEST_LS_FILE"'"; then
+        echo "UNEXPECTED_SUCCESS"
+        exit 1
+    else
+        echo "FAILED_CLOSED_OK"
+        exit 0
+    fi
+' 2>&1)
+code=$?
+if [ "$code" -eq 0 ] && echo "$out" | grep -q "FAILED_CLOSED_OK"; then
+    pass "get_octal_mode ls fallback safely failed closed upon encountering special permission bits"
+else
+    fail "get_octal_mode ls fallback did not fail closed on special permission bits: code=$code, output=$out"
+fi
+
+# 29. Test verify_installed_permissions failure when mandatory script is missing
+echo "[*] Test 29: Testing verify_installed_permissions failure on missing service.sh..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+rm -f "$MOCK_VERIFY_DIR/service.sh"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Required.*missing during verification:.*service\.sh"; then
+    pass "verify_installed_permissions aborted when mandatory service.sh was missing"
+else
+    fail "verify_installed_permissions failed to abort on missing service.sh: code=$code, output=$out"
+fi
+
+# 30. Test verify_installed_permissions failure when core/matrix_health.sh is missing
+echo "[*] Test 30: Testing verify_installed_permissions failure on missing core/matrix_health.sh..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+rm -f "$MOCK_VERIFY_DIR/core/matrix_health.sh"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Required.*missing during verification:.*core/matrix_health\.sh"; then
+    pass "verify_installed_permissions aborted when mandatory matrix_health.sh was missing"
+else
+    fail "verify_installed_permissions failed to abort on missing core/matrix_health.sh: code=$code, output=$out"
+fi
+
+# 31. Test verify_installed_permissions failure when webroot/main.js is missing
+echo "[*] Test 31: Testing verify_installed_permissions failure on missing webroot/main.js..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+rm -f "$MOCK_VERIFY_DIR/webroot/main.js"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Required.*missing during verification:.*webroot/main\.js"; then
+    pass "verify_installed_permissions aborted when mandatory webroot/main.js was missing"
+else
+    fail "verify_installed_permissions failed to abort on missing webroot/main.js: code=$code, output=$out"
+fi
+
+# 32. Test verify_installed_permissions failure when core directory is missing
+echo "[*] Test 32: Testing verify_installed_permissions failure on missing core directory..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+rm -rf "$MOCK_VERIFY_DIR/core"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Required.*missing during verification:.*core"; then
+    pass "verify_installed_permissions aborted when mandatory core directory was missing"
+else
+    fail "verify_installed_permissions failed to abort on missing core directory: code=$code, output=$out"
+fi
+
+# 33. Test verify_installed_permissions failure when directory path is regular file
+echo "[*] Test 33: Testing verify_installed_permissions failure when webroot is regular file..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+rm -rf "$MOCK_VERIFY_DIR/webroot"
+touch "$MOCK_VERIFY_DIR/webroot"
+chmod 755 "$MOCK_VERIFY_DIR/webroot"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Expected directory but found non-directory at:.*webroot"; then
+    pass "verify_installed_permissions aborted when webroot was a regular file instead of a directory"
+else
+    fail "verify_installed_permissions failed to abort on file/dir type mismatch: code=$code, output=$out"
 fi
 
 echo "=================================================="
