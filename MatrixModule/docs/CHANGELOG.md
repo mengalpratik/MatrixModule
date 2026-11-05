@@ -1,5 +1,18 @@
 # MatrixModule Changelog
 
+## [1.0.3] - 2026-11-05
+
+### Changed (Release Version Hygiene)
+- **Version Bump**:
+  - Incremented version to `v1.0.3` (`versionCode=103`) in `module.prop`.
+  - Material production code changes from the post-bundle review (CLI diagnostics in `core/matrix_health.sh`, hardened permissions 0644/0755 in `customize.sh`, verified KernelSU status display in `webroot/main.js`) formalized into fresh release artifact.
+- **Release Packaging**:
+  - Generated fresh release package: `dist/MatrixModule-v1.0.3.zip` (21,118 bytes, SHA-256: `75a8569ab84058cebc9019d1d3d83f7bd9c4803618a53a7971ecceeb8731b12b`).
+  - Verified bit-for-bit source-to-ZIP parity across all 21 package files.
+  - Preserved all historical release archives: `dist/MatrixModule-v1.0.0.zip`, `dist/MatrixModule-v1.0.1.zip`, and `dist/MatrixModule-v1.0.2.zip`.
+- **Test Verification**:
+  - Master test runner reports 12/12 suites passing (100% pass rate).
+
 ## [1.0.2] - 2026-11-05
 
 ### Fixed (Post-Bundle Review & Independent Verification Remediation)
