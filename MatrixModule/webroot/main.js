@@ -82,6 +82,8 @@ async function execCommand(cmd) {
     }
 }
 
+const MODULE_VERSION = 'v1.0.4';
+
 function simulateCommand(cmd) {
     if (cmd.includes('matrix_health.sh') || cmd.includes('health.json') || cmd.includes('matrix_env.sh')) {
         return {
@@ -105,14 +107,38 @@ function simulateCommand(cmd) {
     }
     if (cmd.includes('matrix.log')) {
         return {
-            stdout: "[2026-11-05 15:45:00] [INFO] [Core] MatrixModule v1.0.2 initialized\n[2026-11-05 15:45:02] [INFO] [PostFS] Early boot stage complete\n[2026-11-05 15:45:18] [INFO] [Health] Boot completed in 18s\n[2026-11-05 15:45:19] [INFO] [Service] Health monitoring watchdog running",
+            stdout: `[2026-11-05 15:45:00] [INFO] [Core] MatrixModule ${MODULE_VERSION} initialized\n[2026-11-05 15:45:02] [INFO] [PostFS] Early boot stage complete\n[2026-11-05 15:45:18] [INFO] [Health] Boot completed in 18s\n[2026-11-05 15:45:19] [INFO] [Service] Health monitoring watchdog running`,
             code: 0
         };
     }
     return { stdout: "OK", code: 0 };
 }
 
+function updateStatusBadge(status) {
+    const badge = document.getElementById('module-status-badge');
+    if (!badge) return;
+    const s = (typeof status === 'string' ? status.trim().toUpperCase() : '') || 'UNKNOWN';
+    badge.textContent = s;
+    badge.className = 'badge';
+    switch (s) {
+        case 'HEALTHY':
+            badge.classList.add('badge-healthy');
+            break;
+        case 'WARNING':
+            badge.classList.add('badge-warning');
+            break;
+        case 'ERROR':
+            badge.classList.add('badge-error');
+            break;
+        case 'UNKNOWN':
+        default:
+            badge.classList.add('badge-unknown');
+            break;
+    }
+}
+
 function showDiagnosticsError(reason) {
+    updateStatusBadge('ERROR');
     const setText = (id, text) => {
         const el = document.getElementById(id);
         if (el) el.textContent = text;
@@ -163,6 +189,9 @@ async function refreshDiagnostics() {
         showDiagnosticsError('Invalid diagnostics payload format');
         return;
     }
+
+    // Update status badge from honest reported status
+    updateStatusBadge(data.status || 'UNKNOWN');
 
     const setText = (id, text) => {
         const el = document.getElementById(id);

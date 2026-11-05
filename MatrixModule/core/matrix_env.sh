@@ -27,6 +27,7 @@ matrix_get_arch() {
 }
 
 matrix_get_sdk() {
+    [ -n "$API" ] && { echo "$API"; return 0; }
     _sdk=$(getprop ro.build.version.sdk 2>/dev/null)
     [ -z "$_sdk" ] && _sdk=0
     echo "$_sdk"
@@ -84,6 +85,7 @@ matrix_check_zygisk() {
 }
 
 matrix_get_selinux() {
+    [ -n "$SELINUX_MODE" ] && { echo "$SELINUX_MODE"; return 0; }
     if command -v getenforce >/dev/null 2>&1; then
         getenforce 2>/dev/null || echo "Unknown"
     elif [ -f /sys/fs/selinux/enforce ]; then

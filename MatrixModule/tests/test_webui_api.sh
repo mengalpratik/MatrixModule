@@ -52,6 +52,13 @@ if [ -f "$HTML_FILE" ]; then
             fail "Missing form control: #$ctrl"
         fi
     done
+
+    # Check status badge element
+    if grep -q 'id="module-status-badge"' "$HTML_FILE"; then
+        pass "Found module status badge: #module-status-badge"
+    else
+        fail "Missing module status badge: #module-status-badge"
+    fi
 else
     fail "index.html missing"
 fi
@@ -62,6 +69,10 @@ if [ -f "$CSS_FILE" ]; then
     pass "app.css exists"
     grep -q "\-\-bg\-color" "$CSS_FILE" && pass "Dark mode CSS variable --bg-color verified" || fail "Missing --bg-color variable"
     grep -q "\-\-accent:" "$CSS_FILE" && pass "Accent CSS variable --accent verified" || fail "Missing --accent variable"
+    grep -q "badge-healthy" "$CSS_FILE" && pass "Badge healthy state CSS class verified" || fail "Missing .badge-healthy class"
+    grep -q "badge-warning" "$CSS_FILE" && pass "Badge warning state CSS class verified" || fail "Missing .badge-warning class"
+    grep -q "badge-error" "$CSS_FILE" && pass "Badge error state CSS class verified" || fail "Missing .badge-error class"
+    grep -q "badge-unknown" "$CSS_FILE" && pass "Badge unknown state CSS class verified" || fail "Missing .badge-unknown class"
 else
     fail "app.css missing"
 fi
@@ -83,6 +94,20 @@ if [ -f "$JS_FILE" ]; then
         pass "Desktop browser preview simulation handler verified"
     else
         fail "Missing simulation handler for out-of-manager preview"
+    fi
+
+    # Check updateStatusBadge function
+    if grep -q "updateStatusBadge" "$JS_FILE"; then
+        pass "Honest status badge updater updateStatusBadge present in main.js"
+    else
+        fail "Missing updateStatusBadge function in main.js"
+    fi
+
+    # Check stale version cleanup in preview logs
+    if grep -q "MatrixModule v1.0.2" "$JS_FILE"; then
+        fail "Found stale MatrixModule v1.0.2 text in main.js preview logs"
+    else
+        pass "Stale MatrixModule v1.0.2 text eliminated from main.js"
     fi
 
     # Check MM-DEF-01 fix: direct unvalidated interpolation must NOT exist
@@ -180,10 +205,29 @@ if command -v node >/dev/null 2>&1; then
                 throw new Error("Failed async callback handling: " + JSON.stringify(res5));
             }
 
+            // Helper for mock DOM elements supporting classList and className
+            function createMockEl(id) {
+                const classes = new Set();
+                return {
+                    id,
+                    textContent: "INITIAL",
+                    get className() { return Array.from(classes).join(" "); },
+                    set className(val) {
+                        classes.clear();
+                        if (val) val.split(/\s+/).filter(Boolean).forEach(c => classes.add(c));
+                    },
+                    classList: {
+                        add(c) { classes.add(c); },
+                        remove(c) { classes.delete(c); },
+                        contains(c) { return classes.has(c); }
+                    }
+                };
+            }
+
             // Test 4.6: Device diagnostics integration with mocked healthy device data
             const domElements6 = {};
-            const getOrCreateEl = (id) => {
-                if (!domElements6[id]) domElements6[id] = { textContent: "" };
+            const getOrCreateEl6 = (id) => {
+                if (!domElements6[id]) domElements6[id] = createMockEl(id);
                 return domElements6[id];
             };
             const mockDeviceJson = JSON.stringify({
@@ -206,7 +250,7 @@ if command -v node >/dev/null 2>&1; then
                 document: {
                     addEventListener: () => {},
                     querySelectorAll: () => [],
-                    getElementById: (id) => getOrCreateEl(id)
+                    getElementById: (id) => getOrCreateEl6(id)
                 },
                 ksu: {
                     exec: (cmd) => Promise.resolve({ errno: 0, stdout: mockDeviceJson, stderr: "" })
@@ -227,6 +271,9 @@ if command -v node >/dev/null 2>&1; then
             if (!domElements6["diag-ksu-app"].textContent.includes("Synchronized (v11950)")) {
                 throw new Error("Failed verified KSU synchronized app text: " + domElements6["diag-ksu-app"].textContent);
             }
+            if (domElements6["module-status-badge"].textContent !== "HEALTHY" || !domElements6["module-status-badge"].classList.contains("badge-healthy")) {
+                throw new Error("Failed status badge healthy transition: " + domElements6["module-status-badge"].textContent);
+            }
 
             // Test 4.7: Diagnostics command failure in Manager (must show unavailable/error, NEVER fake data)
             const domElements7 = {};
@@ -235,7 +282,7 @@ if command -v node >/dev/null 2>&1; then
                     addEventListener: () => {},
                     querySelectorAll: () => [],
                     getElementById: (id) => {
-                        if (!domElements7[id]) domElements7[id] = { textContent: "INITIAL" };
+                        if (!domElements7[id]) domElements7[id] = createMockEl(id);
                         return domElements7[id];
                     }
                 },
@@ -255,6 +302,9 @@ if command -v node >/dev/null 2>&1; then
             if (domElements7["diag-ksu-kernel"].textContent !== "Unverified") {
                 throw new Error("Expected 'Unverified' for diag-ksu-kernel on failure, got: " + domElements7["diag-ksu-kernel"].textContent);
             }
+            if (domElements7["module-status-badge"].textContent !== "ERROR" || !domElements7["module-status-badge"].classList.contains("badge-error")) {
+                throw new Error("Expected ERROR badge on failure, got: " + domElements7["module-status-badge"].textContent);
+            }
 
             // Test 4.8: Malformed JSON diagnostics payload handling
             const domElements8 = {};
@@ -263,7 +313,7 @@ if command -v node >/dev/null 2>&1; then
                     addEventListener: () => {},
                     querySelectorAll: () => [],
                     getElementById: (id) => {
-                        if (!domElements8[id]) domElements8[id] = { textContent: "INITIAL" };
+                        if (!domElements8[id]) domElements8[id] = createMockEl(id);
                         return domElements8[id];
                     }
                 },
@@ -279,6 +329,68 @@ if command -v node >/dev/null 2>&1; then
             }
             if (domElements8["val-root"].textContent !== "Unavailable") {
                 throw new Error("Expected 'Unavailable' on malformed JSON, got: " + domElements8["val-root"].textContent);
+            }
+            if (domElements8["module-status-badge"].textContent !== "ERROR" || !domElements8["module-status-badge"].classList.contains("badge-error")) {
+                throw new Error("Expected ERROR badge on malformed JSON, got: " + domElements8["module-status-badge"].textContent);
+            }
+
+            // Test 4.9: WARNING status badge transition
+            const domElements9 = {};
+            const ctx9 = vm.createContext({
+                document: {
+                    addEventListener: () => {},
+                    querySelectorAll: () => [],
+                    getElementById: (id) => {
+                        if (!domElements9[id]) domElements9[id] = createMockEl(id);
+                        return domElements9[id];
+                    }
+                },
+                ksu: {
+                    exec: (cmd) => Promise.resolve({
+                        errno: 0,
+                        stdout: JSON.stringify({ status: "WARNING", root_manager: "KernelSU", sdk_level: 34 }),
+                        stderr: ""
+                    })
+                }
+            });
+            vm.runInContext(code, ctx9);
+            await ctx9.refreshDiagnostics();
+            if (domElements9["module-status-badge"].textContent !== "WARNING" || !domElements9["module-status-badge"].classList.contains("badge-warning")) {
+                throw new Error("Expected WARNING badge, got: " + domElements9["module-status-badge"].textContent);
+            }
+
+            // Test 4.10: UNKNOWN status badge transition
+            const domElements10 = {};
+            const ctx10 = vm.createContext({
+                document: {
+                    addEventListener: () => {},
+                    querySelectorAll: () => [],
+                    getElementById: (id) => {
+                        if (!domElements10[id]) domElements10[id] = createMockEl(id);
+                        return domElements10[id];
+                    }
+                },
+                ksu: {
+                    exec: (cmd) => Promise.resolve({
+                        errno: 0,
+                        stdout: JSON.stringify({ status: "UNKNOWN", root_manager: "Unknown" }),
+                        stderr: ""
+                    })
+                }
+            });
+            vm.runInContext(code, ctx10);
+            await ctx10.refreshDiagnostics();
+            if (domElements10["module-status-badge"].textContent !== "UNKNOWN" || !domElements10["module-status-badge"].classList.contains("badge-unknown")) {
+                throw new Error("Expected UNKNOWN badge, got: " + domElements10["module-status-badge"].textContent);
+            }
+
+            // Test 4.11: Desktop preview log version validation
+            const previewLog = ctx4.simulateCommand("tail -n 100 /data/adb/matrix_module/logs/matrix.log");
+            if (!previewLog.stdout.includes("MatrixModule v1.0.4")) {
+                throw new Error("Preview log missing updated version v1.0.4: " + previewLog.stdout);
+            }
+            if (previewLog.stdout.includes("v1.0.2") || previewLog.stdout.includes("v1.0.3")) {
+                throw new Error("Preview log contains stale version string: " + previewLog.stdout);
             }
 
             console.log("ALL_BRIDGE_TESTS_OK");

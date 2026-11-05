@@ -169,6 +169,94 @@ else
     fail "health.json missing after report generation"
 fi
 
+# 5. Test Honest Health Status Transitions (HEALTHY, WARNING, ERROR, UNKNOWN)
+echo "[*] Test 5: Testing Honest Health Status State Machine Transitions..."
+HEALTH_TEST_ENV='
+    MATRIX_HEALTH_FILE="'"$MOCK_DATADIR"'/health_test.json"
+    MATRIX_DATA_DIR="'"$MOCK_DATADIR"'"
+    MATRIX_STATE_FILE="'"$MOCK_DATADIR"'/state"
+    . "'"$MOCK_MODDIR"'/core/matrix_env.sh"
+    . "'"$MOCK_MODDIR"'/core/matrix_store.sh"
+    . "'"$MOCK_MODDIR"'/core/matrix_health.sh"
+'
+
+# 5a. Healthy baseline
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "completed" "" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "HEALTHY" ] || { echo "Expected HEALTHY, got $st"; exit 1; }
+' && pass "Health state transition 5a: Healthy baseline -> HEALTHY" || fail "Health transition 5a failed"
+
+# 5b. Warning on active conflicts
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "completed" "tricky_store" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "WARNING" ] || { echo "Expected WARNING, got $st"; exit 1; }
+' && pass "Health state transition 5b: Active conflicts -> WARNING" || fail "Health transition 5b failed"
+
+# 5c. Warning on KernelSU version mismatch
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "completed" "" "0" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "WARNING" ] || { echo "Expected WARNING, got $st"; exit 1; }
+' && pass "Health state transition 5c: KernelSU driver/manager mismatch -> WARNING" || fail "Health transition 5c failed"
+
+# 5d. Warning on incomplete boot stage (post-fs-data)
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "post-fs-data" "" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "WARNING" ] || { echo "Expected WARNING, got $st"; exit 1; }
+' && pass "Health state transition 5d: Incomplete boot stage -> WARNING" || fail "Health transition 5d failed"
+
+# 5e. Error on recovery mode
+sh -c "$HEALTH_TEST_ENV"'
+    matrix_health_check_recovery_mode() { return 0; }
+    st=$(matrix_health_determine_status "KernelSU" "completed" "" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "ERROR" ] || { echo "Expected ERROR, got $st"; exit 1; }
+' && pass "Health state transition 5e: Recovery mode -> ERROR" || fail "Health transition 5e failed"
+
+# 5f. Error on aborted or failed boot stage
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "failed" "" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "ERROR" ] || { echo "Expected ERROR, got $st"; exit 1; }
+' && pass "Health state transition 5f: Failed boot stage -> ERROR" || fail "Health transition 5f failed"
+
+# 5g. Error on unsupported architecture
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "completed" "" "1" "Enforcing" "unsupported" "34")
+    [ "$st" = "ERROR" ] || { echo "Expected ERROR, got $st"; exit 1; }
+' && pass "Health state transition 5g: Unsupported architecture -> ERROR" || fail "Health transition 5g failed"
+
+# 5h. Unknown on unavailable root probe
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "Unknown" "completed" "" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "UNKNOWN" ] || { echo "Expected UNKNOWN, got $st"; exit 1; }
+' && pass "Health state transition 5h: Unknown root probe -> UNKNOWN" || fail "Health transition 5h failed"
+
+# 5i. Unknown on unavailable SELinux probe
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "completed" "" "1" "Unknown" "arm64-v8a" "34")
+    [ "$st" = "UNKNOWN" ] || { echo "Expected UNKNOWN, got $st"; exit 1; }
+' && pass "Health state transition 5i: Unknown SELinux probe -> UNKNOWN" || fail "Health transition 5i failed"
+
+# 5j. Unknown on missing SDK level
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "completed" "" "1" "Enforcing" "arm64-v8a" "0")
+    [ "$st" = "UNKNOWN" ] || { echo "Expected UNKNOWN, got $st"; exit 1; }
+' && pass "Health state transition 5j: Zero/missing SDK probe -> UNKNOWN" || fail "Health transition 5j failed"
+
+# 5k. JSON report status field verification
+sh -c "$HEALTH_TEST_ENV"'
+    matrix_detect_root() { echo "KernelSU"; }
+    matrix_get_arch() { echo "arm64-v8a"; }
+    matrix_get_sdk() { echo "34"; }
+    matrix_get_selinux() { echo "Enforcing"; }
+    matrix_get_ksu_versions() { echo "11950 10940 0"; }
+    matrix_health_generate_report
+'
+_rep_status=$(python3 -c "import json; print(json.load(open('$MOCK_DATADIR/health_test.json'))['status'])" 2>/dev/null)
+if [ "$_rep_status" = "WARNING" ]; then
+    pass "Health JSON report accurately reflects dynamic status: WARNING"
+else
+    fail "Health JSON report status mismatch: expected WARNING, got '$_rep_status'"
+fi
+
 echo "=================================================="
 if [ "$ERRORS" -eq 0 ]; then
     echo "[+] All Boot Mock Tests PASSED (0 errors)."

@@ -77,6 +77,24 @@ else
     fail "Dashboard failed to report dynamic WebUI path: $out_dash"
 fi
 
+# 5. Test KernelSU Version Mismatch Display
+echo "[*] Test 5: Testing KernelSU version mismatch display (_m_code and _k_code)..."
+MISMATCH_DIR="$SANDBOX/mismatch_test"
+mkdir -p "$MISMATCH_DIR"
+cp -r "$BASE_DIR/core" "$BASE_DIR/webroot" "$BASE_DIR/action.sh" "$BASE_DIR/module.prop" "$BASE_DIR/service.sh" "$BASE_DIR/post-fs-data.sh" "$MISMATCH_DIR/"
+
+out_mismatch=$(KSU=true KSU_VER_CODE=11950 KSU_KERNEL_VER_CODE=10940 API=34 SELINUX_MODE=Enforcing MATRIX_HEALTH_FILE="$SANDBOX/health.json" MODDIR="$MISMATCH_DIR" sh "$MISMATCH_DIR/action.sh" 2>&1)
+if echo "$out_mismatch" | grep -q "Manager (11950) != Driver (10940)"; then
+    pass "KernelSU mismatch display verified: 'Manager (11950) != Driver (10940)'"
+else
+    fail "KernelSU mismatch display failed: $out_mismatch"
+fi
+if echo "$out_mismatch" | grep -q "Status:           WARNING"; then
+    pass "KernelSU mismatch accurately reported status: WARNING"
+else
+    fail "KernelSU mismatch status reporting failed: $out_mismatch"
+fi
+
 echo "=================================================="
 if [ "$ERRORS" -eq 0 ]; then
     echo "[+] All Action Dynamic Path Tests PASSED (0 errors)."

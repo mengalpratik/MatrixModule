@@ -1,5 +1,34 @@
 # MatrixModule Changelog
 
+## [1.0.4] - 2026-11-05
+
+### Fixed (Final Quality Remediation)
+- **KernelSU Version Mismatch Display**:
+  - Corrected variable references in `action.sh` from `$m_code` and `$k_code` to `$_m_code` and `$_k_code`, ensuring actual mismatched version numbers appear in the warning output.
+  - Added automated test in `tests/test_action_dynamic.sh` verifying that mismatched version codes are displayed accurately.
+- **Honest Four-State Health Reporting**:
+  - Implemented state machine `matrix_health_determine_status` in `core/matrix_health.sh` with clear states: `HEALTHY`, `WARNING`, `ERROR`, `UNKNOWN`.
+  - Prohibits reporting `HEALTHY` merely because JSON was generated.
+  - Correctly reflects active conflicts as `WARNING`, driver mismatches as `WARNING`, recovery/aborted stages as `ERROR`, and unresolvable/unavailable probes as `UNKNOWN`.
+  - Updated `action.sh` to dynamically display the determined health status.
+  - Updated `webroot/index.html` initial badge state from hardcoded `HEALTHY` to `UNKNOWN`.
+  - Added distinct status badge styles (`.badge-healthy`, `.badge-warning`, `.badge-error`, `.badge-unknown`) in `webroot/app.css`.
+  - Hardened `webroot/main.js` with `updateStatusBadge()`: dynamically reflects honest reported status, and transitions to `ERROR` on command failures or JSON parsing errors. Never remains green on error.
+  - Added 11 mocked health transition tests in `tests/test_boot_mock.sh` and status badge tests in `tests/test_webui_api.sh`.
+- **Harden Installer Permission Error Handling**:
+  - In `customize.sh`, updated `apply_perm` and `apply_perm_recursive` to strictly abort on mandatory chmod failures and unresolvable targets.
+  - Handled SELinux context operations explicitly: non-fatal notices for unsupported filesystems without failing mandatory permissions.
+  - Implemented `verify_installed_permissions` to verify executable bits (`0755`) on all scripts, non-executable bits (`0644`) on assets, and traversability of directories.
+  - Added mocked permission failure and verification tests in `tests/test_installer_failures.sh`.
+- **Minor Version & Preview Cleanup**:
+  - Updated desktop browser preview logs in `webroot/main.js` to dynamic `MODULE_VERSION` (`v1.0.4`), eliminating stale `v1.0.2` text.
+
+### Release Packaging
+- **Artifact:** `dist/MatrixModule-v1.0.4.zip` (23,023 bytes | SHA-256: `8d7278849ab61eeebf0619c7933ef0369101cb33b09566af8d6097c9826f0d5f`).
+- Verified bit-for-bit source-to-ZIP parity across all 21 files.
+- Preserved historical releases: `v1.0.0`, `v1.0.1`, `v1.0.2`, `v1.0.3`.
+- Master test runner reports 12/12 suites passed (100% pass rate).
+
 ## [1.0.3] - 2026-11-05
 
 ### Changed (Release Version Hygiene)

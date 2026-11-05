@@ -1,14 +1,15 @@
 # MatrixModule Project Execution & Validation Log
 
 > [!IMPORTANT]
-> **CURRENT PRODUCTION RELEASE STATUS: v1.0.3 (ACTIVE & RELEASE HYGIENE VERIFIED)**  
-> - **Release Archive:** [`dist/MatrixModule-v1.0.3.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.3.zip)  
-> - **SHA-256 Checksum:** `75a8569ab84058cebc9019d1d3d83f7bd9c4803618a53a7971ecceeb8731b12b`  
-> - **Archive Size:** 21,118 bytes (21 files, verified via `unzip -t` and `unzip -l`)  
+> **CURRENT PRODUCTION RELEASE STATUS: v1.0.4 (ACTIVE & FINAL QUALITY REMEDIATION VERIFIED)**  
+> - **Release Archive:** [`dist/MatrixModule-v1.0.4.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.4.zip)  
+> - **SHA-256 Checksum:** `8d7278849ab61eeebf0619c7933ef0369101cb33b09566af8d6097c9826f0d5f`  
+> - **Archive Size:** 23,023 bytes (21 files, verified via `unzip -t` and `unzip -l`)  
 > - **Automated Test Coverage:** 12/12 Test Suites Passing (100% Pass Rate across 23 Shell Scripts, Node.js VM, & Python JSON Oracles)  
-> - **Verified Device Telemetry:** WebUI diagnostics uses live `core/matrix_health.sh` CLI output with verified KernelSU version synchronization  
-> - **Hardened Permissions:** Installer guarantees 0644 for `module.prop` and webroot assets, 0755 for scripts and directories  
-> - **Historical Builds Preserved in Log:** v1.0.0 (19,179 B), v1.0.1 (19,179 B), v1.0.2 intermediates (19,619 B, 19,811 B), and v1.0.2 final (21,118 B) transparently recorded  
+> - **Honest Health Telemetry:** Dynamic 4-state engine (HEALTHY, WARNING, ERROR, UNKNOWN) with WebUI badge and error reflection  
+> - **KernelSU Mismatch Display:** Actual driver and manager version codes displayed in action.sh  
+> - **Hardened Permissions & Verification:** Mandatory chmod aborts, root chown aborts, and post-installation permission verification  
+> - **Historical Builds Preserved in Log:** v1.0.0 (19,179 B), v1.0.1 (19,179 B), v1.0.2 (21,118 B), v1.0.3 (21,118 B) transparently recorded  
 > - **Reference Projects Integrity:** `AlwaysStrong-v1.0.5` and `HMA-OSS-oss-173` remain quarantined and unmodified.
 
 ---
@@ -18,12 +19,13 @@
 - **Project Name**: MatrixModule
 - **Location**: `/home/neuro/Projects/MatrixModule/MatrixModule/`
 - **Specification**: Unified KernelSU Module Architecture
-- **Active Release Version**: v1.0.3 (versionCode: 103)
+- **Active Release Version**: v1.0.4 (versionCode: 104)
 - **Historical Milestones**:
   - v1.0.0 (versionCode: 100) - Initial Architectural Unification (4 suites passing)
   - v1.0.1 (versionCode: 101) - Milestone 2 Remediation of MM-DEF-01 to 06 (11 suites passing)
   - v1.0.2 (versionCode: 102) - Milestone 3 Post-Remediation Verification & Milestone 4 Post-Bundle Review Remediation (12 suites passing)
   - v1.0.3 (versionCode: 103) - Milestone 5 Release Version Hygiene & Packaging (12 suites passing)
+  - v1.0.4 (versionCode: 104) - Milestone 6 Final Quality Remediation & Hardening (12 suites passing)
 - **Execution Date**: 2026-11-05
 - **Status**: Production Release Verified & Cryptographically Validated
 
@@ -405,13 +407,65 @@ Because production source files were materially updated during the Milestone 4 p
 - **Results**: 12/12 Test Suites PASSED (100% pass rate).
 - **Dynamic Installer Verification**: `tests/test_installer_failures.sh` dynamically detected `v1.0.3` and validated extraction against `dist/MatrixModule-v1.0.3.zip`.
 
-### 9.4 Final Release Archives Registry
+### 9.4 Milestone 5 Release Archive Status
+- Output: [`dist/MatrixModule-v1.0.3.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.3.zip) (21,118 bytes | `75a8569ab84058cebc9019d1d3d83f7bd9c4803618a53a7971ecceeb8731b12b`).
+- Preserved in historical registry.
+
+---
+
+## 10. Milestone 6: Final Quality Remediation & Hardening (v1.0.4)
+
+### 10.1 Findings & Engineering Remediations
+1. **KernelSU Driver/Manager Mismatch Display (`action.sh`):**
+   - Corrected variable expansions from `$m_code` and `$k_code` to `$_m_code` and `$_k_code`.
+   - Verified that `action.sh` displays `(!) Driver Version Mismatch: Manager (11950) != Driver (10940)` when mismatched.
+   - Added Test 5 in [`tests/test_action_dynamic.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/tests/test_action_dynamic.sh) confirming both values appear and status degrades to `WARNING`.
+2. **Honest 4-State Health Reporting:**
+   - Implemented `matrix_health_determine_status()` in [`core/matrix_health.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/core/matrix_health.sh) evaluating:
+     - `ERROR`: Active recovery mode, aborted/failed boot stage, probe failures > 0, unsupported CPU architecture.
+     - `UNKNOWN`: Unresolvable root manager (`Unknown`), undetermined SELinux, undetermined Android SDK.
+     - `WARNING`: Active module conflicts, KernelSU driver mismatch, incomplete boot stage.
+     - `HEALTHY`: Fully resolved root, supported arch, compatible SDK, SELinux active, boot complete, zero conflicts, zero mismatches.
+   - Updated [`action.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/action.sh) to display honest dynamic status badge in console.
+   - Changed initial WebUI badge in [`webroot/index.html`](file:///home/neuro/Projects/MatrixModule/MatrixModule/webroot/index.html) from `HEALTHY` to honest `UNKNOWN` (`badge-unknown`).
+   - Added explicit badge styling for healthy, warning, error, and unknown states in [`webroot/app.css`](file:///home/neuro/Projects/MatrixModule/MatrixModule/webroot/app.css).
+   - Enhanced [`webroot/main.js`](file:///home/neuro/Projects/MatrixModule/MatrixModule/webroot/main.js) with `updateStatusBadge()` updating badge from live health payload and setting `ERROR` on bridge failures or unparseable JSON.
+   - Added 11 subtests (5a–5k) in [`tests/test_boot_mock.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/tests/test_boot_mock.sh) and Node.js VM tests in [`tests/test_webui_api.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/tests/test_webui_api.sh).
+3. **Hardened Installer Permission Handling & Verification (`customize.sh`):**
+   - `apply_perm` and `apply_perm_recursive` now abort on missing target files (`abort "[-] ERROR: Missing target..."`).
+   - Mandatory `chmod` failures immediately abort installation (`abort "[-] ERROR: Failed to chmod..."`).
+   - Root `chown` failures immediately abort; non-root environments log informative notice.
+   - Filesystems without SELinux support log non-fatal warnings without crashing.
+   - Added `verify_installed_permissions()` auditing 0755 for scripts, 0644 for assets/module.prop, and 0755 for directories post-installation.
+   - Added Tests 9–12 in [`tests/test_installer_failures.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/tests/test_installer_failures.sh).
+4. **WebUI Preview Version Cleanup (`webroot/main.js`):**
+   - Replaced static v1.0.2 log strings with dynamic `const MODULE_VERSION = 'v1.0.4'`.
+   - Verified by automated VM test in `tests/test_webui_api.sh`.
+
+### 10.2 Build Execution & Cryptographic Verification
+- **Build Command**: `./build.sh`
+- **Output Artifact**: [`dist/MatrixModule-v1.0.4.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.4.zip)
+- **Archive Size**: 23,023 bytes
+- **File Count**: 21 files (clean ZIP root, zero directory nesting)
+- **SHA-256 Checksum**: `8d7278849ab61eeebf0619c7933ef0369101cb33b09566af8d6097c9826f0d5f`
+- **Source-to-ZIP Parity**: Extracted and verified via recursive file-by-file `cmp -s` — 100% bit-for-bit parity.
+
+### 10.3 Master Test Suite Verification
+- **Execution Command**: `sh tests/run_all_tests.sh`
+- **Results**: 12/12 Test Suites PASSED (100% pass rate).
+
+### 10.4 Complete Release Archives Registry
 | Milestone | Version | Package Path | Size (Bytes) | SHA-256 Checksum |
 | :--- | :--- | :--- | :--- | :--- |
-| **Milestone 5 (Active)** | **v1.0.3** | [`dist/MatrixModule-v1.0.3.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.3.zip) | 21,118 | `75a8569ab84058cebc9019d1d3d83f7bd9c4803618a53a7971ecceeb8731b12b` |
+| **Milestone 6 (Active)** | **v1.0.4** | [`dist/MatrixModule-v1.0.4.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.4.zip) | **23,023** | `8d7278849ab61eeebf0619c7933ef0369101cb33b09566af8d6097c9826f0d5f` |
+| Milestone 5 (Preserved) | v1.0.3 | [`dist/MatrixModule-v1.0.3.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.3.zip) | 21,118 | `75a8569ab84058cebc9019d1d3d83f7bd9c4803618a53a7971ecceeb8731b12b` |
 | Milestone 4 (Preserved) | v1.0.2 | [`dist/MatrixModule-v1.0.2.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.2.zip) | 21,118 | `1d4387bab8de44aa8275feca4a4c503d605187b3afd41bd191b7b04485b5e88a` |
 | Milestone 2 (Preserved) | v1.0.1 | [`dist/MatrixModule-v1.0.1.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.1.zip) | 19,179 | `367c1eb2875bae7b3c3906eeb531eec57538ae30d144d665d463c97e63acc91b` |
 | Milestone 1 (Preserved) | v1.0.0 | [`dist/MatrixModule-v1.0.0.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.0.zip) | 19,179 | `965cc7714228c21f23f05f63b1ca62e5a67e69ac55fbbea2887b41037124c1bd` |
+| **Review Bundle** | **v1.0.4** | [`PROJECT_REVIEW_BUNDLE.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/PROJECT_REVIEW_BUNDLE.zip) | Verified | Master Review Bundle (Production, Tests, Docs, v1.0.4 ZIP) |
+| Quarantined Reference | v1.7.3 | `HMA-OSS-oss-173.zip` | 1,461,848 | `47b53727ae03c38ae145c5e45c3ebfea73d6e691b31078031f4c0d904305286e` |
+| Quarantined Reference | v1.0.5 | `AlwaysStrong-v1.0.5.zip` | 4,374,385 | `fa3ac0d3405288c659f4bca337574137219af958493501f206acdb4cb418f003` |
+
 
 
 

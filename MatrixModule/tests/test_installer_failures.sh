@@ -189,6 +189,78 @@ else
     fail "update-binary syntax error"
 fi
 
+# 9. Test apply_perm error handling: missing target
+echo "[*] Test 9: Testing apply_perm failure on missing target..."
+out=$(sh -c '
+    ui_print() { echo "[UI] $*"; }
+    abort() { echo "[ABORT] $*"; exit 2; }
+    eval "$(sed -n "/^apply_perm() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
+    apply_perm "/tmp/nonexistent_target_$$" 0 0 0644
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "missing"; then
+    pass "apply_perm aborted with code 2 on missing target"
+else
+    fail "apply_perm failed to abort on missing target: code=$code, output=$out"
+fi
+
+# 10. Test apply_perm mandatory chmod failure
+echo "[*] Test 10: Testing apply_perm abort on mandatory chmod failure..."
+TEST_PERM_FILE="$SANDBOX/perm_fail_test"
+touch "$TEST_PERM_FILE"
+out=$(sh -c '
+    ui_print() { echo "[UI] $*"; }
+    abort() { echo "[ABORT] $*"; exit 2; }
+    eval "$(sed -n "/^apply_perm() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
+    chmod() { return 1; }
+    apply_perm "'"$TEST_PERM_FILE"'" 0 0 0755
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Mandatory permission failure"; then
+    pass "apply_perm aborted on mandatory chmod failure"
+else
+    fail "apply_perm failed to abort on chmod failure: code=$code, output=$out"
+fi
+
+# 11. Test apply_perm SELinux context failure handling (distinguish from mandatory permission)
+echo "[*] Test 11: Testing apply_perm non-fatal handling of unsupported SELinux context..."
+TEST_CON_FILE="$SANDBOX/con_test"
+touch "$TEST_CON_FILE"
+out=$(sh -c '
+    ui_print() { echo "[UI] $*"; }
+    abort() { echo "[ABORT] $*"; exit 2; }
+    eval "$(sed -n "/^apply_perm() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
+    chcon() { return 1; }
+    apply_perm "'"$TEST_CON_FILE"'" 0 0 0644 "u:object_r:system_file:s0"
+' 2>&1)
+code=$?
+if [ "$code" -eq 0 ] && echo "$out" | grep -q "SELinux context not supported or failed"; then
+    pass "apply_perm warned but did not abort on unsupported SELinux context"
+else
+    fail "apply_perm failed SELinux context handling: code=$code, output=$out"
+fi
+
+# 12. Test verify_installed_permissions failure on missing executable permission
+echo "[*] Test 12: Testing verify_installed_permissions abort on non-executable script..."
+MOCK_VERIFY_DIR="$SANDBOX/mock_verify_mod"
+mkdir -p "$MOCK_VERIFY_DIR/core"
+touch "$MOCK_VERIFY_DIR/service.sh"
+chmod 644 "$MOCK_VERIFY_DIR/service.sh"
+out=$(sh -c '
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/matrix_module"'"
+    ui_print() { echo "[UI] $*"; }
+    abort() { echo "[ABORT] $*"; exit 2; }
+    eval "$(sed -n "/^verify_installed_permissions() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Post-installation permission verification failed"; then
+    pass "verify_installed_permissions aborted on non-executable service.sh"
+else
+    fail "verify_installed_permissions failed to abort on bad permission: code=$code, output=$out"
+fi
+
 echo "=================================================="
 echo " Results: $PASSES passed, $ERRORS failed, $SKIPS skipped."
 if [ "$ERRORS" -eq 0 ]; then

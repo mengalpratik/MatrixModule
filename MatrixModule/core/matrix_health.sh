@@ -106,6 +106,76 @@ matrix_json_escape() {
     }' | sed 's/.$//'
 }
 
+matrix_health_determine_status() {
+    # Determine honest health status based on environment and probe diagnostics:
+    # Status precedence: ERROR -> UNKNOWN -> WARNING -> HEALTHY
+    _d_root="${1:-$(matrix_detect_root 2>/dev/null)}"
+    _d_boot_stage="${2:-$(matrix_state_get "boot_stage" "unknown" 2>/dev/null)}"
+    _d_conflicts="${3:-$(matrix_scan_conflicts 2>/dev/null)}"
+    _d_ksu_match="${4:-}"
+    _d_selinux="${5:-$(matrix_get_selinux 2>/dev/null)}"
+    _d_arch="${6:-$(matrix_get_arch 2>/dev/null)}"
+    _d_sdk="${7:-$(matrix_get_sdk 2>/dev/null)}"
+
+    if [ -z "$_d_ksu_match" ] && [ "$_d_root" = "KernelSU" ]; then
+        _ksu_res=$(matrix_get_ksu_versions 2>/dev/null || echo "0 0 -1")
+        _d_ksu_match=$(echo "$_ksu_res" | cut -d' ' -f3)
+    fi
+
+    # 1. Critical ERROR conditions
+    if matrix_health_check_recovery_mode; then
+        echo "ERROR"
+        return 0
+    fi
+    case "$_d_boot_stage" in
+        aborted|failed|recovery)
+            echo "ERROR"
+            return 0
+            ;;
+    esac
+    if [ "$_d_arch" = "unsupported" ]; then
+        echo "ERROR"
+        return 0
+    fi
+    _fail_count=$(matrix_state_get "boot_failure_count" "0" 2>/dev/null)
+    if [ -n "$_fail_count" ] && [ "$_fail_count" -gt 0 ] 2>/dev/null; then
+        echo "ERROR"
+        return 0
+    fi
+
+    # 2. UNKNOWN conditions (probes missing, unavailable, or failed to resolve)
+    if [ "$_d_root" = "Unknown" ] || [ -z "$_d_root" ]; then
+        echo "UNKNOWN"
+        return 0
+    fi
+    if [ "$_d_selinux" = "Unknown" ] || [ -z "$_d_selinux" ]; then
+        echo "UNKNOWN"
+        return 0
+    fi
+    if [ -z "$_d_sdk" ] || [ "$_d_sdk" = "0" ]; then
+        echo "UNKNOWN"
+        return 0
+    fi
+
+    # 3. WARNING conditions
+    if [ -n "$_d_conflicts" ] && [ "$_d_conflicts" != "None" ]; then
+        echo "WARNING"
+        return 0
+    fi
+    if [ "$_d_root" = "KernelSU" ] && [ "$_d_ksu_match" = "0" ]; then
+        echo "WARNING"
+        return 0
+    fi
+    if [ "$_d_boot_stage" = "post-fs-data" ]; then
+        # Boot not yet completed
+        echo "WARNING"
+        return 0
+    fi
+
+    # 4. Normal operational state
+    echo "HEALTHY"
+}
+
 matrix_health_generate_report() {
     mkdir -p "${MATRIX_HEALTH_FILE%/*}" 2>/dev/null
     _root=$(matrix_detect_root)
@@ -142,6 +212,10 @@ matrix_health_generate_report() {
     echo "$_k_code" | grep -Eq '^[0-9]+$' || _k_code=0
     echo "$_ksu_match" | grep -Eq '^-?[0-9]+$' || _ksu_match=-1
 
+    # Dynamically determine honest health status
+    _status=$(matrix_health_determine_status "$_root" "$_boot_stage" "$_conflicts" "$_ksu_match" "$_selinux" "$_arch" "$_sdk")
+    _status_esc=$(matrix_json_escape "$_status")
+
     _report="{
   \"timestamp\": \"$_ts_esc\",
   \"root_manager\": \"$_root_esc\",
@@ -156,7 +230,7 @@ matrix_health_generate_report() {
   \"ksu_manager_code\": $_m_code,
   \"ksu_kernel_code\": $_k_code,
   \"ksu_version_match\": $_ksu_match,
-  \"status\": \"HEALTHY\"
+  \"status\": \"$_status_esc\"
 }"
 
     mkdir -p "${MATRIX_HEALTH_FILE%/*}" 2>/dev/null

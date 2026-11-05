@@ -73,6 +73,7 @@ case "$1" in
         _model=$(matrix_get_device_model)
         _zygisk=$(matrix_check_zygisk)
         _selinux=$(matrix_get_selinux)
+        _boot_stage=$(matrix_state_get "boot_stage" "unknown")
         _boot_dur=$(matrix_state_get "boot_duration_sec" "N/A")
         _conflicts=$(matrix_scan_conflicts)
 
@@ -95,7 +96,7 @@ case "$1" in
             if [ "$_match" = "1" ]; then
                 echo " [OK] KernelSU Driver & Manager Synchronized (v$_m_code)"
             elif [ "$_match" = "0" ]; then
-                echo " [WARN] KernelSU Mismatch: Manager ($m_code) != Driver ($k_code)"
+                echo " [WARN] KernelSU Mismatch: Manager ($_m_code) != Driver ($_k_code)"
             fi
         fi
 
@@ -116,8 +117,9 @@ case "$1" in
 
         # Refresh health report
         matrix_health_generate_report
+        _status=$(matrix_health_determine_status "$_root" "$_boot_stage" "$_conflicts" "$_match" "$_selinux" "$_arch" "$_sdk")
         echo "--------------------------------------------------"
-        echo " Status:           HEALTHY"
+        echo " Status:           $_status"
         echo " WebUI Location:   $MODPATH/webroot"
         echo " Config Location:  /data/adb/matrix_module/config"
         echo "=================================================="
