@@ -43,6 +43,7 @@ run_test "Boot Lifecycle Mock & Safety" "$TESTS_DIR/test_boot_mock.sh"
 run_test "Uninstall Boundaries & Isolation" "$TESTS_DIR/test_uninstall_boundaries.sh"
 run_test "Installer Failure Scenarios" "$TESTS_DIR/test_installer_failures.sh"
 run_test "WebUI API & Structure Validation" "$TESTS_DIR/test_webui_api.sh"
+run_test "Action Interface & Dynamic Paths" "$TESTS_DIR/test_action_dynamic.sh"
 
 echo ""
 echo "=================================================="

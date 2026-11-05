@@ -74,6 +74,18 @@ MatrixModule/
 │   ├── app.css                  # Dark-mode styling
 │   └── main.js                  # KernelSU JS bridge & telemetry parser
 ├── docs/                        # Complete project documentation
-├── tests/                       # Static verification test suite
+├── tests/                       # Automated validation test suite (11 test suites)
+│   ├── run_all_tests.sh         # Master test runner
+│   ├── test_syntax.sh           # Shell syntax validation (sh -n)
+│   ├── test_structure.sh        # Directory & metadata validation
+│   ├── test_permissions.sh      # File permissions mode check
+│   ├── test_packaging.sh        # ZIP packaging & boundary verification
+│   ├── test_js_syntax.sh        # JavaScript syntax check (node -c)
+│   ├── test_config_store.sh     # Store atomic writes, MM-DEF-01 & MM-DEF-02
+│   ├── test_boot_mock.sh        # Mocked boot stages & MM-DEF-06 JSON
+│   ├── test_uninstall_boundaries.sh # Cleanup isolation verification
+│   ├── test_installer_failures.sh  # customize.sh & MM-DEF-05 update-binary
+│   ├── test_webui_api.sh        # WebUI & MM-DEF-03 Node VM dynamic bridge
+│   └── test_action_dynamic.sh   # MM-DEF-04 dynamic paths & spaces
 └── references/                  # Non-deployable source auditing materials
 ```

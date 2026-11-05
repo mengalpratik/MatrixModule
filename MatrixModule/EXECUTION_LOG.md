@@ -225,3 +225,54 @@ Testing Directory: /home/neuro/Projects/MatrixModule/MatrixModule
    - Official Magisk Manager does not implement an embedded WebUI renderer. When run on Magisk, MatrixModule's WebUI is accessible via external manager utilities (such as MMRL) or browser previews, while the CLI Action interface (`action.sh`) functions natively across all managers.
 3. **Zygisk Independence**:
    - MatrixModule does not require Zygisk to run its core diagnostics, configuration, or WebUI. It monitors and reports Zygisk host availability as an informational metric only.
+
+---
+
+## 6. Milestone 2: Authorized Remediation, Hardening & Release Verification (v1.0.1)
+
+**Execution Date:** 2026-11-05  
+**Authorized Action:** Implementation of fixes for all 6 defects identified in Second-Pass Engineering Audit (`docs/SECOND_PASS_AUDIT.md`).
+
+### 6.1 Pre-Flight Checkpoint
+- Initialized local Git repository at `/home/neuro/Projects/MatrixModule`.
+- Created Git checkpoint commit: `"Checkpoint: MatrixModule v1.0.0 prior to Milestone 2 remediation"`.
+- Verified physical source backup: `/home/neuro/Projects/MatrixModule/MatrixModule_checkpoint_v1.0.0`.
+- Verified unmodified state of reference projects (`AlwaysStrong-v1.0.5`, `HMA-OSS-oss-173`).
+
+### 6.2 Remediation Summary
+1. **MM-DEF-01 (HIGH - Shell Command Injection)**:
+   - File: `webroot/main.js` and `core/matrix_store.sh`.
+   - Action: Implemented client-side numeric validation (`/^\d+$/`, 60–3600s) and shell-side regex whitelist validation (`^[a-zA-Z0-9_]+$` keys and `^[a-zA-Z0-9_.:/-]+$` values). Eliminated direct `${interval}` string interpolation.
+2. **MM-DEF-02 (MEDIUM - Eager Backup Overwrite)**:
+   - File: `core/matrix_store.sh`.
+   - Action: Removed eager `cp -f` from `matrix_cfg_set()`. Added schema validation requirement in `matrix_cfg_backup()` and automatic rollback in `matrix_store_init()`.
+3. **MM-DEF-03 (MEDIUM - WebUI Async Bridge)**:
+   - File: `webroot/main.js`.
+   - Action: Rewrote `execCommand()` to await thenable/Promise responses, unpack structured objects `{ errno, stdout, stderr }`, support legacy strings, and handle rejected promises with user alerts.
+4. **MM-DEF-04 (LOW - Hardcoded Module Path)**:
+   - File: `action.sh`.
+   - Action: Dynamically derives location from `$MODDIR` or script directory with space-safe quoting. Reports dynamic WebUI location.
+5. **MM-DEF-05 (LOW - Obsolete Shebang)**:
+   - File: `META-INF/com/google/android/update-binary`.
+   - Action: Updated shebang to `#!/system/bin/sh` for Android 10+ compatibility.
+6. **MM-DEF-06 (LOW - JSON Escaping)**:
+   - File: `core/matrix_health.sh`.
+   - Action: Added pure-POSIX `matrix_json_escape()`: strips control characters (`\000-\037`), converts tabs/newlines, and escapes backslashes and double quotes.
+
+### 6.3 Test Expansion & Verification Results
+- Expanded master test runner `tests/run_all_tests.sh` to 11 test suites:
+  - Added `tests/test_action_dynamic.sh`.
+  - Added Node.js VM bridge tests in `tests/test_webui_api.sh`.
+  - Added metacharacter injection tests in `tests/test_config_store.sh`.
+  - Added unusual property JSON tests in `tests/test_boot_mock.sh`.
+- Test Outcome: **11/11 Test Suites PASSED (100% Pass Rate)**.
+
+### 6.4 Release Package Generation
+- Incremented version to `v1.0.1` and `versionCode` to `101` in `module.prop`.
+- Ran `build.sh` generating `dist/MatrixModule-v1.0.1.zip`.
+- Package Details:
+  - Path: `/home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.1.zip`
+  - Size: 19,179 bytes (21 files)
+  - SHA-256: `367c1eb2875bae7b3c3906eeb531eec57538ae30d144d665d463c97e63acc91b`
+- Preserved existing `dist/MatrixModule-v1.0.0.zip` (19,179 bytes, SHA-256: `965cc7714228c21f23f05f63b1ca62e5a67e69ac55fbbea2887b41037124c1bd`).
+

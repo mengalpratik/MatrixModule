@@ -3,9 +3,9 @@
 # MatrixModule - Centralized Logging & Telemetry Engine
 ##########################################################################################
 
-MATRIX_LOG_DIR="/data/adb/matrix_module/logs"
-MATRIX_LOG_FILE="$MATRIX_LOG_DIR/matrix.log"
-MATRIX_LOG_OLD="$MATRIX_LOG_DIR/matrix.old.log"
+MATRIX_LOG_DIR="${MATRIX_LOG_DIR:-/data/adb/matrix_module/logs}"
+MATRIX_LOG_FILE="${MATRIX_LOG_FILE:-$MATRIX_LOG_DIR/matrix.log}"
+MATRIX_LOG_OLD="${MATRIX_LOG_OLD:-$MATRIX_LOG_DIR/matrix.old.log}"
 MATRIX_MAX_LOG_SIZE=524288 # 512 KB
 
 matrix_log_init() {

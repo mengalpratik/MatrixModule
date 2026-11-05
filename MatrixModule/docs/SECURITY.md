@@ -38,3 +38,10 @@ MatrixModule rejects the legacy practice of removing or disabling other installe
 
 ### 2.4 Reference Material Isolation
 All audited upstream sources (`AlwaysStrong-v1.0.5`, `HMA-OSS-oss-173`) reside inside `references/`. The packaging script `build.sh` explicitly excludes `references/` from the release ZIP, ensuring no legacy or exploitative bytecode can be deployed.
+
+### 2.5 Input Sanitization & WebUI Injection Defense
+- WebUI configuration inputs are validated both in client JavaScript (`/^\d+$/` numeric regex and boundary checks 60-3600s) and in the underlying shell storage layer (`core/matrix_store.sh`).
+- `core/matrix_store.sh` applies strict whitelist regexes on all keys (`^[a-zA-Z0-9_]+$`) and values (`^[a-zA-Z0-9_.:/-]+$`).
+- All shell metacharacters (`;`, `&`, `|`, `` ` ``, `$`, `\`, `"`, `<`, `>`, newlines) are rejected prior to file modification.
+- JSON serialization in `core/matrix_health.sh` escapes all backslashes and quotes and strips control characters (`\000-\037`) to prevent JSON injection.
+- Asynchronous bridge error handling in `webroot/main.js` catches all thrown exceptions and Promise rejections, displaying structured alerts without unhandled errors.

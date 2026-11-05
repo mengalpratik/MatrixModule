@@ -39,7 +39,7 @@ for req in "module.prop" "customize.sh" "post-fs-data.sh" "service.sh" "action.s
 done
 
 # 3. Security Boundary: Ensure references/ is EXCLUDED
-if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "references/"; then
+if unzip -l "$ZIP_FILE" 2>/dev/null | grep -q "references/"; then
     echo "  [FAIL] SECURITY VIOLATION: references/ included in deployable ZIP!"
     ERRS=$((ERRS + 1))
 else

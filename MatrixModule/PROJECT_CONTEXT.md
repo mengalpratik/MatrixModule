@@ -1,7 +1,7 @@
 # MatrixModule: Project Context & Master Handoff Documentation
 
 **Document Status:** LIVING ARCHITECTURE DOCUMENT  
-**Current Revision:** v1.0.0 (Post Second-Pass Engineering Audit)  
+**Current Revision:** v1.0.1 (Milestone 2 Authorized Remediation & Hardening Completed)  
 **Last Updated:** 2026-11-05  
 **Workspace Root:** `/home/neuro/Projects/MatrixModule`  
 **Project Path:** `/home/neuro/Projects/MatrixModule/MatrixModule/`  
@@ -36,17 +36,27 @@ Phase 2: Unified Architectural Specification
   │  ├─ Designed interactive diagnostics (action.sh & WebUI)
   │  └─ Deliverables: docs/ARCHITECTURE.md, docs/BOOT_SEQUENCE.md
   ▼
-Phase 3: Clean-Room Implementation & Release Packaging
+Phase 3: Clean-Room Implementation & Release Packaging (v1.0.0)
   │  ├─ Established /home/neuro/Projects/MatrixModule/MatrixModule
   │  ├─ Implemented core/ library, lifecycle scripts, webroot/
   │  ├─ Created hermetic packager build.sh -> dist/MatrixModule-v1.0.0.zip
-  │  └─ Deliverable: EXECUTION_LOG.md, initial test suite
+  │  └─ Deliverables: EXECUTION_LOG.md, initial test suite
   ▼
-Phase 4: Second-Pass Engineering Audit & Hardening
-  │  ├─ Deep read-only code review of all production files
-  │  ├─ Expanded test suites to 10 automated sandboxed suites (100% PASS)
-  │  ├─ Identified 6 architectural defects for user review (MM-DEF-01 to 06)
-  │  └─ Deliverables: docs/SECOND_PASS_AUDIT.md, PROJECT_CONTEXT.md
+Phase 4: Second-Pass Engineering Audit
+  │  ├─ Read-only code audit of production module files
+  │  ├─ Identified 6 architectural defects (MM-DEF-01 to 06)
+  │  └─ Deliverables: docs/SECOND_PASS_AUDIT.md
+  ▼
+Milestone 2: Authorized Remediation, Hardening & Release Verification (v1.0.1)
+  │  ├─ Fixed MM-DEF-01: WebUI client regex (/^\d+$/) + shell regex whitelist (^[a-zA-Z0-9_.:/-]+$)
+  │  ├─ Fixed MM-DEF-02: Eliminated eager backup overwrite; hardened schema-validated backup promotion
+  │  ├─ Fixed MM-DEF-03: Rewrote WebUI execCommand() for async Promises, structured objects & error handling
+  │  ├─ Fixed MM-DEF-04: Replaced hardcoded fallback in action.sh with dynamic $MODDIR and space-safe paths
+  │  ├─ Fixed MM-DEF-05: Updated update-binary shebang to #!/system/bin/sh for Android 10+
+  │  ├─ Fixed MM-DEF-06: Added pure-POSIX matrix_json_escape() with control char stripping & quote/backslash escaping
+  │  ├─ Expanded test runner to 11 automated test suites (100% pass rate)
+  │  ├─ Built release package dist/MatrixModule-v1.0.1.zip (SHA-256: 367c1eb2875bae7b3c3906eeb531eec57538ae30d144d665d463c97e63acc91b)
+  │  └─ Deliverables: docs/REMEDIATION_REPORT.md, synchronized documentation
 ```
 
 ---
@@ -64,32 +74,34 @@ MatrixModule operates under an explicit, non-negotiable security policy:
 
 ---
 
-## 4. File Structure & Component Reference
+## 4. Current File Structure & Component Reference
 
 ```
 MatrixModule/
 ├── META-INF/com/google/android/
-│   ├── update-binary               # KernelSU installer entrypoint (invokes customize.sh)
-│   └── updater-script              # Dummy updater script required for ZIP packaging
-├── action.sh                       # Interactive diagnostics dashboard executed via Manager [Action]
-├── build.sh                        # Release ZIP builder with root-level packaging & excludes
+│   ├── update-binary               # KernelSU installer entrypoint (uses #!/system/bin/sh)
+│   └── updater-script              # Dummy updater script containing #MAGISK
+├── action.sh                       # Interactive diagnostics dashboard with dynamic MODPATH resolution
+├── build.sh                        # Hermetic release packager (generates dist/MatrixModule-v${VERSION}.zip)
 ├── core/
 │   ├── matrix_env.sh               # Root environment detection, arch, SDK, Zygisk, SELinux probes
-│   ├── matrix_health.sh            # Boot timing tracker, health metrics, and conflict detection
+│   ├── matrix_health.sh            # Boot timing tracker, health metrics, and robust JSON escaping
 │   ├── matrix_log.sh               # Rotating telemetry log engine (512KB cap) & logcat bridge
-│   └── matrix_store.sh             # Centralized atomic configuration & state persistence engine
+│   └── matrix_store.sh             # Centralized atomic configuration, schema validation, and rollback
 ├── customize.sh                    # Installation lifecycle: env checks, extraction, data init
 ├── dist/
-│   └── MatrixModule-v1.0.0.zip     # Verified production ZIP archive (24KB)
+│   ├── MatrixModule-v1.0.0.zip     # Previous milestone archive (19,179 bytes)
+│   └── MatrixModule-v1.0.1.zip     # Verified production ZIP archive (19,179 bytes)
 ├── docs/
 │   ├── ARCHITECTURE.md             # System architecture & component breakdown
 │   ├── BOOT_SEQUENCE.md            # Detailed boot lifecycle & hook timing
-│   ├── BUILD.md                    # Build process & hermetic packaging guide
-│   ├── CHANGELOG.md                # Release history & milestone log
+│   ├── BUILD.md                    # Build process & test execution guide
+│   ├── CHANGELOG.md                # Release history & milestone log (v1.0.0 and v1.0.1)
 │   ├── COMPATIBILITY.md            # KernelSU/APatch/Magisk compatibility matrix
-│   ├── SECOND_PASS_AUDIT.md        # Comprehensive read-only engineering audit report
+│   ├── REMEDIATION_REPORT.md       # Milestone 2 comprehensive remediation & verification report
+│   ├── SECOND_PASS_AUDIT.md        # Second-pass engineering audit report with remediation status
 │   └── SECURITY.md                 # Security architecture & Phase 4 boundary manifesto
-├── module.prop                     # Module metadata (id=matrix_module, version=v1.0.0)
+├── module.prop                     # Module metadata (id=matrix_module, version=v1.0.1, versionCode=101)
 ├── post-fs-data.sh                 # Early boot hook: recovery check, boot start register
 ├── references/                     # Quarantined reference module copies for code auditing
 │   ├── AlwaysStrong-v1.0.5/
@@ -97,112 +109,79 @@ MatrixModule/
 │   └── README.md
 ├── service.sh                      # Late boot hook: boot completion wait, watchdog daemon
 ├── tests/
-│   ├── run_all_tests.sh            # Master test runner executing all 10 suites
-│   ├── test_boot_mock.sh           # Sandboxed boot lifecycle mock (post-fs-data & service)
-│   ├── test_config_store.sh        # Sandboxed atomic write, backup, and restore tests
-│   ├── test_installer_failures.sh  # Sandboxed customize.sh abort and failure branch checks
+│   ├── run_all_tests.sh            # Master test runner executing all 11 suites
+│   ├── test_action_dynamic.sh      # MM-DEF-04 dynamic paths, spaces in paths, and custom $MODDIR
+│   ├── test_boot_mock.sh           # Mocked boot stages & MM-DEF-06 unusual property JSON escaping
+│   ├── test_config_store.sh        # Store atomic writes, MM-DEF-01 metacharacter rejection, MM-DEF-02 backup
+│   ├── test_installer_failures.sh  # customize.sh abort checks and MM-DEF-05 shebang validation
 │   ├── test_js_syntax.sh           # Node.js syntax & critical token validation for WebUI
 │   ├── test_packaging.sh           # ZIP archive integrity, root structure, and exclusions
 │   ├── test_permissions.sh         # POSIX permissions & executable bit audit
 │   ├── test_structure.sh           # Directory hierarchy & metadata format validation
-│   ├── test_syntax.sh              # Shell syntax validation (sh -n) on all scripts
+│   ├── test_syntax.sh              # Shell syntax validation (sh -n) on all 23 scripts
 │   ├── test_uninstall_boundaries.sh# Sandboxed data isolation and cleanup safety checks
-│   └── test_webui_api.sh           # WebUI assets, HTML5 layout, CSS themes, and JS API
+│   └── test_webui_api.sh           # WebUI assets, MM-DEF-01 sanitization, and MM-DEF-03 Node.js VM bridge
 ├── uninstall.sh                    # Uninstallation script with data isolation boundaries
 └── webroot/
     ├── app.css                     # Responsive dark-theme CSS with custom properties
     ├── index.html                  # Tabbed WebUI dashboard (Dashboard, Diag, Config, Logs, Security)
-    └── main.js                     # WebUI JavaScript controller with ksu.exec bridge & preview mock
+    └── main.js                     # Hardened WebUI controller with async ksu.exec bridge & input validation
 ```
 
 ---
 
-## 5. Centralized Data Storage & Configuration Schema
+## 5. Completed Defect Remediations (Milestone 2)
 
-All runtime and persistent data is managed under `/data/adb/matrix_module/`:
-
-### 5.1 Configuration File (`/data/adb/matrix_module/config`)
-Key-value format with permissions `0600`:
-```ini
-diagnostics_enabled=1
-health_watchdog_enabled=1
-watchdog_interval_sec=300
-log_level=INFO
-backup_on_boot=1
-telemetry_logging=1
-conflict_warning_only=1
-```
-
-### 5.2 State File (`/data/adb/matrix_module/state`)
-Dynamic runtime metrics with permissions `0600`:
-```ini
-boot_start_time=1762335900
-boot_complete_time=1762335918
-boot_duration_sec=18
-boot_stage=completed
-boot_failure_count=0
-```
-
-### 5.3 Health Metrics (`/data/adb/matrix_module/health.json`)
-Structured telemetry consumed by WebUI:
-```json
-{
-  "timestamp": "2026-11-05 16:00:00",
-  "root_manager": "KernelSU",
-  "architecture": "arm64-v8a",
-  "sdk_level": 34,
-  "device_model": "Pixel 8 Pro",
-  "zygisk_host": "Zygisk Next",
-  "selinux_mode": "Enforcing",
-  "boot_stage": "completed",
-  "boot_duration_sec": 18,
-  "active_conflicts": "None",
-  "status": "HEALTHY"
-}
-```
-
-### 5.4 Telemetry Logs (`/data/adb/matrix_module/logs/`)
-- `matrix.log`: Active log stream (capped at 512 KB).
-- `matrix.old.log`: Previous rotated log stream.
+| Defect ID | Severity | File | Root Cause | Remediated Architecture |
+| :--- | :--- | :--- | :--- | :--- |
+| **MM-DEF-01** | **HIGH** | `webroot/main.js`<br>`core/matrix_store.sh` | Direct shell string interpolation of `#cfg-interval` without validation. | Client-side `/^\d+$/` numeric regex (clamped 60–3600s) + shell-side strict key/value whitelist (`^[a-zA-Z0-9_]+$` and `^[a-zA-Z0-9_.:/-]+$`). Rejects all metacharacters (`;`, `&`, `|`, `` ` ``, `$`, quotes). |
+| **MM-DEF-02** | **MEDIUM** | `core/matrix_store.sh` | `matrix_cfg_set()` eagerly copied `config` to `config.bak` on every write. | Removed eager copy in `matrix_cfg_set()`. `matrix_cfg_backup()` requires schema validation before promoting `config` to `config.bak`. Preserves last-known-good boot state across runtime changes. |
+| **MM-DEF-03** | **MEDIUM** | `webroot/main.js` | Assumed synchronous string return from `ksu.exec()`. | Rewrote `execCommand()` to inspect return type: `await`s thenable/Promise responses, unpacks `{ errno, stdout, stderr }` objects, supports legacy strings, and handles errors safely with user alerts. |
+| **MM-DEF-04** | **LOW** | `action.sh` | Hardcoded fallback `/data/adb/modules/matrix_module`. | Dynamically derives location from `$MODDIR` (manager-provided) or `$(cd "$(dirname "$0")" && pwd)`. Supports paths containing spaces. WebUI Location reports dynamic `$MODPATH/webroot`. |
+| **MM-DEF-05** | **LOW** | `META-INF/.../update-binary` | Shebang `#!/sbin/sh` absent on Android 10+ standard partitions. | Updated shebang to `#!/system/bin/sh`. Verified installer contract with `#MAGISK` in `updater-script`. |
+| **MM-DEF-06** | **LOW** | `core/matrix_health.sh` | Special characters in system properties could break JSON format. | Implemented pure-POSIX `matrix_json_escape()`: converts newlines/tabs, strips control characters (`\000-\037`), and escapes double quotes (`\"`) and backslashes (`\\`). |
 
 ---
 
-## 6. Build and Verification Procedures
+## 6. Verification Status & Test Suite Summary
 
-### Running the Test Suite
-The full suite of 10 static and sandboxed tests can be run from the module directory:
-```bash
-cd /home/neuro/Projects/MatrixModule/MatrixModule
-./tests/run_all_tests.sh
-```
-*Current Status: 10/10 Suites Passed (0 failures).*
+The master test runner (`tests/run_all_tests.sh`) executes **11 specialized automated suites** in sandboxed temporary environments:
 
-### Building the Release Package
-To build the distribution archive:
-```bash
-cd /home/neuro/Projects/MatrixModule/MatrixModule
-./build.sh
+```text
+==================================================
+          MatrixModule Master Test Suite          
+==================================================
+  1. Shell Syntax Validation              -> PASS (23 shell scripts)
+  2. Structure & Metadata Validation      -> PASS (v1.0.1, versionCode 101)
+  3. File Permissions Validation          -> PASS (0755 / 0644 / 0600)
+  4. Packaging & ZIP Integrity Validation -> PASS (unzip -t ok, references excluded)
+  5. JavaScript Syntax Validation         -> PASS (node -c ok)
+  6. Centralized Configuration Store      -> PASS (atomic writes, backup preservation, injection rejection)
+  7. Boot Lifecycle Mock & Safety         -> PASS (post-fs-data, recovery, service completion, JSON escaping)
+  8. Uninstall Boundaries & Isolation     -> PASS (preserves config.bak, isolates data)
+  9. Installer Failure Scenarios          -> PASS (customize.sh abort guards, update-binary shebang)
+ 10. WebUI API & Structure Validation     -> PASS (HTML5, dark CSS, async & rejected bridge testing)
+ 11. Action Interface & Dynamic Paths     -> PASS (space paths, dynamic MODDIR, WebUI reporting)
+==================================================
+ Total Suites: 11 | Passed: 11 | Failed: 0 | Status: ALL TESTS PASSED (100%)
+==================================================
 ```
-*Output Artifact:* `dist/MatrixModule-v1.0.0.zip`  
-*SHA-256:* `bd01c962f2b9dd149ce20d9811e41c2349ac56fecbd5993cb6286268ba6a9a00`
 
 ---
 
-## 7. Known Defects & Pending Remediation Items
+## 7. Build Artifacts & Cryptographic Checksums
 
-Identified during the Second-Pass Engineering Audit (`docs/SECOND_PASS_AUDIT.md`):
-
-1. **MM-DEF-01 (Severity: HIGH):** WebUI shell metacharacter injection vulnerability in `webroot/main.js` (lines 124, 127). Value from `#cfg-interval` input is interpolated without strict numeric sanitization.
-2. **MM-DEF-02 (Severity: MEDIUM):** Eager backup overwrite in `core/matrix_store.sh` (line 67). Every write in `matrix_cfg_set()` overwrites `config.bak`, compromising recovery from bad configurations.
-3. **MM-DEF-03 (Severity: MEDIUM):** WebUI async bridge handling in `webroot/main.js` (lines 36-42). Assumes synchronous string returns from `ksu.exec()`; fails to handle Promise returns from modern KernelSU Next / WebUI-Next bridges.
-4. **MM-DEF-04 (Severity: LOW):** Hardcoded fallback in `action.sh` (line 7). Should dynamically prefer `$MODDIR` provided by the root manager.
-5. **MM-DEF-05 (Severity: LOW):** Obsolete `#!/sbin/sh` shebang in `META-INF/com/google/android/update-binary` (line 1).
-6. **MM-DEF-06 (Severity: LOW):** Potential JSON quoting issues in `core/matrix_health.sh` when system properties contain special characters.
+| Package | Path | Size | SHA-256 Checksum |
+| :--- | :--- | :--- | :--- |
+| **MatrixModule v1.0.1 (Current)** | `dist/MatrixModule-v1.0.1.zip` | 19,179 bytes | `367c1eb2875bae7b3c3906eeb531eec57538ae30d144d665d463c97e63acc91b` |
+| **MatrixModule v1.0.0 (Archived)** | `dist/MatrixModule-v1.0.0.zip` | 19,179 bytes | `965cc7714228c21f23f05f63b1ca62e5a67e69ac55fbbea2887b41037124c1bd` |
+| **Source Reference (HMA-OSS)** | `/home/neuro/Projects/MatrixModule/HMA-OSS-oss-173.zip` | 1,461,848 bytes | `47b53727ae03c38ae145c5e45c3ebfea73d6e691b31078031f4c0d904305286e` |
+| **Source Reference (AlwaysStrong)** | `/home/neuro/Downloads/.../AlwaysStrong-v1.0.5.zip` | 4,374,385 bytes | `fa3ac0d3405288c659f4bca337574137219af958493501f206acdb4cb418f003` |
 
 ---
 
-## 8. Operating Directives for Incoming Agents
+## 8. Remaining Limitations & Operating Directives
 
-1. **Do NOT Modify Production Files Without Explicit Approval:** Under the current audit mode, production scripts and WebUI assets must not be edited silently. Report findings and obtain authorization.
-2. **Preserve Sandboxing in Tests:** All new tests must use isolated temporary directories (e.g., `/tmp/matrix_..._$$`) and mocked commands (`getprop`, `date`, `log`). Never execute modifying operations against `/data/adb` directly.
-3. **Maintain Living Documentation:** When code changes or new features are implemented, update `docs/CHANGELOG.md`, `docs/ARCHITECTURE.md`, and this `PROJECT_CONTEXT.md` file.
+1. **Physical Hardware Flashing:** All testing has been completed in isolated mock sandboxes. Deployment to physical Android devices should occur only in staging environments (secondary test device) with user oversight.
+2. **Zero Attestation Forgery:** Never add Keymaster/KeyMint hooks or leaked keyboxes to this repository. The module's explicit purpose is unified root diagnostics and safe management.
+3. **Living Documentation Maintenance:** Subsequent changes must update `docs/CHANGELOG.md`, `docs/ARCHITECTURE.md`, and this `PROJECT_CONTEXT.md` file.

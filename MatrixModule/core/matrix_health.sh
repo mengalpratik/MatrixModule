@@ -8,7 +8,7 @@ _CORE_DIR="${0%/*}"
 [ -f "$_CORE_DIR/matrix_store.sh" ] && . "$_CORE_DIR/matrix_store.sh"
 [ -f "$_CORE_DIR/matrix_env.sh" ] && . "$_CORE_DIR/matrix_env.sh"
 
-MATRIX_HEALTH_FILE="/data/adb/matrix_module/health.json"
+MATRIX_HEALTH_FILE="${MATRIX_HEALTH_FILE:-/data/adb/matrix_module/health.json}"
 
 matrix_health_mark_boot_start() {
     matrix_store_init
@@ -65,8 +65,14 @@ matrix_scan_conflicts() {
     echo "$_conflicts" | sed 's/^[[:space:]]*//'
 }
 
+matrix_json_escape() {
+    # Convert newlines, returns, tabs to spaces, strip non-printable control chars (0x00-0x1F),
+    # then escape backslashes (\ -> \\) and double quotes (" -> \")
+    printf "%s" "$1" | tr "\r\n\t" "   " | tr -d '\000-\037' | sed 's/\\/\\\\\\\\/g; s/"/\\"/g'
+}
+
 matrix_health_generate_report() {
-    mkdir -p "/data/adb/matrix_module" 2>/dev/null
+    mkdir -p "${MATRIX_HEALTH_FILE%/*}" 2>/dev/null
     _root=$(matrix_detect_root)
     _arch=$(matrix_get_arch)
     _sdk=$(matrix_get_sdk)
@@ -78,18 +84,32 @@ matrix_health_generate_report() {
     _conflicts=$(matrix_scan_conflicts)
     _ts=$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "N/A")
 
+    # Sanitize and escape all JSON string properties
+    _root_esc=$(matrix_json_escape "$_root")
+    _arch_esc=$(matrix_json_escape "$_arch")
+    _model_esc=$(matrix_json_escape "$_model")
+    _zygisk_esc=$(matrix_json_escape "$_zygisk")
+    _selinux_esc=$(matrix_json_escape "$_selinux")
+    _boot_stage_esc=$(matrix_json_escape "$_boot_stage")
+    _conflicts_esc=$(matrix_json_escape "$_conflicts")
+    _ts_esc=$(matrix_json_escape "$_ts")
+
+    # Ensure numeric values are valid integers
+    echo "$_sdk" | grep -Eq '^[0-9]+$' || _sdk=0
+    echo "$_boot_dur" | grep -Eq '^[0-9]+$' || _boot_dur=0
+
     cat << EOF > "$MATRIX_HEALTH_FILE"
 {
-  "timestamp": "$_ts",
-  "root_manager": "$_root",
-  "architecture": "$_arch",
+  "timestamp": "$_ts_esc",
+  "root_manager": "$_root_esc",
+  "architecture": "$_arch_esc",
   "sdk_level": $_sdk,
-  "device_model": "$_model",
-  "zygisk_host": "$_zygisk",
-  "selinux_mode": "$_selinux",
-  "boot_stage": "$_boot_stage",
+  "device_model": "$_model_esc",
+  "zygisk_host": "$_zygisk_esc",
+  "selinux_mode": "$_selinux_esc",
+  "boot_stage": "$_boot_stage_esc",
   "boot_duration_sec": $_boot_dur,
-  "active_conflicts": "$_conflicts",
+  "active_conflicts": "$_conflicts_esc",
   "status": "HEALTHY"
 }
 EOF

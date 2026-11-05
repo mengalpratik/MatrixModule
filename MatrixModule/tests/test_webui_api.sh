@@ -1,6 +1,6 @@
 #!/bin/sh
 ##########################################################################################
-# MatrixModule - WebUI API & Structure Test Suite
+# MatrixModule - WebUI API & Structure Test Suite (Hardened & Expanded)
 ##########################################################################################
 
 BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -9,7 +9,7 @@ HTML_FILE="$WEBROOT/index.html"
 CSS_FILE="$WEBROOT/app.css"
 JS_FILE="$WEBROOT/main.js"
 
-echo "[*] Validating WebUI API and Assets Structure..."
+echo "[*] Validating WebUI API, Structure, and Dynamic Bridge..."
 
 ERRORS=0
 
@@ -66,8 +66,8 @@ else
     fail "app.css missing"
 fi
 
-# 3. JS Bridge & API Verification
-echo "[*] Test 3: JavaScript KernelSU Bridge & Safety Checks..."
+# 3. Static Bridge & Injection Auditing
+echo "[*] Test 3: Static JavaScript Security & Parameter Validation Checks..."
 if [ -f "$JS_FILE" ]; then
     pass "main.js exists"
     
@@ -85,14 +85,97 @@ if [ -f "$JS_FILE" ]; then
         fail "Missing simulation handler for out-of-manager preview"
     fi
 
-    # WebUI Audit check: Check for shell command construction
-    echo "[*] Auditing WebUI shell command construction..."
+    # Check MM-DEF-01 fix: direct unvalidated interpolation must NOT exist
     if grep -q 'matrix_cfg_set watchdog_interval_sec \${interval}' "$JS_FILE"; then
-        echo "[!] WebUI Audit Notice: Direct template literal interpolation found for interval without numeric sanitize regex."
-        echo "    (Documented as Defect / Security Finding for user review)"
+        fail "MM-DEF-01 violation: Found unvalidated direct \${interval} interpolation"
+    else
+        pass "MM-DEF-01 verified: Raw \${interval} interpolation successfully eliminated"
+    fi
+
+    # Check numeric regex enforcement
+    if grep -F '/^\d+$/' "$JS_FILE" >/dev/null; then
+        pass "MM-DEF-01 verified: Strict numeric integer regex validation present in main.js"
+    else
+        fail "Missing numeric regex validation in main.js"
     fi
 else
     fail "main.js missing"
+fi
+
+# 4. Dynamic Bridge Testing in Node.js VM (MM-DEF-03 Verification)
+echo "[*] Test 4: Dynamic Bridge Execution in Node.js VM..."
+if command -v node >/dev/null 2>&1; then
+    NODE_OUT=$(node -e '
+        const fs = require("fs");
+        const vm = require("vm");
+        const code = fs.readFileSync("'"$JS_FILE"'", "utf8");
+
+        async function runBridgeTests() {
+            // Test 4.1: Asynchronous Promise resolution with structured object
+            const ctx1 = vm.createContext({
+                document: { addEventListener: () => {}, querySelectorAll: () => [], getElementById: () => null },
+                ksu: {
+                    exec: (cmd) => Promise.resolve({ errno: 0, stdout: "ASYNC_SUCCESS", stderr: "" })
+                }
+            });
+            vm.runInContext(code, ctx1);
+            const res1 = await ctx1.execCommand("test_async");
+            if (res1.code !== 0 || res1.stdout !== "ASYNC_SUCCESS") {
+                throw new Error("Failed async Promise resolution: " + JSON.stringify(res1));
+            }
+
+            // Test 4.2: Asynchronous Promise rejection
+            const ctx2 = vm.createContext({
+                document: { addEventListener: () => {}, querySelectorAll: () => [], getElementById: () => null },
+                ksu: {
+                    exec: (cmd) => Promise.reject(new Error("Bridge permission denied"))
+                }
+            });
+            vm.runInContext(code, ctx2);
+            const res2 = await ctx2.execCommand("test_rejected");
+            if (res2.code !== 1 || !res2.stderr.includes("Bridge permission denied")) {
+                throw new Error("Failed rejected Promise handling: " + JSON.stringify(res2));
+            }
+
+            // Test 4.3: Legacy synchronous string return
+            const ctx3 = vm.createContext({
+                document: { addEventListener: () => {}, querySelectorAll: () => [], getElementById: () => null },
+                ksu: {
+                    exec: (cmd) => "SYNC_SUCCESS"
+                }
+            });
+            vm.runInContext(code, ctx3);
+            const res3 = await ctx3.execCommand("test_sync");
+            if (res3.code !== 0 || res3.stdout !== "SYNC_SUCCESS") {
+                throw new Error("Failed synchronous string return: " + JSON.stringify(res3));
+            }
+
+            // Test 4.4: Desktop simulation fallback (no ksu object)
+            const ctx4 = vm.createContext({
+                document: { addEventListener: () => {}, querySelectorAll: () => [], getElementById: () => null }
+            });
+            vm.runInContext(code, ctx4);
+            const res4 = await ctx4.execCommand("matrix_env.sh");
+            if (res4.code !== 0 || !res4.stdout.includes("KernelSU (Simulated)")) {
+                throw new Error("Failed simulation fallback: " + JSON.stringify(res4));
+            }
+
+            console.log("ALL_BRIDGE_TESTS_OK");
+        }
+
+        runBridgeTests().catch(err => {
+            console.error("NODE_ERROR:", err.message);
+            process.exit(1);
+        });
+    ' 2>&1)
+    
+    if echo "$NODE_OUT" | grep -q "ALL_BRIDGE_TESTS_OK"; then
+        pass "MM-DEF-03 verified: Async Promises, rejections, legacy strings, and simulation fallback all PASSED"
+    else
+        fail "Node.js dynamic bridge tests failed: $NODE_OUT"
+    fi
+else
+    echo "[!] Node.js not detected, skipping dynamic VM bridge test"
 fi
 
 echo "=================================================="

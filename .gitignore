@@ -1,0 +1,3 @@
+# Git ignore for root workspace
+MatrixModule_checkpoint_v1.0.0/
+*.tmp*

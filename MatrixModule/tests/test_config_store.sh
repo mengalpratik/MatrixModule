@@ -1,6 +1,6 @@
 #!/bin/sh
 ##########################################################################################
-# MatrixModule - Centralized Atomic Store Test Suite
+# MatrixModule - Centralized Atomic Store Test Suite (Hardened & Expanded)
 ##########################################################################################
 
 BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -114,12 +114,11 @@ echo "[*] Test 6: Configuration Backup & Restore..."
 matrix_cfg_set "feature_x" "original_state"
 matrix_cfg_backup
 
-# Directly mutate config file (simulating out-of-band edit or corruption)
-echo "feature_x=mutated_state" > "$MATRIX_CONF_FILE"
+# Directly mutate config file (simulating out-of-band edit)
+echo "feature_x=mutated_state" >> "$MATRIX_CONF_FILE"
 mutated_val=$(matrix_cfg_get "feature_x" "")
 
 if [ "$mutated_val" = "mutated_state" ]; then
-    # Now restore from backup
     matrix_cfg_restore
     restored_val=$(matrix_cfg_get "feature_x" "")
     if [ "$restored_val" = "original_state" ]; then
@@ -131,7 +130,7 @@ else
     fail "Direct mutation check failed before restore test"
 fi
 
-# 7. Test Corrupted Config Auto-Recovery
+# 7. Test Corrupted Config Auto-Recovery on Missing File
 echo "[*] Test 7: Auto-Recovery from Backup on Missing Config..."
 rm -f "$MATRIX_CONF_FILE"
 matrix_store_init
@@ -140,6 +139,99 @@ if [ "$recovered_val" = "original_state" ]; then
     pass "matrix_store_init recovered config from config.bak automatically"
 else
     fail "Auto-recovery failed, got: '$recovered_val'"
+fi
+
+# 8. Test MM-DEF-02: Backup Preservation Across Multiple Writes
+echo "[*] Test 8: MM-DEF-02 - Verifying config.bak is NOT eagerly overwritten on writes..."
+matrix_cfg_set "watchdog_interval_sec" "200"
+matrix_cfg_backup
+bak_before=$(grep "^watchdog_interval_sec=" "$MATRIX_BAK_FILE" | cut -d= -f2)
+
+# Perform multiple writes
+matrix_cfg_set "watchdog_interval_sec" "600"
+matrix_cfg_set "diagnostics_enabled" "0"
+bak_after=$(grep "^watchdog_interval_sec=" "$MATRIX_BAK_FILE" | cut -d= -f2)
+
+if [ "$bak_before" = "200" ] && [ "$bak_after" = "200" ]; then
+    pass "MM-DEF-02 verified: config.bak preserved last-known-good state (200), not overwritten by 600"
+else
+    fail "MM-DEF-02 violation: config.bak was modified during matrix_cfg_set (before=$bak_before, after=$bak_after)"
+fi
+
+# 9. Test MM-DEF-01: Shell Injection & Metacharacter Rejection
+echo "[*] Test 9: MM-DEF-01 - Testing rejection of malicious inputs & metacharacters..."
+INJECTION_BLOCKED=0
+
+# Semicolon command injection
+if ! matrix_cfg_set "watchdog_interval_sec" "300; reboot"; then
+    INJECTION_BLOCKED=$((INJECTION_BLOCKED + 1))
+fi
+
+# Backtick command substitution
+if ! matrix_cfg_set "watchdog_interval_sec" '`id`'; then
+    INJECTION_BLOCKED=$((INJECTION_BLOCKED + 1))
+fi
+
+# Dollar command substitution
+if ! matrix_cfg_set "watchdog_interval_sec" '$(id)'; then
+    INJECTION_BLOCKED=$((INJECTION_BLOCKED + 1))
+fi
+
+# Pipe & redirection
+if ! matrix_cfg_set "watchdog_interval_sec" "300 | cat /etc/passwd"; then
+    INJECTION_BLOCKED=$((INJECTION_BLOCKED + 1))
+fi
+
+# Below minimum interval (< 60)
+if ! matrix_cfg_set "watchdog_interval_sec" "10"; then
+    INJECTION_BLOCKED=$((INJECTION_BLOCKED + 1))
+fi
+
+# Above maximum interval (> 3600)
+if ! matrix_cfg_set "watchdog_interval_sec" "99999"; then
+    INJECTION_BLOCKED=$((INJECTION_BLOCKED + 1))
+fi
+
+# Non-numeric interval
+if ! matrix_cfg_set "watchdog_interval_sec" "invalid_number"; then
+    INJECTION_BLOCKED=$((INJECTION_BLOCKED + 1))
+fi
+
+# Invalid boolean
+if ! matrix_cfg_set "diagnostics_enabled" "true"; then
+    INJECTION_BLOCKED=$((INJECTION_BLOCKED + 1))
+fi
+
+# Invalid key with spaces and metacharacters
+if ! matrix_cfg_set "bad key; id" "1"; then
+    INJECTION_BLOCKED=$((INJECTION_BLOCKED + 1))
+fi
+
+if [ "$INJECTION_BLOCKED" -eq 9 ]; then
+    pass "MM-DEF-01 verified: All 9 malicious / invalid inputs were rejected (0 executed)"
+else
+    fail "MM-DEF-01 failure: Only $INJECTION_BLOCKED of 9 malicious inputs were rejected"
+fi
+
+# 10. Test Corrupted Active Config Auto-Rollback
+echo "[*] Test 10: Auto-Rollback when active config is corrupted..."
+echo "CORRUPTED_ENTRY_WITHOUT_EQUALS" >> "$MATRIX_CONF_FILE"
+matrix_store_init
+if matrix_cfg_validate_file "$MATRIX_CONF_FILE"; then
+    pass "matrix_store_init successfully rolled back corrupted config to valid backup"
+else
+    fail "Rollback failed: active config remains corrupted"
+fi
+
+# 11. Test Total Corruption Fallback to Defaults
+echo "[*] Test 11: Total corruption fallback when both config and backup are corrupt..."
+echo "CORRUPTED_CONFIG" > "$MATRIX_CONF_FILE"
+echo "CORRUPTED_BACKUP" > "$MATRIX_BAK_FILE"
+matrix_store_init
+if matrix_cfg_validate_file "$MATRIX_CONF_FILE" && matrix_cfg_validate_file "$MATRIX_BAK_FILE"; then
+    pass "matrix_store_init generated clean defaults when both config and backup were corrupted"
+else
+    fail "Total corruption recovery failed"
 fi
 
 echo "=================================================="

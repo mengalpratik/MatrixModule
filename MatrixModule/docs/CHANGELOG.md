@@ -1,5 +1,41 @@
 # MatrixModule Changelog
 
+## [1.0.1] - 2026-11-05
+
+### Fixed (Milestone 2 Engineering Remediation)
+- **MM-DEF-01 (HIGH - WebUI Command Injection Hazard)**:
+  - Eliminated raw string interpolation of `#cfg-interval` in `webroot/main.js`.
+  - Added strict numeric integer validation (`/^\d+$/`) and clamped boundary enforcement (60s to 3600s) on client-side.
+  - Implemented strict key-value regex whitelist validation in `core/matrix_store.sh` (`^[a-zA-Z0-9_]+$` keys and `^[a-zA-Z0-9_.:/-]+$` values), rejecting all shell metacharacters (semicolons, pipes, backticks, quotes, command substitution).
+- **MM-DEF-02 (MEDIUM - Eager Configuration Backup Overwrite)**:
+  - Removed line 67 in `core/matrix_store.sh` that was eagerly overwriting `config.bak` on every `matrix_cfg_set()` call.
+  - Hardened `matrix_cfg_backup()` to require full schema validation before promoting `config` to `config.bak`.
+  - Added atomic rollback in `matrix_cfg_restore()` and auto-recovery in `matrix_store_init()`.
+- **MM-DEF-03 (MEDIUM - WebUI Asynchronous Bridge Incompatibility)**:
+  - Rewrote `execCommand()` in `webroot/main.js` to handle both asynchronous Promise returns (standard in modern KernelSU Next and WebUI-Next bridges) and legacy synchronous string returns.
+  - Supported structured response objects `{ errno: number, stdout: string, stderr: string }`.
+  - Added safe `try...catch` error handling with user alert feedback on failed bridge commands.
+- **MM-DEF-04 (LOW - Hardcoded Module Path in Action Console)**:
+  - Replaced hardcoded fallback `/data/adb/modules/matrix_module` in `action.sh` with dynamic resolution: preferring `$MODDIR` from the root manager or computing absolute script directory `$(cd "$(dirname "$0")" && pwd)`.
+  - Quoted all path variables to ensure support for installation directories containing spaces.
+  - Updated WebUI Location display to report dynamic `$MODPATH/webroot`.
+- **MM-DEF-05 (LOW - Obsolete Shebang in update-binary)**:
+  - Updated shebang from `#!/sbin/sh` to `#!/system/bin/sh` in `META-INF/com/google/android/update-binary`, matching Android 10+ standard partitions.
+- **MM-DEF-06 (LOW - JSON Serialization Hazard in Health Engine)**:
+  - Implemented pure-POSIX `matrix_json_escape()` in `core/matrix_health.sh`.
+  - Stripped non-printable control characters (`\000-\037`) and escaped double quotes (`\"`) and backslashes (`\\`), ensuring valid JSON output even with unusual OEM properties.
+
+### Added
+- Expanded test suite from 4 to 11 automated test suites in `tests/`:
+  - `test_js_syntax.sh`: Node.js syntax & token validation.
+  - `test_config_store.sh`: Tests atomic writes, MM-DEF-02 backup preservation across writes, MM-DEF-01 metacharacter rejection, and auto-rollback.
+  - `test_boot_mock.sh`: Mocked boot lifecycle and MM-DEF-06 unusual property JSON escaping.
+  - `test_uninstall_boundaries.sh`: Data isolation and boundary checks.
+  - `test_installer_failures.sh`: customize.sh abort checks and MM-DEF-05 shebang validation.
+  - `test_webui_api.sh`: HTML5/CSS structure, MM-DEF-01 static check, and MM-DEF-03 Node.js VM dynamic bridge testing.
+  - `test_action_dynamic.sh`: MM-DEF-04 dynamic paths, spaces in paths, and custom `$MODDIR`.
+- Master test runner reports 11/11 suites passed (100% pass rate).
+
 ## [1.0.0] - 2026-11-05
 
 ### Added

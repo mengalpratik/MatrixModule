@@ -3,8 +3,16 @@
 # MatrixModule - Interactive KernelSU Action Interface
 ##########################################################################################
 
-MODPATH="${0%/*}"
-[ -z "$MODPATH" ] && MODPATH="/data/adb/modules/matrix_module"
+if [ -n "$MODDIR" ] && [ -d "$MODDIR" ]; then
+    MODPATH="$MODDIR"
+else
+    _script_dir="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+    if [ -n "$_script_dir" ] && [ -d "$_script_dir" ]; then
+        MODPATH="$_script_dir"
+    else
+        MODPATH="${0%/*}"
+    fi
+fi
 cd "$MODPATH" 2>/dev/null
 
 # Hop into busybox ash if available
@@ -110,7 +118,7 @@ case "$1" in
         matrix_health_generate_report
         echo "--------------------------------------------------"
         echo " Status:           HEALTHY"
-        echo " WebUI Location:   /data/adb/modules/matrix_module/webroot"
+        echo " WebUI Location:   $MODPATH/webroot"
         echo " Config Location:  /data/adb/matrix_module/config"
         echo "=================================================="
         ;;

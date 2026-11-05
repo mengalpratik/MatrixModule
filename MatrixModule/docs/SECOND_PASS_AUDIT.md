@@ -177,16 +177,16 @@ function execCommand(cmd) {
 
 ---
 
-## 6. Identified Defect Matrix
+## 6. Identified Defect Matrix & Remediation Status
 
-| ID | Title | Severity | Affected File | Root Cause & Description | Required Fix |
+| ID | Title | Severity | Affected File | Status in v1.0.1 | Remediation Verified |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **MM-DEF-01** | WebUI Command Injection Hazard | **HIGH** | `webroot/main.js` (L124, 127) | `interval` from DOM `<input>` is interpolated directly into shell command without numeric validation or quoting. | Sanitize input with `const safeInterval = parseInt(interval, 10); if (isNaN(safeInterval) \|\| safeInterval < 60) ...` before interpolation. |
-| **MM-DEF-02** | Eager Overwrite of Configuration Backup | **MEDIUM** | `core/matrix_store.sh` (L67) | `matrix_cfg_set()` eagerly copies `config` to `config.bak` on every single write, destroying the known-good boot backup if a bad setting is written. | Remove `cp -f "$MATRIX_CONF_FILE" "$MATRIX_BAK_FILE"` from `matrix_cfg_set()`. Reserve backup creation for `matrix_cfg_backup()` on boot. |
-| **MM-DEF-03** | WebUI Asynchronous Bridge Incompatibility | **MEDIUM** | `webroot/main.js` (L36-42) | `execCommand` assumes `ksu.exec(cmd)` returns a synchronous string. Modern KernelSU Next and WebUI-Next bridges return Promises or `{ errno, stdout, stderr }` objects. | Inspect return type: if `res instanceof Promise`, `await res`. Handle both string and `{ stdout, stderr, errno }` response types. |
-| **MM-DEF-04** | Hardcoded Fallback Path in `action.sh` | **LOW** | `action.sh` (L7) | Fallback defaults to `/data/adb/modules/matrix_module` instead of dynamically honoring `$MODDIR` from KernelSU Manager. | Update to `MODPATH="${MODDIR:-${0%/*}}"`. |
-| **MM-DEF-05** | Obsolete `/sbin/sh` Shebang in Recovery Script | **LOW** | `META-INF/com/google/android/update-binary` (L1) | Uses `#!/sbin/sh`, which is absent on Android 10+ standard partitions. | Change shebang to `#!/system/bin/sh` or `/bin/sh`. |
-| **MM-DEF-06** | JSON Special Character Escaping Hazard | **LOW** | `core/matrix_health.sh` (L81-95) | System properties (`ro.product.model`) containing quotes or backslashes could produce invalid JSON in `health.json`. | Filter property values with `tr -d '"\\'` before inserting into the JSON template. |
+| **MM-DEF-01** | WebUI Command Injection Hazard | **HIGH** | `webroot/main.js` (L124, 127) | **REMEDIATED** | Client-side `/^\d+$/` numeric validation (60-3600s) + shell-side regex whitelist (`^[a-zA-Z0-9_]+$` keys and `^[a-zA-Z0-9_.:/-]+$` values). Verified in `test_config_store.sh` & `test_webui_api.sh`. |
+| **MM-DEF-02** | Eager Overwrite of Configuration Backup | **MEDIUM** | `core/matrix_store.sh` (L67) | **REMEDIATED** | Removed eager `cp -f` from `matrix_cfg_set()`. Backup promotion requires schema validation in `matrix_cfg_backup()`. Verified in `test_config_store.sh`. |
+| **MM-DEF-03** | WebUI Asynchronous Bridge Incompatibility | **MEDIUM** | `webroot/main.js` (L36-42) | **REMEDIATED** | `execCommand` rewritten to await Promises, unpack `{ errno, stdout, stderr }` objects, and handle rejections safely. Verified in `test_webui_api.sh` (Node.js VM). |
+| **MM-DEF-04** | Hardcoded Fallback Path in `action.sh` | **LOW** | `action.sh` (L7) | **REMEDIATED** | Replaced hardcoded fallback with dynamic `$MODDIR` preference and `$(cd "$(dirname "$0")" && pwd)`. Quoted all paths. Verified in `test_action_dynamic.sh`. |
+| **MM-DEF-05** | Obsolete `/sbin/sh` Shebang in Recovery Script | **LOW** | `META-INF/com/google/android/update-binary` (L1) | **REMEDIATED** | Shebang updated to `#!/system/bin/sh` for Android 10+ compatibility. Verified in `test_installer_failures.sh`. |
+| **MM-DEF-06** | JSON Special Character Escaping Hazard | **LOW** | `core/matrix_health.sh` (L81-95) | **REMEDIATED** | Pure-POSIX `matrix_json_escape()` converts newlines/tabs, strips control characters (`\000-\037`), and escapes backslashes/quotes. Verified in `test_boot_mock.sh`. |
 
 ---
 

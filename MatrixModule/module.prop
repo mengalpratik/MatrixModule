@@ -1,7 +1,7 @@
 id=matrix_module
 name=MatrixModule
-version=v1.0.0
-versionCode=100
+version=v1.0.1
+versionCode=101
 author=Matrix Project
 description=Unified KernelSU management, diagnostics, and health-monitoring framework.
 support=local

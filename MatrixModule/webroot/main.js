@@ -30,21 +30,35 @@ function initTabs() {
     });
 }
 
-// Check for KernelSU exec bridge
-function execCommand(cmd) {
-    return new Promise((resolve) => {
-        if (typeof ksu !== 'undefined' && typeof ksu.exec === 'function') {
-            try {
-                const res = ksu.exec(cmd);
-                resolve({ stdout: res, code: 0 });
-            } catch (e) {
-                resolve({ stdout: '', stderr: String(e), code: 1 });
+// Check for KernelSU exec bridge (supports synchronous string, asynchronous Promise, and structured objects)
+async function execCommand(cmd) {
+    if (typeof ksu !== 'undefined' && typeof ksu.exec === 'function') {
+        try {
+            const rawRes = ksu.exec(cmd);
+            const res = (rawRes instanceof Promise || (rawRes && typeof rawRes.then === 'function'))
+                ? await rawRes
+                : rawRes;
+
+            if (res === null || res === undefined) {
+                return { stdout: '', stderr: 'Empty response from ksu.exec', code: 1 };
             }
-        } else {
-            // Simulated response for desktop browser preview
-            resolve(simulateCommand(cmd));
+
+            if (typeof res === 'object') {
+                const stdout = typeof res.stdout === 'string' ? res.stdout : (res.stdout ? String(res.stdout) : '');
+                const stderr = typeof res.stderr === 'string' ? res.stderr : (res.stderr ? String(res.stderr) : '');
+                const code = typeof res.errno === 'number' ? res.errno : (typeof res.code === 'number' ? res.code : 0);
+                return { stdout, stderr, code };
+            }
+
+            return { stdout: String(res), stderr: '', code: 0 };
+        } catch (e) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            return { stdout: '', stderr: errMsg, code: 1 };
         }
-    });
+    } else {
+        // Simulated response for desktop browser preview
+        return simulateCommand(cmd);
+    }
 }
 
 function simulateCommand(cmd) {
@@ -119,20 +133,48 @@ async function refreshDiagnostics() {
 
 function initSettings() {
     document.getElementById('btn-save-cfg')?.addEventListener('click', async () => {
-        const diag = document.getElementById('cfg-diag').checked ? "1" : "0";
-        const watchdog = document.getElementById('cfg-watchdog').checked ? "1" : "0";
-        const interval = document.getElementById('cfg-interval').value || "300";
-        const backup = document.getElementById('cfg-backup').checked ? "1" : "0";
+        // Enforce strict boolean casting ("1" or "0" only)
+        const diag = document.getElementById('cfg-diag')?.checked ? "1" : "0";
+        const watchdog = document.getElementById('cfg-watchdog')?.checked ? "1" : "0";
+        const backup = document.getElementById('cfg-backup')?.checked ? "1" : "0";
 
-        await execCommand(`. /data/adb/modules/matrix_module/core/matrix_store.sh && matrix_cfg_set diagnostics_enabled ${diag} && matrix_cfg_set health_watchdog_enabled ${watchdog} && matrix_cfg_set watchdog_interval_sec ${interval} && matrix_cfg_set backup_on_boot ${backup}`);
+        // Enforce strict numeric validation on watchdog interval
+        const rawInterval = document.getElementById('cfg-interval')?.value;
+        if (typeof rawInterval !== 'string' || !/^\d+$/.test(rawInterval.trim())) {
+            alert("Validation Error: Watchdog interval must be a positive integer.");
+            return;
+        }
 
-        alert("Configuration applied successfully!");
+        const intervalNum = parseInt(rawInterval.trim(), 10);
+        if (!Number.isInteger(intervalNum) || !Number.isFinite(intervalNum) || intervalNum < 60 || intervalNum > 3600) {
+            alert("Validation Error: Watchdog interval must be between 60 and 3600 seconds.");
+            return;
+        }
+        const safeInterval = String(intervalNum);
+
+        // Execute via validated arguments with safe error handling
+        const res = await execCommand(`. /data/adb/modules/matrix_module/core/matrix_store.sh && matrix_cfg_set diagnostics_enabled ${diag} && matrix_cfg_set health_watchdog_enabled ${watchdog} && matrix_cfg_set watchdog_interval_sec ${safeInterval} && matrix_cfg_set backup_on_boot ${backup}`);
+
+        if (res.code === 0) {
+            alert("Configuration applied successfully!");
+        } else {
+            alert(`Failed to apply configuration: ${res.stderr || "Execution error"}`);
+        }
     });
 
     document.getElementById('btn-reset-cfg')?.addEventListener('click', async () => {
         if (confirm("Restore default configuration?")) {
-            await execCommand(". /data/adb/modules/matrix_module/core/matrix_store.sh && matrix_store_write_defaults");
-            alert("Defaults restored!");
+            const res = await execCommand(". /data/adb/modules/matrix_module/core/matrix_store.sh && matrix_store_write_defaults");
+            if (res.code === 0) {
+                alert("Defaults restored!");
+                // Reload UI inputs
+                document.getElementById('cfg-diag').checked = true;
+                document.getElementById('cfg-watchdog').checked = true;
+                document.getElementById('cfg-interval').value = "300";
+                document.getElementById('cfg-backup').checked = true;
+            } else {
+                alert(`Failed to restore defaults: ${res.stderr || "Execution error"}`);
+            }
         }
     });
 }
@@ -141,8 +183,12 @@ function initLogs() {
     document.getElementById('btn-refresh-log')?.addEventListener('click', refreshLogs);
     document.getElementById('btn-clear-log')?.addEventListener('click', async () => {
         if (confirm("Clear module logs?")) {
-            await execCommand(". /data/adb/modules/matrix_module/core/matrix_log.sh && matrix_log_clear");
-            refreshLogs();
+            const res = await execCommand(". /data/adb/modules/matrix_module/core/matrix_log.sh && matrix_log_clear");
+            if (res.code === 0) {
+                refreshLogs();
+            } else {
+                alert(`Failed to clear logs: ${res.stderr || "Execution error"}`);
+            }
         }
     });
 }

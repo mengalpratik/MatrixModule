@@ -96,6 +96,37 @@ else
     echo "[!] Warning: $MOCK_ZIP not found for full mock, testing environment check only"
 fi
 
+# 5. Test MM-DEF-05: update-binary Shebang Verification
+echo "[*] Test 5: MM-DEF-05 - Verifying update-binary shebang uses /system/bin/sh..."
+UPDATE_BIN="$BASE_DIR/META-INF/com/google/android/update-binary"
+if [ -f "$UPDATE_BIN" ]; then
+    first_line=$(head -n 1 "$UPDATE_BIN")
+    if [ "$first_line" = "#!/system/bin/sh" ]; then
+        pass "MM-DEF-05 verified: update-binary uses #!/system/bin/sh"
+    else
+        fail "MM-DEF-05 failure: update-binary shebang is '$first_line', expected #!/system/bin/sh"
+    fi
+else
+    fail "update-binary missing from $UPDATE_BIN"
+fi
+
+# 6. Test updater-script Contract
+echo "[*] Test 6: Verifying updater-script dummy contract..."
+UPDATER_SCRIPT="$BASE_DIR/META-INF/com/google/android/updater-script"
+if [ -f "$UPDATER_SCRIPT" ] && grep -q "#MAGISK" "$UPDATER_SCRIPT"; then
+    pass "updater-script verified with #MAGISK contract token"
+else
+    fail "updater-script missing or invalid"
+fi
+
+# 7. Test update-binary Syntax
+echo "[*] Test 7: Verifying update-binary syntax..."
+if sh -n "$UPDATE_BIN"; then
+    pass "update-binary passed POSIX sh syntax validation"
+else
+    fail "update-binary syntax error"
+fi
+
 echo "=================================================="
 if [ "$ERRORS" -eq 0 ]; then
     echo "[+] All Installer Failure Tests PASSED (0 errors)."

@@ -142,6 +142,33 @@ else
     fail "service.sh failed with non-zero exit code"
 fi
 
+# 4. Test MM-DEF-06: Unusual Property Values & Robust JSON Escaping
+echo "[*] Test 4: MM-DEF-06 - Testing health.json generation with unusual properties..."
+printf "%s\n" 'ro.boot.mode=normal' > "$PROPS_FILE"
+printf "%s\n" 'sys.boot_completed=1' >> "$PROPS_FILE"
+printf "%s\n" 'ro.build.version.sdk=34' >> "$PROPS_FILE"
+printf "%s\n" 'ro.product.model=OEM "ProPhone" \Model-X\	Tabbed' >> "$PROPS_FILE"
+
+# Re-run health report generation
+sh -c '
+    MATRIX_HEALTH_FILE="'"$MOCK_DATADIR"'/health.json"
+    MATRIX_DATA_DIR="'"$MOCK_DATADIR"'"
+    MATRIX_STATE_FILE="'"$MOCK_DATADIR"'/state"
+    . "'"$MOCK_MODDIR"'/core/matrix_env.sh"
+    . "'"$MOCK_MODDIR"'/core/matrix_store.sh"
+    . "'"$MOCK_MODDIR"'/core/matrix_health.sh"
+    matrix_health_generate_report
+'
+if [ -f "$MOCK_DATADIR/health.json" ]; then
+    if python3 -m json.tool < "$MOCK_DATADIR/health.json" >/dev/null 2>&1; then
+        pass "MM-DEF-06 verified: health.json with quotes, tabs, and backslashes parsed successfully"
+    else
+        fail "MM-DEF-06 failure: health.json emitted malformed JSON"
+    fi
+else
+    fail "health.json missing after report generation"
+fi
+
 echo "=================================================="
 if [ "$ERRORS" -eq 0 ]; then
     echo "[+] All Boot Mock Tests PASSED (0 errors)."
