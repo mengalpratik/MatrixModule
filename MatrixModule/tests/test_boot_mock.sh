@@ -48,14 +48,28 @@ exit 0
 EOF
 chmod +x "$SANDBOX/bin/log"
 
+cat << 'EOF' > "$SANDBOX/bin/sleep"
+#!/bin/sh
+exit 0
+EOF
+chmod +x "$SANDBOX/bin/sleep"
+
 cat << 'EOF' > "$SANDBOX/bin/fast_sleep"
 #!/bin/sh
 exit 0
 EOF
 chmod +x "$SANDBOX/bin/fast_sleep"
 
+cat << 'EOF' > "$SANDBOX/bin/getenforce"
+#!/bin/sh
+echo "Enforcing"
+EOF
+chmod +x "$SANDBOX/bin/getenforce"
+
 export PATH="$SANDBOX/bin:$PATH"
 export SANDBOX_PROPS="$PROPS_FILE"
+export KSU=true
+export SELINUX_MODE=Enforcing
 
 ERRORS=0
 
@@ -99,17 +113,22 @@ rm -f "$MOCK_DATADIR/state"
 
 if sh "$MOCK_MODDIR/post-fs-data.sh"; then
     pass "post-fs-data.sh safely exited 0 in recovery mode"
-    if [ ! -f "$MOCK_DATADIR/state" ]; then
-        pass "Verified: background initialization skipped during recovery mode"
+    if [ -f "$MOCK_DATADIR/state" ]; then
+        stage=$(grep "^boot_stage=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+        if [ "$stage" = "aborted" ]; then
+            pass "Verified: recovery mode recorded boot_stage=aborted"
+        else
+            fail "Expected boot_stage=aborted, got: '$stage'"
+        fi
     else
-        fail "State was unexpectedly updated despite recovery mode"
+        fail "State file was not generated to record aborted stage"
     fi
 else
     fail "post-fs-data.sh failed in recovery mode"
 fi
 
-# 3. Test service.sh Normal Boot Completion
-echo "[*] Test 3: service.sh boot completion..."
+# 3a. Test service.sh Normal Boot Completion
+echo "[*] Test 3a: service.sh boot completion (sys.boot_completed=1)..."
 echo "ro.boot.mode=normal" > "$PROPS_FILE"
 echo "sys.boot_completed=1" >> "$PROPS_FILE"
 echo "ro.build.version.sdk=34" >> "$PROPS_FILE"
@@ -127,7 +146,7 @@ if sh "$MOCK_MODDIR/service.sh"; then
     
     final_stage=$(grep "^boot_stage=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
     if [ "$final_stage" = "completed" ]; then
-        pass "service.sh successfully updated boot_stage=completed"
+        pass "service.sh successfully updated boot_stage=completed on sys.boot_completed=1"
     else
         fail "Expected boot_stage=completed, got: '$final_stage'"
     fi
@@ -140,6 +159,83 @@ if sh "$MOCK_MODDIR/service.sh"; then
     fi
 else
     fail "service.sh failed with non-zero exit code"
+fi
+
+# 3b. Test service.sh Boot Completion Timeout (sys.boot_completed != 1)
+echo "[*] Test 3b: service.sh boot completion timeout (sys.boot_completed never becomes 1)..."
+echo "ro.boot.mode=normal" > "$PROPS_FILE"
+echo "sys.boot_completed=0" >> "$PROPS_FILE"
+echo "ro.build.version.sdk=34" >> "$PROPS_FILE"
+echo "ro.product.model=MockPhone" >> "$PROPS_FILE"
+
+echo "boot_start_time=1000" > "$MOCK_DATADIR/state"
+echo "boot_stage=post-fs-data" >> "$MOCK_DATADIR/state"
+
+if sh "$MOCK_MODDIR/service.sh"; then
+    pass "service.sh handled timeout with exit code 0"
+    
+    timeout_stage=$(grep "^boot_stage=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+    timeout_reason=$(grep "^boot_timeout_reason=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2-)
+    if [ "$timeout_stage" = "timeout" ]; then
+        pass "service.sh persisted boot_stage=timeout on timeout"
+    else
+        fail "Expected boot_stage=timeout on timeout, got: '$timeout_stage'"
+    fi
+
+    if [ -n "$timeout_reason" ]; then
+        pass "service.sh persisted meaningful timeout reason: $timeout_reason"
+    else
+        fail "service.sh missing boot_timeout_reason on timeout"
+    fi
+
+    timeout_status=$(python3 -c "import json; print(json.load(open('$MOCK_DATADIR/health.json'))['status'])" 2>/dev/null)
+    if [ "$timeout_status" = "WARNING" ]; then
+        pass "health.json status on boot timeout is WARNING (never HEALTHY)"
+    else
+        fail "Expected health.json status WARNING on timeout, got: '$timeout_status'"
+    fi
+else
+    fail "service.sh failed on timeout"
+fi
+
+# 3c. Test Lifecycle Failure Recording & boot_failure_count
+echo "[*] Test 3c: Lifecycle failure recording and boot_failure_count..."
+sh -c '
+    MATRIX_HEALTH_FILE="'"$MOCK_DATADIR"'/health_fail.json"
+    MATRIX_DATA_DIR="'"$MOCK_DATADIR"'"
+    MATRIX_STATE_FILE="'"$MOCK_DATADIR"'/state"
+    . "'"$MOCK_MODDIR"'/core/matrix_env.sh"
+    . "'"$MOCK_MODDIR"'/core/matrix_store.sh"
+    . "'"$MOCK_MODDIR"'/core/matrix_health.sh"
+    
+    matrix_state_set "boot_failure_count" "0"
+    matrix_health_mark_boot_failed "simulated component crash"
+'
+fail_count=$(grep "^boot_failure_count=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+fail_stage=$(grep "^boot_stage=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+fail_reason=$(grep "^boot_failure_reason=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2-)
+
+if [ "$fail_count" = "1" ] && [ "$fail_stage" = "failed" ] && [ "$fail_reason" = "simulated component crash" ]; then
+    pass "matrix_health_mark_boot_failed correctly recorded failure count=1 and reason"
+else
+    fail "matrix_health_mark_boot_failed failed: count=$fail_count, stage=$fail_stage, reason=$fail_reason"
+fi
+
+# Second failure increment check
+sh -c '
+    MATRIX_HEALTH_FILE="'"$MOCK_DATADIR"'/health_fail.json"
+    MATRIX_DATA_DIR="'"$MOCK_DATADIR"'"
+    MATRIX_STATE_FILE="'"$MOCK_DATADIR"'/state"
+    . "'"$MOCK_MODDIR"'/core/matrix_env.sh"
+    . "'"$MOCK_MODDIR"'/core/matrix_store.sh"
+    . "'"$MOCK_MODDIR"'/core/matrix_health.sh"
+    matrix_health_mark_boot_failed "second simulated crash"
+'
+fail_count2=$(grep "^boot_failure_count=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+if [ "$fail_count2" = "2" ]; then
+    pass "matrix_health_mark_boot_failed correctly incremented failure count to 2"
+else
+    fail "Expected boot_failure_count=2, got: '$fail_count2'"
 fi
 
 # 4. Test MM-DEF-06: Unusual Property Values & Robust JSON Escaping
@@ -171,6 +267,9 @@ fi
 
 # 5. Test Honest Health Status Transitions (HEALTHY, WARNING, ERROR, UNKNOWN)
 echo "[*] Test 5: Testing Honest Health Status State Machine Transitions..."
+echo "boot_stage=completed" > "$MOCK_DATADIR/state"
+echo "boot_failure_count=0" >> "$MOCK_DATADIR/state"
+
 HEALTH_TEST_ENV='
     MATRIX_HEALTH_FILE="'"$MOCK_DATADIR"'/health_test.json"
     MATRIX_DATA_DIR="'"$MOCK_DATADIR"'"
@@ -204,45 +303,123 @@ sh -c "$HEALTH_TEST_ENV"'
     [ "$st" = "WARNING" ] || { echo "Expected WARNING, got $st"; exit 1; }
 ' && pass "Health state transition 5d: Incomplete boot stage -> WARNING" || fail "Health transition 5d failed"
 
-# 5e. Error on recovery mode
+# 5e. Warning on boot completion timeout (timeout)
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "timeout" "" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "WARNING" ] || { echo "Expected WARNING, got $st"; exit 1; }
+' && pass "Health state transition 5e: Boot completion timeout -> WARNING" || fail "Health transition 5e failed"
+
+# 5f. Error on recovery mode
 sh -c "$HEALTH_TEST_ENV"'
     matrix_health_check_recovery_mode() { return 0; }
     st=$(matrix_health_determine_status "KernelSU" "completed" "" "1" "Enforcing" "arm64-v8a" "34")
     [ "$st" = "ERROR" ] || { echo "Expected ERROR, got $st"; exit 1; }
-' && pass "Health state transition 5e: Recovery mode -> ERROR" || fail "Health transition 5e failed"
+' && pass "Health state transition 5f: Recovery mode -> ERROR" || fail "Health transition 5f failed"
 
-# 5f. Error on aborted or failed boot stage
+# 5g. Error on aborted or failed boot stage
 sh -c "$HEALTH_TEST_ENV"'
     st=$(matrix_health_determine_status "KernelSU" "failed" "" "1" "Enforcing" "arm64-v8a" "34")
     [ "$st" = "ERROR" ] || { echo "Expected ERROR, got $st"; exit 1; }
-' && pass "Health state transition 5f: Failed boot stage -> ERROR" || fail "Health transition 5f failed"
+' && pass "Health state transition 5g: Failed boot stage -> ERROR" || fail "Health transition 5g failed"
 
-# 5g. Error on unsupported architecture
+# 5h. Error on aborted boot stage
 sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "aborted" "" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "ERROR" ] || { echo "Expected ERROR, got $st"; exit 1; }
+' && pass "Health state transition 5h: Aborted boot stage -> ERROR" || fail "Health transition 5h failed"
+
+# 5i. Error on boot_failure_count > 0
+sh -c "$HEALTH_TEST_ENV"'
+    matrix_state_set "boot_failure_count" "1"
+    st=$(matrix_health_determine_status "KernelSU" "completed" "" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "ERROR" ] || { echo "Expected ERROR, got $st"; exit 1; }
+' && pass "Health state transition 5i: Failure count > 0 -> ERROR" || fail "Health transition 5i failed"
+
+# 5j. Error on unsupported architecture
+sh -c "$HEALTH_TEST_ENV"'
+    matrix_state_set "boot_failure_count" "0"
     st=$(matrix_health_determine_status "KernelSU" "completed" "" "1" "Enforcing" "unsupported" "34")
     [ "$st" = "ERROR" ] || { echo "Expected ERROR, got $st"; exit 1; }
-' && pass "Health state transition 5g: Unsupported architecture -> ERROR" || fail "Health transition 5g failed"
+' && pass "Health state transition 5j: Unsupported architecture -> ERROR" || fail "Health transition 5j failed"
 
-# 5h. Unknown on unavailable root probe
+# 5k. Unknown on uninitialized / missing state file
+sh -c "$HEALTH_TEST_ENV"'
+    rm -f "$MATRIX_STATE_FILE"
+    st=$(matrix_health_determine_status "KernelSU")
+    [ "$st" = "UNKNOWN" ] || { echo "Expected UNKNOWN, got $st"; exit 1; }
+' && pass "Health state transition 5k: Missing/uninitialized state -> UNKNOWN" || fail "Health transition 5k failed"
+
+# 5l. Unknown on boot_stage=unknown
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "unknown" "" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "UNKNOWN" ] || { echo "Expected UNKNOWN, got $st"; exit 1; }
+' && pass "Health state transition 5l: boot_stage=unknown -> UNKNOWN" || fail "Health transition 5l failed"
+
+# 5m. Unknown on empty boot_stage
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "" "" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "UNKNOWN" ] || { echo "Expected UNKNOWN, got $st"; exit 1; }
+' && pass "Health state transition 5m: Empty boot_stage -> UNKNOWN" || fail "Health transition 5m failed"
+
+# 5n. Unknown on unavailable root probe
 sh -c "$HEALTH_TEST_ENV"'
     st=$(matrix_health_determine_status "Unknown" "completed" "" "1" "Enforcing" "arm64-v8a" "34")
     [ "$st" = "UNKNOWN" ] || { echo "Expected UNKNOWN, got $st"; exit 1; }
-' && pass "Health state transition 5h: Unknown root probe -> UNKNOWN" || fail "Health transition 5h failed"
+' && pass "Health state transition 5n: Unknown root probe -> UNKNOWN" || fail "Health transition 5n failed"
 
-# 5i. Unknown on unavailable SELinux probe
+# 5o. Unknown on unavailable SELinux probe
 sh -c "$HEALTH_TEST_ENV"'
     st=$(matrix_health_determine_status "KernelSU" "completed" "" "1" "Unknown" "arm64-v8a" "34")
     [ "$st" = "UNKNOWN" ] || { echo "Expected UNKNOWN, got $st"; exit 1; }
-' && pass "Health state transition 5i: Unknown SELinux probe -> UNKNOWN" || fail "Health transition 5i failed"
+' && pass "Health state transition 5o: Unknown SELinux probe -> UNKNOWN" || fail "Health transition 5o failed"
 
-# 5j. Unknown on missing SDK level
+# 5p. Unknown on missing SDK level
 sh -c "$HEALTH_TEST_ENV"'
     st=$(matrix_health_determine_status "KernelSU" "completed" "" "1" "Enforcing" "arm64-v8a" "0")
     [ "$st" = "UNKNOWN" ] || { echo "Expected UNKNOWN, got $st"; exit 1; }
-' && pass "Health state transition 5j: Zero/missing SDK probe -> UNKNOWN" || fail "Health transition 5j failed"
+' && pass "Health state transition 5p: Zero/missing SDK probe -> UNKNOWN" || fail "Health transition 5p failed"
 
-# 5k. JSON report status field verification
+# 5q. Precedence: Recovery Mode (ERROR) > Unknown Root (UNKNOWN)
 sh -c "$HEALTH_TEST_ENV"'
+    matrix_health_check_recovery_mode() { return 0; }
+    st=$(matrix_health_determine_status "Unknown" "completed" "" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "ERROR" ] || { echo "Expected ERROR, got $st"; exit 1; }
+' && pass "Precedence 5q: Recovery Mode (ERROR) > Unknown Root (UNKNOWN) -> ERROR" || fail "Precedence 5q failed"
+
+# 5r. Precedence: Failed Boot (ERROR) > Conflicts (WARNING)
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "failed" "tricky_store" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "ERROR" ] || { echo "Expected ERROR, got $st"; exit 1; }
+' && pass "Precedence 5r: Failed Boot (ERROR) > Conflicts (WARNING) -> ERROR" || fail "Precedence 5r failed"
+
+# 5s. Precedence: Unknown boot_stage (UNKNOWN) > Conflicts (WARNING)
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "unknown" "tricky_store" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "UNKNOWN" ] || { echo "Expected UNKNOWN, got $st"; exit 1; }
+' && pass "Precedence 5s: Unknown boot_stage (UNKNOWN) > Conflicts (WARNING) -> UNKNOWN" || fail "Precedence 5s failed"
+
+# 5t. Precedence: Unknown root (UNKNOWN) > Conflicts (WARNING)
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "Unknown" "completed" "tricky_store" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "UNKNOWN" ] || { echo "Expected UNKNOWN, got $st"; exit 1; }
+' && pass "Precedence 5t: Unknown root (UNKNOWN) > Conflicts (WARNING) -> UNKNOWN" || fail "Precedence 5t failed"
+
+# 5u. Warning combination: Timeout + Conflicts
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "timeout" "tricky_store" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "WARNING" ] || { echo "Expected WARNING, got $st"; exit 1; }
+' && pass "Precedence 5u: Timeout + Conflicts -> WARNING" || fail "Precedence 5u failed"
+
+# 5v. Warning combination: Post-fs-data + Conflicts
+sh -c "$HEALTH_TEST_ENV"'
+    st=$(matrix_health_determine_status "KernelSU" "post-fs-data" "tricky_store" "1" "Enforcing" "arm64-v8a" "34")
+    [ "$st" = "WARNING" ] || { echo "Expected WARNING, got $st"; exit 1; }
+' && pass "Precedence 5v: Post-fs-data + Conflicts -> WARNING" || fail "Precedence 5v failed"
+
+# 5w. JSON report status field verification
+sh -c "$HEALTH_TEST_ENV"'
+    echo "boot_stage=completed" > "$MATRIX_STATE_FILE"
+    echo "boot_failure_count=0" >> "$MATRIX_STATE_FILE"
     matrix_detect_root() { echo "KernelSU"; }
     matrix_get_arch() { echo "arm64-v8a"; }
     matrix_get_sdk() { echo "34"; }

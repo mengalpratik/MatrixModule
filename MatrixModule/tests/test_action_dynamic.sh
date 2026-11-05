@@ -83,7 +83,13 @@ MISMATCH_DIR="$SANDBOX/mismatch_test"
 mkdir -p "$MISMATCH_DIR"
 cp -r "$BASE_DIR/core" "$BASE_DIR/webroot" "$BASE_DIR/action.sh" "$BASE_DIR/module.prop" "$BASE_DIR/service.sh" "$BASE_DIR/post-fs-data.sh" "$MISMATCH_DIR/"
 
-out_mismatch=$(KSU=true KSU_VER_CODE=11950 KSU_KERNEL_VER_CODE=10940 API=34 SELINUX_MODE=Enforcing MATRIX_HEALTH_FILE="$SANDBOX/health.json" MODDIR="$MISMATCH_DIR" sh "$MISMATCH_DIR/action.sh" 2>&1)
+STATE_TEST="$SANDBOX/state_mismatch"
+cat << 'EOF' > "$STATE_TEST"
+boot_stage=completed
+boot_failure_count=0
+EOF
+
+out_mismatch=$(KSU=true KSU_VER_CODE=11950 KSU_KERNEL_VER_CODE=10940 API=34 SELINUX_MODE=Enforcing MATRIX_HEALTH_FILE="$SANDBOX/health.json" MATRIX_STATE_FILE="$STATE_TEST" MODDIR="$MISMATCH_DIR" sh "$MISMATCH_DIR/action.sh" 2>&1)
 if echo "$out_mismatch" | grep -q "Manager (11950) != Driver (10940)"; then
     pass "KernelSU mismatch display verified: 'Manager (11950) != Driver (10940)'"
 else

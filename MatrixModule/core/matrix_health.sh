@@ -10,6 +10,11 @@ _CORE_DIR="${0%/*}"
 [ -f "$_CORE_DIR/matrix_store.sh" ] && . "$_CORE_DIR/matrix_store.sh"
 [ -f "$_CORE_DIR/matrix_env.sh" ] && . "$_CORE_DIR/matrix_env.sh"
 
+command -v log_info  >/dev/null 2>&1 || log_info()  { :; }
+command -v log_warn  >/dev/null 2>&1 || log_warn()  { :; }
+command -v log_error >/dev/null 2>&1 || log_error() { :; }
+command -v log_debug >/dev/null 2>&1 || log_debug() { :; }
+
 MATRIX_HEALTH_FILE="${MATRIX_HEALTH_FILE:-/data/adb/matrix_module/health.json}"
 
 matrix_health_mark_boot_start() {
@@ -34,6 +39,62 @@ matrix_health_mark_boot_complete() {
     matrix_state_set "boot_failure_count" "0"
 
     log_info "Health" "Boot completed in ${_duration}s"
+    matrix_health_generate_report
+}
+
+matrix_health_mark_boot_timeout() {
+    _reason="${1:-sys.boot_completed timeout after wait period}"
+    _ts=$(date +%s 2>/dev/null || echo 0)
+    _start_ts=$(matrix_state_get "boot_start_time" "0")
+    _duration=0
+    if [ "$_start_ts" -gt 0 ] && [ "$_ts" -ge "$_start_ts" ]; then
+        _duration=$((_ts - _start_ts))
+    fi
+
+    matrix_state_set "boot_stage" "timeout"
+    matrix_state_set "boot_timeout_reason" "$_reason"
+    matrix_state_set "boot_duration_sec" "$_duration"
+
+    log_warn "Health" "Boot completion timed out (${_duration}s): $_reason"
+    matrix_health_generate_report
+}
+
+matrix_health_mark_boot_failed() {
+    _reason="${1:-lifecycle error encountered}"
+    _ts=$(date +%s 2>/dev/null || echo 0)
+    _start_ts=$(matrix_state_get "boot_start_time" "0")
+    _duration=0
+    if [ "$_start_ts" -gt 0 ] && [ "$_ts" -ge "$_start_ts" ]; then
+        _duration=$((_ts - _start_ts))
+    fi
+
+    _prev_failures=$(matrix_state_get "boot_failure_count" "0")
+    echo "$_prev_failures" | grep -Eq '^[0-9]+$' || _prev_failures=0
+    _new_failures=$((_prev_failures + 1))
+
+    matrix_state_set "boot_stage" "failed"
+    matrix_state_set "boot_failure_reason" "$_reason"
+    matrix_state_set "boot_failure_count" "$_new_failures"
+    matrix_state_set "boot_duration_sec" "$_duration"
+
+    log_error "Health" "Boot stage failed (${_duration}s): $_reason (failures: $_new_failures)"
+    matrix_health_generate_report
+}
+
+matrix_health_mark_boot_aborted() {
+    _reason="${1:-lifecycle aborted}"
+    _ts=$(date +%s 2>/dev/null || echo 0)
+    _start_ts=$(matrix_state_get "boot_start_time" "0")
+    _duration=0
+    if [ "$_start_ts" -gt 0 ] && [ "$_ts" -ge "$_start_ts" ]; then
+        _duration=$((_ts - _start_ts))
+    fi
+
+    matrix_state_set "boot_stage" "aborted"
+    matrix_state_set "boot_failure_reason" "$_reason"
+    matrix_state_set "boot_duration_sec" "$_duration"
+
+    log_error "Health" "Boot stage aborted: $_reason"
     matrix_health_generate_report
 }
 
@@ -107,8 +168,32 @@ matrix_json_escape() {
 }
 
 matrix_health_determine_status() {
-    # Determine honest health status based on environment and probe diagnostics:
-    # Status precedence: ERROR -> UNKNOWN -> WARNING -> HEALTHY
+    # Determine honest health status based on environment and probe diagnostics.
+    # Strict Precedence Order: ERROR -> UNKNOWN -> WARNING -> HEALTHY
+    #
+    # 1. ERROR (Critical failure states):
+    #    - Device in recovery / rescue mode
+    #    - Boot stage is failed, aborted, or recovery
+    #    - Boot failure count > 0
+    #    - Unsupported CPU architecture
+    #
+    # 2. UNKNOWN (Missing, uninitialized, or unresolvable telemetry):
+    #    - Boot stage is unknown, uninitialized, or empty
+    #    - Root manager probe returned Unknown or empty
+    #    - SELinux mode returned Unknown or empty
+    #    - Android SDK level is 0 or empty
+    #
+    # 3. WARNING (Degraded or non-final operational states):
+    #    - Active third-party module conflicts detected
+    #    - KernelSU Manager / Driver version code mismatch
+    #    - Boot stage is post-fs-data (early boot in progress, not complete)
+    #    - Boot stage is timeout (sys.boot_completed was not confirmed within wait timeout)
+    #
+    # 4. HEALTHY (Normal operational state):
+    #    - Boot stage is strictly "completed"
+    #    - All environment and security probes fully resolved and valid
+    #    - Zero conflicts, mismatches, or failures detected
+
     _d_root="${1:-$(matrix_detect_root 2>/dev/null)}"
     _d_boot_stage="${2:-$(matrix_state_get "boot_stage" "unknown" 2>/dev/null)}"
     _d_conflicts="${3:-$(matrix_scan_conflicts 2>/dev/null)}"
@@ -143,7 +228,13 @@ matrix_health_determine_status() {
         return 0
     fi
 
-    # 2. UNKNOWN conditions (probes missing, unavailable, or failed to resolve)
+    # 2. UNKNOWN conditions (missing, uninitialized, or unresolvable probes)
+    case "$_d_boot_stage" in
+        unknown|""|uninitialized)
+            echo "UNKNOWN"
+            return 0
+            ;;
+    esac
     if [ "$_d_root" = "Unknown" ] || [ -z "$_d_root" ]; then
         echo "UNKNOWN"
         return 0
@@ -157,7 +248,7 @@ matrix_health_determine_status() {
         return 0
     fi
 
-    # 3. WARNING conditions
+    # 3. WARNING conditions (degraded or in-progress states)
     if [ -n "$_d_conflicts" ] && [ "$_d_conflicts" != "None" ]; then
         echo "WARNING"
         return 0
@@ -166,14 +257,21 @@ matrix_health_determine_status() {
         echo "WARNING"
         return 0
     fi
-    if [ "$_d_boot_stage" = "post-fs-data" ]; then
-        # Boot not yet completed
-        echo "WARNING"
+    case "$_d_boot_stage" in
+        post-fs-data|timeout)
+            echo "WARNING"
+            return 0
+            ;;
+    esac
+
+    # 4. HEALTHY condition (must be strictly completed)
+    if [ "$_d_boot_stage" = "completed" ]; then
+        echo "HEALTHY"
         return 0
     fi
 
-    # 4. Normal operational state
-    echo "HEALTHY"
+    # Unrecognized boot stage defaults to UNKNOWN
+    echo "UNKNOWN"
 }
 
 matrix_health_generate_report() {

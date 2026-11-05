@@ -19,6 +19,7 @@ log_info "PostFS" "MatrixModule post-fs-data stage started"
 # Check recovery / panic status
 if matrix_health_check_recovery_mode; then
     log_warn "PostFS" "Recovery mode detected, skipping background initialization"
+    matrix_health_mark_boot_aborted "recovery mode active during post-fs-data stage"
     exit 0
 fi
 

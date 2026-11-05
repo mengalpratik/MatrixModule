@@ -1,5 +1,34 @@
 # MatrixModule Changelog
 
+## [1.0.5] - 2026-11-05
+
+### Fixed (Follow-up Audit Remediation)
+- **Exact Installer Permission Verification**:
+  - In `customize.sh`, implemented portable `get_octal_mode()` supporting GNU/BusyBox/toybox `stat` and POSIX `ls -ld` 9-bit octal parsing.
+  - Implemented `get_file_owner()` to verify `root:root` (`0:0`) ownership when running as root (`id -u == 0`).
+  - Hardened `apply_perm` and `apply_perm_recursive` to check exact applied octal modes and abort if mode verification fails even when `set_perm`/`set_perm_recursive` returns 0.
+  - Rewrote `verify_installed_permissions()` with strict octal checks: `0755` for scripts, `0644` for `module.prop` and webroot assets, `0755` for module directories, and `0700` for persistent data (`/data/adb/matrix_module`) and logs directories.
+  - Added Tests 12–21 in `tests/test_installer_failures.sh` verifying aborts on overly permissive scripts (`0777`), non-executable scripts (`0644`), incorrect metadata mode (`0600`), incorrect dir mode (`0700`), incorrect persistent data mode (`0755`), root chown aborts, and root ownership verification.
+- **Honest Unknown Boot-State Reporting & Strict Precedence**:
+  - In `core/matrix_health.sh`, refactored `matrix_health_determine_status()` with strict precedence: `ERROR` > `UNKNOWN` > `WARNING` > `HEALTHY`.
+  - Uninitialized, unknown, or empty `boot_stage` evaluates to `UNKNOWN` (never falsely assumes healthy).
+  - Unresolvable environmental probes (unknown root, unknown SELinux, unknown SDK, unknown architecture) evaluate to `UNKNOWN`.
+  - Added safe fallback logger definitions (`log_info() { :; }`, etc.) to prevent subshell errors when `core/matrix_log.sh` is not sourced.
+  - Added comprehensive subtest suite (5a–5w) in `tests/test_boot_mock.sh` verifying all state transitions and precedence rules.
+- **Boot Completion Timeout & Lifecycle Error Wiring**:
+  - In `service.sh`, updated the 120-second wait loop to only call `matrix_health_mark_boot_complete` when `sys.boot_completed` strictly equals `1`.
+  - On timeout, calls `matrix_health_mark_boot_timeout` with recorded reason, setting `boot_stage=timeout` (evaluates to status `WARNING`).
+  - In `post-fs-data.sh`, recovery detection now calls `matrix_health_mark_boot_aborted "Recovery mode detected"`.
+  - In `core/matrix_health.sh`, implemented `matrix_health_mark_boot_failed` (increments persistent `boot_failure_count` in `$MATRIX_STATE_FILE`) and `matrix_health_mark_boot_aborted`.
+  - Health report JSON explicitly embeds `boot_failure_count`.
+  - Updated `webroot/main.js` and `tests/test_webui_api.sh` with `MODULE_VERSION = 'v1.0.5'`.
+
+### Release Packaging
+- **Artifact:** `dist/MatrixModule-v1.0.5.zip` (24,344 bytes | SHA-256: `6c2454dc91dd5e8e57c46d04114e1826397f1c7e4c7dee73dbb3ec8476bfe174`).
+- Verified bit-for-bit source-to-ZIP parity across all 21 files.
+- Preserved historical releases: `v1.0.0`, `v1.0.1`, `v1.0.2`, `v1.0.3`, `v1.0.4`.
+- Master test runner reports 12/12 suites passed (100% pass rate).
+
 ## [1.0.4] - 2026-11-05
 
 ### Fixed (Final Quality Remediation)

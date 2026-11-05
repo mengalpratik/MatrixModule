@@ -189,12 +189,21 @@ else
     fail "update-binary syntax error"
 fi
 
+# Common function loader for installer subshell execution
+LOAD_INSTALLER_FUNCS='
+    ui_print() { echo "[UI] $*"; }
+    abort() { echo "[ABORT] $*"; exit 2; }
+    eval "$(sed -n "/^get_octal_mode() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
+    eval "$(sed -n "/^get_file_owner() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
+    eval "$(sed -n "/^apply_perm() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
+    eval "$(sed -n "/^apply_perm_recursive() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
+    eval "$(sed -n "/^verify_installed_permissions() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
+'
+
 # 9. Test apply_perm error handling: missing target
 echo "[*] Test 9: Testing apply_perm failure on missing target..."
 out=$(sh -c '
-    ui_print() { echo "[UI] $*"; }
-    abort() { echo "[ABORT] $*"; exit 2; }
-    eval "$(sed -n "/^apply_perm() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
+    '"$LOAD_INSTALLER_FUNCS"'
     apply_perm "/tmp/nonexistent_target_$$" 0 0 0644
 ' 2>&1)
 code=$?
@@ -209,9 +218,7 @@ echo "[*] Test 10: Testing apply_perm abort on mandatory chmod failure..."
 TEST_PERM_FILE="$SANDBOX/perm_fail_test"
 touch "$TEST_PERM_FILE"
 out=$(sh -c '
-    ui_print() { echo "[UI] $*"; }
-    abort() { echo "[ABORT] $*"; exit 2; }
-    eval "$(sed -n "/^apply_perm() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
+    '"$LOAD_INSTALLER_FUNCS"'
     chmod() { return 1; }
     apply_perm "'"$TEST_PERM_FILE"'" 0 0 0755
 ' 2>&1)
@@ -227,9 +234,7 @@ echo "[*] Test 11: Testing apply_perm non-fatal handling of unsupported SELinux 
 TEST_CON_FILE="$SANDBOX/con_test"
 touch "$TEST_CON_FILE"
 out=$(sh -c '
-    ui_print() { echo "[UI] $*"; }
-    abort() { echo "[ABORT] $*"; exit 2; }
-    eval "$(sed -n "/^apply_perm() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
+    '"$LOAD_INSTALLER_FUNCS"'
     chcon() { return 1; }
     apply_perm "'"$TEST_CON_FILE"'" 0 0 0644 "u:object_r:system_file:s0"
 ' 2>&1)
@@ -240,25 +245,192 @@ else
     fail "apply_perm failed SELinux context handling: code=$code, output=$out"
 fi
 
-# 12. Test verify_installed_permissions failure on missing executable permission
-echo "[*] Test 12: Testing verify_installed_permissions abort on non-executable script..."
+# Helper to populate complete valid mock module hierarchy for verification tests
+create_mock_valid_module() {
+    _d="$1"
+    rm -rf "$_d" 2>/dev/null
+    mkdir -p "$_d/core" "$_d/webroot" "$SANDBOX/data/mock_data/logs"
+    chmod 755 "$_d" "$_d/core" "$_d/webroot"
+    chmod 700 "$SANDBOX/data/mock_data" "$SANDBOX/data/mock_data/logs"
+    
+    for f in post-fs-data.sh service.sh action.sh uninstall.sh; do
+        touch "$_d/$f"
+        chmod 755 "$_d/$f"
+    done
+    for f in matrix_env.sh matrix_store.sh matrix_log.sh matrix_health.sh; do
+        touch "$_d/core/$f"
+        chmod 755 "$_d/core/$f"
+    done
+    touch "$_d/module.prop"
+    chmod 644 "$_d/module.prop"
+    for f in index.html app.css main.js; do
+        touch "$_d/webroot/$f"
+        chmod 644 "$_d/webroot/$f"
+    done
+}
+
+# 12. Test verify_installed_permissions failure on excessively permissive script (0777)
+echo "[*] Test 12: Testing verify_installed_permissions abort on overly permissive script (0777)..."
 MOCK_VERIFY_DIR="$SANDBOX/mock_verify_mod"
-mkdir -p "$MOCK_VERIFY_DIR/core"
-touch "$MOCK_VERIFY_DIR/service.sh"
-chmod 644 "$MOCK_VERIFY_DIR/service.sh"
-out=$(sh -c '
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+chmod 777 "$MOCK_VERIFY_DIR/service.sh"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
     MODPATH="'"$MOCK_VERIFY_DIR"'"
-    DATA_DIR="'"$SANDBOX/data/matrix_module"'"
-    ui_print() { echo "[UI] $*"; }
-    abort() { echo "[ABORT] $*"; exit 2; }
-    eval "$(sed -n "/^verify_installed_permissions() {/,/^}/p" "'"$CUSTOMIZE_SCRIPT"'")"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
     verify_installed_permissions
 ' 2>&1)
 code=$?
-if [ "$code" -eq 2 ] && echo "$out" | grep -q "Post-installation permission verification failed"; then
-    pass "verify_installed_permissions aborted on non-executable service.sh"
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Exact mode mismatch"; then
+    pass "verify_installed_permissions aborted on 0777 service.sh"
 else
-    fail "verify_installed_permissions failed to abort on bad permission: code=$code, output=$out"
+    fail "verify_installed_permissions failed to reject 0777: code=$code, output=$out"
+fi
+
+# 13. Test verify_installed_permissions failure on restrictive script (0644)
+echo "[*] Test 13: Testing verify_installed_permissions abort on non-executable script (0644)..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+chmod 644 "$MOCK_VERIFY_DIR/service.sh"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Exact mode mismatch"; then
+    pass "verify_installed_permissions aborted on 0644 service.sh"
+else
+    fail "verify_installed_permissions failed to reject 0644: code=$code, output=$out"
+fi
+
+# 14. Test verify_installed_permissions failure on incorrect metadata mode (0600)
+echo "[*] Test 14: Testing verify_installed_permissions abort on incorrect metadata mode (0600)..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+chmod 600 "$MOCK_VERIFY_DIR/module.prop"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Exact mode mismatch"; then
+    pass "verify_installed_permissions aborted on 0600 module.prop"
+else
+    fail "verify_installed_permissions failed to reject 0600 module.prop: code=$code, output=$out"
+fi
+
+# 15. Test verify_installed_permissions failure on incorrect directory mode (0700)
+echo "[*] Test 15: Testing verify_installed_permissions abort on incorrect directory mode (0700)..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+chmod 700 "$MOCK_VERIFY_DIR"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Exact mode mismatch"; then
+    pass "verify_installed_permissions aborted on 0700 root directory"
+else
+    fail "verify_installed_permissions failed to reject 0700 directory: code=$code, output=$out"
+fi
+
+# 16. Test verify_installed_permissions failure on incorrect persistent directory mode (0755)
+echo "[*] Test 16: Testing verify_installed_permissions abort on incorrect persistent data mode (0755)..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+chmod 755 "$SANDBOX/data/mock_data"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Exact mode mismatch"; then
+    pass "verify_installed_permissions aborted on 0755 persistent data directory"
+else
+    fail "verify_installed_permissions failed to reject 0755 persistent dir: code=$code, output=$out"
+fi
+
+# 17. Test apply_perm mandatory root chown failure abort when running as root
+echo "[*] Test 17: Testing apply_perm abort on mandatory root chown failure..."
+TEST_CHOWN_FILE="$SANDBOX/chown_fail_test"
+touch "$TEST_CHOWN_FILE"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    id() { echo 0; }
+    chown() { return 1; }
+    apply_perm "'"$TEST_CHOWN_FILE"'" 0 0 0644
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Mandatory ownership failure"; then
+    pass "apply_perm aborted on mandatory root chown failure"
+else
+    fail "apply_perm failed to abort on root chown failure: code=$code, output=$out"
+fi
+
+# 18. Test apply_perm set_perm success and verification path
+echo "[*] Test 18: Testing apply_perm set_perm success path..."
+TEST_SETPERM_FILE="$SANDBOX/setperm_success_test"
+touch "$TEST_SETPERM_FILE"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    set_perm() { chmod "$4" "$1"; return 0; }
+    apply_perm "'"$TEST_SETPERM_FILE"'" 0 0 0755
+' 2>&1)
+code=$?
+perm_res=$(get_perm "$TEST_SETPERM_FILE")
+if [ "$code" -eq 0 ] && [ "$perm_res" = "755" ]; then
+    pass "apply_perm set_perm success path applied and verified exact mode 755"
+else
+    fail "apply_perm set_perm success test failed: code=$code, perm=$perm_res, output=$out"
+fi
+
+# 19. Test apply_perm set_perm failure fallback path
+echo "[*] Test 19: Testing apply_perm set_perm failure fallback path..."
+TEST_SETPERM_FALLBACK="$SANDBOX/setperm_fallback_test"
+touch "$TEST_SETPERM_FALLBACK"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    set_perm() { return 1; }
+    apply_perm "'"$TEST_SETPERM_FALLBACK"'" 0 0 0644
+' 2>&1)
+code=$?
+perm_fallback_res=$(get_perm "$TEST_SETPERM_FALLBACK")
+if [ "$code" -eq 0 ] && [ "$perm_fallback_res" = "644" ] && echo "$out" | grep -q "using fallback"; then
+    pass "apply_perm safely fell back to POSIX and applied mode 644 on set_perm failure"
+else
+    fail "apply_perm set_perm fallback test failed: code=$code, perm=$perm_fallback_res, output=$out"
+fi
+
+# 20. Test apply_perm_recursive set_perm_recursive failure fallback path
+echo "[*] Test 20: Testing apply_perm_recursive fallback on set_perm_recursive failure..."
+TEST_REC_DIR="$SANDBOX/rec_fallback_test"
+mkdir -p "$TEST_REC_DIR/subdir"
+touch "$TEST_REC_DIR/file1" "$TEST_REC_DIR/subdir/file2"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    set_perm_recursive() { return 1; }
+    apply_perm_recursive "'"$TEST_REC_DIR"'" 0 0 0755 0644
+' 2>&1)
+code=$?
+d_perm=$(get_perm "$TEST_REC_DIR/subdir")
+f_perm=$(get_perm "$TEST_REC_DIR/subdir/file2")
+if [ "$code" -eq 0 ] && [ "$d_perm" = "755" ] && [ "$f_perm" = "644" ] && echo "$out" | grep -q "using fallback"; then
+    pass "apply_perm_recursive safely fell back to POSIX find on set_perm_recursive failure"
+else
+    fail "apply_perm_recursive fallback failed: code=$code, d_perm=$d_perm, f_perm=$f_perm, output=$out"
+fi
+
+# 21. Test verify_installed_permissions root ownership check failure
+echo "[*] Test 21: Testing verify_installed_permissions abort on root ownership mismatch..."
+create_mock_valid_module "$MOCK_VERIFY_DIR"
+out=$(sh -c "$LOAD_INSTALLER_FUNCS"'
+    id() { echo 0; }
+    get_file_owner() { echo "1000:1000"; }
+    MODPATH="'"$MOCK_VERIFY_DIR"'"
+    DATA_DIR="'"$SANDBOX/data/mock_data"'"
+    verify_installed_permissions
+' 2>&1)
+code=$?
+if [ "$code" -eq 2 ] && echo "$out" | grep -q "Ownership mismatch"; then
+    pass "verify_installed_permissions aborted on root ownership mismatch"
+else
+    fail "verify_installed_permissions failed to abort on ownership mismatch: code=$code, output=$out"
 fi
 
 echo "=================================================="

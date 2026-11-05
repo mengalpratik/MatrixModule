@@ -386,10 +386,10 @@ if command -v node >/dev/null 2>&1; then
 
             // Test 4.11: Desktop preview log version validation
             const previewLog = ctx4.simulateCommand("tail -n 100 /data/adb/matrix_module/logs/matrix.log");
-            if (!previewLog.stdout.includes("MatrixModule v1.0.4")) {
-                throw new Error("Preview log missing updated version v1.0.4: " + previewLog.stdout);
+            if (!previewLog.stdout.includes("MatrixModule v1.0.5")) {
+                throw new Error("Preview log missing updated version v1.0.5: " + previewLog.stdout);
             }
-            if (previewLog.stdout.includes("v1.0.2") || previewLog.stdout.includes("v1.0.3")) {
+            if (previewLog.stdout.includes("v1.0.2") || previewLog.stdout.includes("v1.0.3") || previewLog.stdout.includes("v1.0.4")) {
                 throw new Error("Preview log contains stale version string: " + previewLog.stdout);
             }
 

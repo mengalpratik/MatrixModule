@@ -18,17 +18,23 @@ log_info "Service" "MatrixModule service.sh launched"
 
 # Wait for Android boot completion
 _wait_ticks=0
-while [ "$(getprop sys.boot_completed 2>/dev/null)" != "1" ]; do
-    sleep 2
-    _wait_ticks=$((_wait_ticks + 1))
-    if [ "$_wait_ticks" -gt 150 ]; then
-        log_warn "Service" "Boot completion wait timeout (300s), proceeding"
+_boot_completed=0
+while [ "$_wait_ticks" -le 150 ]; do
+    if [ "$(getprop sys.boot_completed 2>/dev/null)" = "1" ]; then
+        _boot_completed=1
         break
     fi
+    sleep 2
+    _wait_ticks=$((_wait_ticks + 1))
 done
 
-# Register boot completion metrics
-matrix_health_mark_boot_complete
+if [ "$_boot_completed" -eq 1 ]; then
+    # Register boot completion metrics
+    matrix_health_mark_boot_complete
+else
+    log_warn "Service" "Boot completion wait timeout (300s): sys.boot_completed was never set"
+    matrix_health_mark_boot_timeout "sys.boot_completed was not set to 1 within 300s timeout"
+fi
 
 # Perform non-destructive conflict scan
 _conflicts=$(matrix_scan_conflicts)
