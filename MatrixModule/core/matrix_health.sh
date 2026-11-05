@@ -4,6 +4,8 @@
 ##########################################################################################
 
 _CORE_DIR="${0%/*}"
+[ ! -f "$_CORE_DIR/matrix_env.sh" ] && [ -f "$_CORE_DIR/core/matrix_env.sh" ] && _CORE_DIR="$_CORE_DIR/core"
+[ ! -f "$_CORE_DIR/matrix_env.sh" ] && [ -n "$MODDIR" ] && [ -f "$MODDIR/core/matrix_env.sh" ] && _CORE_DIR="$MODDIR/core"
 [ -f "$_CORE_DIR/matrix_log.sh" ] && . "$_CORE_DIR/matrix_log.sh"
 [ -f "$_CORE_DIR/matrix_store.sh" ] && . "$_CORE_DIR/matrix_store.sh"
 [ -f "$_CORE_DIR/matrix_env.sh" ] && . "$_CORE_DIR/matrix_env.sh"
@@ -127,24 +129,51 @@ matrix_health_generate_report() {
     _conflicts_esc=$(matrix_json_escape "$_conflicts")
     _ts_esc=$(matrix_json_escape "$_ts")
 
+    # KernelSU version and synchronization probe
+    _ksu_res=$(matrix_get_ksu_versions 2>/dev/null || echo "0 0 -1")
+    _m_code=$(echo "$_ksu_res" | cut -d' ' -f1)
+    _k_code=$(echo "$_ksu_res" | cut -d' ' -f2)
+    _ksu_match=$(echo "$_ksu_res" | cut -d' ' -f3)
+
     # Ensure numeric values are valid integers
     echo "$_sdk" | grep -Eq '^[0-9]+$' || _sdk=0
     echo "$_boot_dur" | grep -Eq '^[0-9]+$' || _boot_dur=0
+    echo "$_m_code" | grep -Eq '^[0-9]+$' || _m_code=0
+    echo "$_k_code" | grep -Eq '^[0-9]+$' || _k_code=0
+    echo "$_ksu_match" | grep -Eq '^-?[0-9]+$' || _ksu_match=-1
 
-    cat << EOF > "$MATRIX_HEALTH_FILE"
-{
-  "timestamp": "$_ts_esc",
-  "root_manager": "$_root_esc",
-  "architecture": "$_arch_esc",
-  "sdk_level": $_sdk,
-  "device_model": "$_model_esc",
-  "zygisk_host": "$_zygisk_esc",
-  "selinux_mode": "$_selinux_esc",
-  "boot_stage": "$_boot_stage_esc",
-  "boot_duration_sec": $_boot_dur,
-  "active_conflicts": "$_conflicts_esc",
-  "status": "HEALTHY"
-}
-EOF
+    _report="{
+  \"timestamp\": \"$_ts_esc\",
+  \"root_manager\": \"$_root_esc\",
+  \"architecture\": \"$_arch_esc\",
+  \"sdk_level\": $_sdk,
+  \"device_model\": \"$_model_esc\",
+  \"zygisk_host\": \"$_zygisk_esc\",
+  \"selinux_mode\": \"$_selinux_esc\",
+  \"boot_stage\": \"$_boot_stage_esc\",
+  \"boot_duration_sec\": $_boot_dur,
+  \"active_conflicts\": \"$_conflicts_esc\",
+  \"ksu_manager_code\": $_m_code,
+  \"ksu_kernel_code\": $_k_code,
+  \"ksu_version_match\": $_ksu_match,
+  \"status\": \"HEALTHY\"
+}"
+
+    mkdir -p "${MATRIX_HEALTH_FILE%/*}" 2>/dev/null
+    printf "%s\n" "$_report" > "$MATRIX_HEALTH_FILE" 2>/dev/null
     chmod 644 "$MATRIX_HEALTH_FILE" 2>/dev/null
 }
+
+# If executed directly (not sourced), generate and output the JSON health report
+if [ "${0##*/}" = "matrix_health.sh" ] || [ "$1" = "report" ] || [ "$1" = "json" ]; then
+    matrix_health_generate_report >/dev/null 2>&1
+    if [ -f "$MATRIX_HEALTH_FILE" ]; then
+        cat "$MATRIX_HEALTH_FILE"
+        exit 0
+    elif [ -n "$_report" ]; then
+        printf "%s\n" "$_report"
+        exit 0
+    else
+        exit 1
+    fi
+fi

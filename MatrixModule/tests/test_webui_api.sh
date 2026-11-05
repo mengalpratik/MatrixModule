@@ -180,6 +180,107 @@ if command -v node >/dev/null 2>&1; then
                 throw new Error("Failed async callback handling: " + JSON.stringify(res5));
             }
 
+            // Test 4.6: Device diagnostics integration with mocked healthy device data
+            const domElements6 = {};
+            const getOrCreateEl = (id) => {
+                if (!domElements6[id]) domElements6[id] = { textContent: "" };
+                return domElements6[id];
+            };
+            const mockDeviceJson = JSON.stringify({
+                timestamp: "2026-11-05 21:00:00",
+                root_manager: "KernelSU (Official)",
+                architecture: "arm64-v8a",
+                sdk_level: 34,
+                device_model: "Pixel 8 Pro (Mock)",
+                zygisk_host: "Zygisk Next v1.1.0",
+                selinux_mode: "Enforcing",
+                boot_stage: "completed",
+                boot_duration_sec: 14,
+                active_conflicts: "None",
+                ksu_manager_code: 11950,
+                ksu_kernel_code: 11950,
+                ksu_version_match: 1,
+                status: "HEALTHY"
+            });
+            const ctx6 = vm.createContext({
+                document: {
+                    addEventListener: () => {},
+                    querySelectorAll: () => [],
+                    getElementById: (id) => getOrCreateEl(id)
+                },
+                ksu: {
+                    exec: (cmd) => Promise.resolve({ errno: 0, stdout: mockDeviceJson, stderr: "" })
+                }
+            });
+            vm.runInContext(code, ctx6);
+            await ctx6.refreshDiagnostics();
+
+            if (domElements6["val-root"].textContent !== "KernelSU (Official)") {
+                throw new Error("Failed device diagnostics root value: " + domElements6["val-root"].textContent);
+            }
+            if (domElements6["diag-model"].textContent !== "Pixel 8 Pro (Mock)") {
+                throw new Error("Failed device diagnostics model: " + domElements6["diag-model"].textContent);
+            }
+            if (!domElements6["diag-ksu-kernel"].textContent.includes("Synchronized (v11950)")) {
+                throw new Error("Failed verified KSU synchronized kernel text: " + domElements6["diag-ksu-kernel"].textContent);
+            }
+            if (!domElements6["diag-ksu-app"].textContent.includes("Synchronized (v11950)")) {
+                throw new Error("Failed verified KSU synchronized app text: " + domElements6["diag-ksu-app"].textContent);
+            }
+
+            // Test 4.7: Diagnostics command failure in Manager (must show unavailable/error, NEVER fake data)
+            const domElements7 = {};
+            const ctx7 = vm.createContext({
+                document: {
+                    addEventListener: () => {},
+                    querySelectorAll: () => [],
+                    getElementById: (id) => {
+                        if (!domElements7[id]) domElements7[id] = { textContent: "INITIAL" };
+                        return domElements7[id];
+                    }
+                },
+                ksu: {
+                    exec: (cmd) => Promise.resolve({ errno: 1, stdout: "", stderr: "Permission denied" })
+                }
+            });
+            vm.runInContext(code, ctx7);
+            await ctx7.refreshDiagnostics();
+
+            if (domElements7["val-root"].textContent !== "Unavailable") {
+                throw new Error("Expected 'Unavailable' on failure, got: " + domElements7["val-root"].textContent);
+            }
+            if (domElements7["diag-root"].textContent !== "Unavailable") {
+                throw new Error("Expected 'Unavailable' for diag-root on failure, got: " + domElements7["diag-root"].textContent);
+            }
+            if (domElements7["diag-ksu-kernel"].textContent !== "Unverified") {
+                throw new Error("Expected 'Unverified' for diag-ksu-kernel on failure, got: " + domElements7["diag-ksu-kernel"].textContent);
+            }
+
+            // Test 4.8: Malformed JSON diagnostics payload handling
+            const domElements8 = {};
+            const ctx8 = vm.createContext({
+                document: {
+                    addEventListener: () => {},
+                    querySelectorAll: () => [],
+                    getElementById: (id) => {
+                        if (!domElements8[id]) domElements8[id] = { textContent: "INITIAL" };
+                        return domElements8[id];
+                    }
+                },
+                ksu: {
+                    exec: (cmd) => Promise.resolve({ errno: 0, stdout: "MALFORMED_NON_JSON", stderr: "" })
+                }
+            });
+            vm.runInContext(code, ctx8);
+            await ctx8.refreshDiagnostics();
+
+            if (!domElements8["diag-model"].textContent.includes("Failed to parse diagnostics JSON")) {
+                throw new Error("Expected JSON parse failure message, got: " + domElements8["diag-model"].textContent);
+            }
+            if (domElements8["val-root"].textContent !== "Unavailable") {
+                throw new Error("Expected 'Unavailable' on malformed JSON, got: " + domElements8["val-root"].textContent);
+            }
+
             console.log("ALL_BRIDGE_TESTS_OK");
         }
 

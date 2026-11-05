@@ -40,6 +40,7 @@ check_dir "$BASE_DIR/webroot"
 check_dir "$BASE_DIR/docs"
 check_dir "$BASE_DIR/tests"
 check_dir "$BASE_DIR/references"
+check_file "$BASE_DIR/references/README.md"
 
 # 2. Metadata checks
 check_prop() {

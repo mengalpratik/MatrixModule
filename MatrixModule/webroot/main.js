@@ -83,7 +83,7 @@ async function execCommand(cmd) {
 }
 
 function simulateCommand(cmd) {
-    if (cmd.includes('matrix_env.sh')) {
+    if (cmd.includes('matrix_health.sh') || cmd.includes('health.json') || cmd.includes('matrix_env.sh')) {
         return {
             stdout: JSON.stringify({
                 root_manager: "KernelSU (Simulated)",
@@ -94,18 +94,46 @@ function simulateCommand(cmd) {
                 selinux_mode: "Enforcing",
                 boot_stage: "completed",
                 boot_duration_sec: 18,
-                active_conflicts: "None"
+                active_conflicts: "None",
+                ksu_manager_code: 11950,
+                ksu_kernel_code: 11950,
+                ksu_version_match: 1,
+                status: "HEALTHY"
             }),
             code: 0
         };
     }
     if (cmd.includes('matrix.log')) {
         return {
-            stdout: "[2026-11-05 15:45:00] [INFO] [Core] MatrixModule v1.0.0 initialized\n[2026-11-05 15:45:02] [INFO] [PostFS] Early boot stage complete\n[2026-11-05 15:45:18] [INFO] [Health] Boot completed in 18s\n[2026-11-05 15:45:19] [INFO] [Service] Health monitoring watchdog running",
+            stdout: "[2026-11-05 15:45:00] [INFO] [Core] MatrixModule v1.0.2 initialized\n[2026-11-05 15:45:02] [INFO] [PostFS] Early boot stage complete\n[2026-11-05 15:45:18] [INFO] [Health] Boot completed in 18s\n[2026-11-05 15:45:19] [INFO] [Service] Health monitoring watchdog running",
             code: 0
         };
     }
     return { stdout: "OK", code: 0 };
+}
+
+function showDiagnosticsError(reason) {
+    const setText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    };
+    setText('val-root', 'Unavailable');
+    setText('val-arch', '--');
+    setText('val-sdk', 'Diagnostics Error');
+    setText('val-zygisk', 'Unknown');
+    setText('val-selinux', 'Unknown');
+    setText('val-boot-dur', 'Boot: --');
+
+    setText('diag-model', reason || 'Error loading diagnostics');
+    setText('diag-release', '--');
+    setText('diag-sdk', '--');
+    setText('diag-arch', '--');
+    setText('diag-root', 'Unavailable');
+    setText('diag-ksu-kernel', 'Unverified');
+    setText('diag-ksu-app', 'Unverified');
+    setText('diag-zygisk', '--');
+    setText('diag-selinux', '--');
+    setText('diag-conflicts', '--');
 }
 
 async function initDiagnostics() {
@@ -114,42 +142,78 @@ async function initDiagnostics() {
 }
 
 async function refreshDiagnostics() {
-    const res = await execCommand("sh /data/adb/modules/matrix_module/core/matrix_env.sh 2>/dev/null || cat /data/adb/matrix_module/health.json 2>/dev/null");
+    const cmd = "sh /data/adb/modules/matrix_module/core/matrix_health.sh json 2>/dev/null || cat /data/adb/matrix_module/health.json 2>/dev/null";
+    const res = await execCommand(cmd);
+
+    // Validate bridge exit code and output
+    if (!res || res.code !== 0 || typeof res.stdout !== 'string' || !res.stdout.trim()) {
+        showDiagnosticsError(res && res.stderr ? `Bridge Error: ${res.stderr}` : 'Diagnostics command failed or returned empty result');
+        return;
+    }
+
     let data;
     try {
         data = JSON.parse(res.stdout);
     } catch {
-        data = {
-            root_manager: "KernelSU",
-            architecture: "arm64-v8a",
-            sdk_level: 34,
-            device_model: "Detected Device",
-            zygisk_host: "Active",
-            selinux_mode: "Enforcing",
-            boot_duration_sec: 22,
-            active_conflicts: "None"
-        };
+        showDiagnosticsError('Failed to parse diagnostics JSON payload');
+        return;
     }
 
+    if (!data || typeof data !== 'object') {
+        showDiagnosticsError('Invalid diagnostics payload format');
+        return;
+    }
+
+    const setText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    };
+
     // Update Dashboard Cards
-    document.getElementById('val-root').textContent = data.root_manager || "KernelSU";
-    document.getElementById('val-arch').textContent = data.architecture || "arm64-v8a";
-    document.getElementById('val-sdk').textContent = `Android SDK ${data.sdk_level || 34}`;
-    document.getElementById('val-zygisk').textContent = data.zygisk_host || "Active";
-    document.getElementById('val-selinux').textContent = data.selinux_mode || "Enforcing";
-    document.getElementById('val-boot-dur').textContent = `Boot: ${data.boot_duration_sec || 0}s`;
+    setText('val-root', data.root_manager || "KernelSU");
+    setText('val-arch', data.architecture || "Unknown");
+    setText('val-sdk', typeof data.sdk_level === 'number' && data.sdk_level > 0 ? `Android SDK ${data.sdk_level}` : "SDK Unknown");
+    setText('val-zygisk', data.zygisk_host || "None");
+    setText('val-selinux', data.selinux_mode || "Unknown");
+    setText('val-boot-dur', `Boot: ${typeof data.boot_duration_sec === 'number' ? data.boot_duration_sec : 0}s`);
 
     // Update Diagnostics Table
-    document.getElementById('diag-model').textContent = data.device_model || "Android Device";
-    document.getElementById('diag-release').textContent = data.sdk_level >= 34 ? "Android 14+" : "Android 10-13";
-    document.getElementById('diag-sdk').textContent = data.sdk_level || "--";
-    document.getElementById('diag-arch').textContent = data.architecture || "--";
-    document.getElementById('diag-root').textContent = data.root_manager || "KernelSU";
-    document.getElementById('diag-ksu-kernel').textContent = "Synchronized";
-    document.getElementById('diag-ksu-app').textContent = "Supported";
-    document.getElementById('diag-zygisk').textContent = data.zygisk_host || "None";
-    document.getElementById('diag-selinux').textContent = data.selinux_mode || "Enforcing";
-    document.getElementById('diag-conflicts').textContent = data.active_conflicts || "None (Safe Coexistence)";
+    setText('diag-model', data.device_model || "Android Device");
+    if (typeof data.sdk_level === 'number' && data.sdk_level >= 34) {
+        setText('diag-release', 'Android 14+');
+    } else if (typeof data.sdk_level === 'number' && data.sdk_level >= 29) {
+        setText('diag-release', 'Android 10-13');
+    } else {
+        setText('diag-release', 'Unknown');
+    }
+    setText('diag-sdk', data.sdk_level ? String(data.sdk_level) : "--");
+    setText('diag-arch', data.architecture || "--");
+    setText('diag-root', data.root_manager || "Unknown");
+
+    // KernelSU Kernel Driver & Manager Status
+    let ksuKernelText = "N/A";
+    let ksuAppText = "N/A";
+    if (data.root_manager && data.root_manager.includes("KernelSU")) {
+        if (data.ksu_version_match === 1 && data.ksu_manager_code > 0) {
+            ksuKernelText = `Synchronized (v${data.ksu_kernel_code})`;
+            ksuAppText = `Synchronized (v${data.ksu_manager_code})`;
+        } else if (data.ksu_version_match === 0) {
+            ksuKernelText = data.ksu_kernel_code > 0 ? `Driver v${data.ksu_kernel_code} (Mismatch)` : "Driver Unmatched";
+            ksuAppText = data.ksu_manager_code > 0 ? `Manager v${data.ksu_manager_code} (Mismatch)` : "Manager Unmatched";
+        } else if (data.ksu_kernel_code > 0 || data.ksu_manager_code > 0) {
+            ksuKernelText = data.ksu_kernel_code > 0 ? `Driver v${data.ksu_kernel_code}` : "Driver Detected";
+            ksuAppText = data.ksu_manager_code > 0 ? `Manager v${data.ksu_manager_code}` : "Manager Detected";
+        } else {
+            ksuKernelText = "Unverified";
+            ksuAppText = "Unverified";
+        }
+    }
+    setText('diag-ksu-kernel', ksuKernelText);
+    setText('diag-ksu-app', ksuAppText);
+
+    setText('diag-zygisk', data.zygisk_host || "None");
+    setText('diag-selinux', data.selinux_mode || "Unknown");
+    setText('diag-conflicts', data.active_conflicts ? String(data.active_conflicts) : "None (Safe Coexistence)");
 }
 
 function initSettings() {

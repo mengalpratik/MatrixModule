@@ -2,22 +2,40 @@
 
 ## [1.0.2] - 2026-11-05
 
-### Fixed (Post-Remediation Independent Verification)
-- **Critical JSON Escaping Remediation**:
-  - Rewrote `matrix_json_escape()` in `core/matrix_health.sh` to eliminate backslash inflation caused by `sed 's/\\/\\\\\\\\/g'` (which generated 4 backslashes in JSON, decoding to 2 backslashes).
-  - Eliminated whitespace loss from `tr "\r\n\t" "   "` that previously transformed control whitespace into spaces.
-  - Implemented sentinel-based POSIX/BusyBox awk escaping preserving trailing newlines and escaping `\`, `"`, `\r`, `\t`, `\n` to valid RFC 8259 escape sequences.
-  - Verified 100% exact round-trip parity against Python JSON oracle.
-- **WebUI Runtime Bridge Hardening**:
-  - Added support for asynchronous callback bridge (`ksu.exec(cmd, options, callback)`) in `webroot/main.js` alongside Promise-based, synchronous string, and simulation fallback modes.
-  - Used `globalScope` resolution supporting `window`, `globalThis`, and isolated execution contexts.
+### Fixed (Post-Bundle Review & Independent Verification Remediation)
+- **WebUI Diagnostics Data Source Architecture (Issue 1)**:
+  - Replaced non-producing command `matrix_env.sh` with executable JSON diagnostics: `sh /data/adb/modules/matrix_module/core/matrix_health.sh json 2>/dev/null || cat /data/adb/matrix_module/health.json 2>/dev/null`.
+  - Added standalone CLI execution in `core/matrix_health.sh` to generate and print JSON health report directly to stdout.
+  - Added KernelSU version codes (`ksu_manager_code`, `ksu_kernel_code`, `ksu_version_match`) to the generated health report.
+  - Hardened `webroot/main.js`: validates bridge exit code and JSON parsing, shows explicit unavailable/error states upon failure (never fake simulated data in Manager), and dynamically verifies KernelSU synchronization text.
+- **Installer Permissions & Lifecycle Hardening (Issue 2)**:
+  - Enforced correct file permissions in `customize.sh`: `module.prop` (0644), shell scripts (0755), webroot assets (0644), directories (0755), ownership `0:0`, SELinux context `u:object_r:system_file:s0`.
+  - Implemented `apply_perm` wrapper leveraging `set_perm`/`set_perm_recursive` with POSIX fallback.
+  - Made `$DATA_DIR` configurable (`${DATA_DIR:-/data/adb/matrix_module}`) so tests never write to `/data/adb`.
+- **Review Bundle Reference Quarantine (Issue 3)**:
+  - Included `references/README.md` in the review bundle to satisfy directory structure validation while maintaining quarantine of reference code trees.
+- **Dynamic Installer Test Validation & Skip Reporting (Issue 4)**:
+  - Updated `tests/test_installer_failures.sh` to dynamically detect current version from `module.prop` and validate against the current release ZIP.
+  - Added explicit skip reporting (`skip()`), ensuring skipped tests are distinguished from executed assertions.
+  - Added sandbox verification of installed file permissions (`module.prop` 0644, scripts 0755, webroot 0644).
+- **JSON Round-Trip Test Quality & Shell Quirk Remediation (Issue 5)**:
+  - Fixed trailing newline preservation in `tests/test_json_roundtrip.sh` using sentinel capture (`_raw=$(printf "... \n."); _val="${_raw%.}"`), eliminating shell command substitution newline truncation.
+  - Added tests for single trailing newline, multiple trailing newlines, and only newlines.
+  - Added BusyBox ash standalone compatibility test covering C0 control characters and trailing newlines.
+  - Documented POSIX shell argument limitation regarding ASCII NUL byte (`\0`).
+- **Test Packaging Safety (Issue 7)**:
+  - Made `DIST_DIR` configurable in `build.sh`.
+  - Updated `tests/test_packaging.sh` to build into an isolated temporary directory, guaranteeing that running tests never overwrites accepted release packages.
 
 ### Added
-- Added Test Suite 12 (`tests/test_json_roundtrip.sh`):
-  - 16 targeted round-trip tests covering single backslashes, consecutive backslashes (2, 3, 4), double quotes, tabs, newlines, carriage returns, CRLF, trailing newlines, and complex mixed payloads.
-  - Verified Android BusyBox ash parity and generated health report JSON validation.
+- Expanded Test Suite 12 (`tests/test_json_roundtrip.sh`) to 24 tests.
+- Added device diagnostics integration tests and failure handling tests in `tests/test_webui_api.sh`.
 - Master test runner reports 12/12 suites passed (100% pass rate).
-- Packaged release `dist/MatrixModule-v1.0.2.zip` (19,619 bytes, SHA-256: `a31efae7c2d2804e43e15e60375400043526dc5ddb7055ce263973fa13506b8e`).
+
+### Build History
+- **Initial Intermediate Build**: 19,619 bytes | SHA-256: `a31efae7c2d2804e43e15e60375400043526dc5ddb7055ce263973fa13506b8e` (superseded)
+- **C0 Escaping Intermediate Build**: 19,811 bytes | SHA-256: `9d748a809f0d1cd7a9c257e1ef4dbe8c96432d3bc7292c5ce3c2408cbcdea7f9` (superseded)
+- **Final Active Release Package**: `dist/MatrixModule-v1.0.2.zip` | 21,118 bytes | SHA-256: `1d4387bab8de44aa8275feca4a4c503d605187b3afd41bd191b7b04485b5e88a` (active, verified)
 
 ## [1.0.1] - 2026-11-05
 

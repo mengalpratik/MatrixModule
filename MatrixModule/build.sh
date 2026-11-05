@@ -6,7 +6,7 @@
 set -e
 
 BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
-DIST_DIR="$BASE_DIR/dist"
+DIST_DIR="${DIST_DIR:-$BASE_DIR/dist}"
 MODULE_PROP="$BASE_DIR/module.prop"
 
 if [ ! -f "$MODULE_PROP" ]; then

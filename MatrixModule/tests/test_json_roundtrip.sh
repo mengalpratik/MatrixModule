@@ -1,15 +1,24 @@
 #!/bin/sh
 ##########################################################################################
-# MatrixModule - JSON Escaping & Round-Trip Oracle Test Suite
-# Tests matrix_json_escape() against Python JSON parsing oracle for 100% data fidelity
+# MatrixModule Test: JSON Escaping & Python Decoder Round-Trip Oracle (Hardened)
 ##########################################################################################
 
 BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 HEALTH_SH="$BASE_DIR/core/matrix_health.sh"
 
-echo "[*] Running JSON Escaping Round-Trip Verification Suite..."
+if [ ! -f "$HEALTH_SH" ]; then
+    echo "[-] FAIL: matrix_health.sh not found at $HEALTH_SH"
+    exit 1
+fi
+
+[ -f "$BASE_DIR/core/matrix_env.sh" ] && . "$BASE_DIR/core/matrix_env.sh"
+[ -f "$BASE_DIR/core/matrix_store.sh" ] && . "$BASE_DIR/core/matrix_store.sh"
+[ -f "$BASE_DIR/core/matrix_log.sh" ] && . "$BASE_DIR/core/matrix_log.sh"
+. "$HEALTH_SH"
 
 ERRORS=0
+PASSES=0
+SKIPS=0
 
 fail() {
     echo "[-] FAIL: $1"
@@ -18,80 +27,30 @@ fail() {
 
 pass() {
     echo "[+] PASS: $1"
+    PASSES=$((PASSES + 1))
 }
 
-if [ ! -f "$HEALTH_SH" ]; then
-    fail "core/matrix_health.sh not found"
-    exit 1
-fi
+skip() {
+    echo "[-] SKIP: $1"
+    SKIPS=$((SKIPS + 1))
+}
 
-# Verify Python 3 is available as the test oracle
-if ! command -v python3 >/dev/null 2>&1; then
-    fail "python3 required as test oracle"
-    exit 1
-fi
+echo "[*] Running JSON Escaping Round-Trip Verification Suite..."
 
-# Source core dependencies and health library
-[ -f "$BASE_DIR/core/matrix_env.sh" ] && . "$BASE_DIR/core/matrix_env.sh"
-[ -f "$BASE_DIR/core/matrix_store.sh" ] && . "$BASE_DIR/core/matrix_store.sh"
-. "$HEALTH_SH"
-
-# Python round-trip validator script
-PYTHON_ORACLE=$(cat << 'EOF'
-import sys, json
-
-def verify(name, original, escaped):
-    json_doc = '{"val": "' + escaped + '"}'
-    try:
-        parsed = json.loads(json_doc)
-        decoded = parsed["val"]
-        if decoded == original:
-            print(f"PASS|{name}")
-            return True
-        else:
-            print(f"FAIL|{name}|Mismatch: original={repr(original)} decoded={repr(decoded)} escaped={repr(escaped)}")
-            return False
-    except Exception as e:
-        print(f"FAIL|{name}|JSON parse error: {e} | doc={repr(json_doc)}")
-        return False
-
-# Read test data from stdin: format is pairs of lines (original, escaped) with length prefixes
-# Read length-prefixed chunks
-data = sys.stdin.buffer.read()
-# Protocol: [4-byte name len][name][4-byte orig len][orig][4-byte esc len][esc]
-offset = 0
-all_ok = True
-while offset < len(data):
-    # Name
-    n_len = int.from_bytes(data[offset:offset+4], 'big')
-    offset += 4
-    name = data[offset:offset+n_len].decode('utf-8', errors='replace')
-    offset += n_len
-    
-    # Original
-    o_len = int.from_bytes(data[offset:offset+4], 'big')
-    offset += 4
-    orig = data[offset:offset+o_len].decode('utf-8', errors='replace')
-    offset += o_len
-
-    # Escaped
-    e_len = int.from_bytes(data[offset:offset+4], 'big')
-    offset += 4
-    esc = data[offset:offset+e_len].decode('utf-8', errors='replace')
-    offset += e_len
-
-    if not verify(name, orig, esc):
-        all_ok = False
-
-if not all_ok:
-    sys.exit(1)
-EOF
-)
+# POSIX Shell Architectural Limitation Note:
+# In POSIX shell, string variables and command line arguments are represented in C as
+# null-terminated char arrays (ASCII NUL \0 terminated). Therefore, raw byte 0x00 cannot
+# be passed as a shell argument or stored in a standard shell variable without terminating
+# the string at the NUL byte. RFC 8259 Section 7 C0 control character escaping covers all
+# representable characters from ASCII 0x01 through 0x1F.
 
 run_test_case() {
     _tc_name="$1"
     _tc_val="$2"
-    _escaped=$(matrix_json_escape "$_tc_val")
+    
+    # Use sentinel capture to prevent shell subshell from stripping trailing newlines
+    _raw_esc=$(matrix_json_escape "$_tc_val"; printf ".")
+    _escaped="${_raw_esc%.}"
 
     # Run Python validation single-shot for clarity
     _result=$(python3 -c '
@@ -120,16 +79,16 @@ except Exception as e:
 echo "[*] Executing Target Round-Trip Test Cases (Standard Shell)..."
 
 # 1. Single backslash
-run_test_case "Single backslash (\)" '\'
+run_test_case "Single backslash (\\)" '\'
 
 # 2. Consecutive backslashes (2)
-run_test_case "Two consecutive backslashes (\\)" '\\'
+run_test_case "Two consecutive backslashes (\\\\)" '\\'
 
 # 3. Consecutive backslashes (3)
-run_test_case "Three consecutive backslashes (\\\)" '\\\'
+run_test_case "Three consecutive backslashes (\\\\\\)" '\\\'
 
 # 4. Consecutive backslashes (4)
-run_test_case "Four consecutive backslashes (\\\\)" '\\\\'
+run_test_case "Four consecutive backslashes (\\\\\\\\)" '\\\\'
 
 # 5. Double quotes
 run_test_case "Single double quote (\")" '"'
@@ -146,24 +105,29 @@ line3"
 run_test_case "Newline characters in string" "$_nl_val"
 
 # 8. Carriage returns
-_cr_val=$(printf "cr1\rcr2\r")
+_cr_val=$(printf "cr1\rcr2\r.")
+_cr_val="${_cr_val%.}"
 run_test_case "Carriage return characters in string" "$_cr_val"
 
 # 9. CRLF sequences
-_crlf_val=$(printf "line1\r\nline2\r\n")
+_crlf_val=$(printf "line1\r\nline2\r\n.")
+_crlf_val="${_crlf_val%.}"
 run_test_case "CRLF newline sequences" "$_crlf_val"
 
-# 10. Trailing newlines
-_tr_nl_val=$(printf "trailing newline\n")
-run_test_case "Trailing newline" "$_tr_nl_val"
+# 10. Actual Trailing newline (preserved via sentinel suffix)
+_raw_tr_nl=$(printf "trailing newline\n.")
+_tr_nl_val="${_raw_tr_nl%.}"
+run_test_case "Trailing newline (actual byte preserved)" "$_tr_nl_val"
 
-# 11. Multiple trailing newlines
-_mtr_nl_val=$(printf "multiple trailing\n\n\n")
-run_test_case "Multiple trailing newlines" "$_mtr_nl_val"
+# 11. Multiple trailing newlines (preserved via sentinel suffix)
+_raw_mtr_nl=$(printf "multiple trailing\n\n\n.")
+_mtr_nl_val="${_raw_mtr_nl%.}"
+run_test_case "Multiple trailing newlines (actual bytes preserved)" "$_mtr_nl_val"
 
-# 12. Only newlines
-_only_nl_val=$(printf "\n\n")
-run_test_case "String containing only newlines" "$_only_nl_val"
+# 12. Only newlines (preserved via sentinel suffix)
+_raw_only_nl=$(printf "\n\n.")
+_only_nl_val="${_raw_only_nl%.}"
+run_test_case "String containing only newlines (actual bytes preserved)" "$_only_nl_val"
 
 # 13. C0 Control Character: Backspace (\b, 0x08)
 _bs_val=$(printf "before\bafter")
@@ -201,28 +165,43 @@ run_test_case "Complex mixed special characters payload" "$_complex_val"
 _prop_val='Samsung "Galaxy" S24 \ Ultra (SM-S928B\DS)	Build/UP1A.231005.007'
 run_test_case "Real-world Android model string with quotes and slashes" "$_prop_val"
 
-# Test 15: Android BusyBox Ash Compatibility
-echo "[*] Test 15: Android BusyBox Ash Standalone Compatibility..."
+# Test 22: Android BusyBox Ash Compatibility with Full Control Characters Parity
+echo "[*] Test 22: Android BusyBox Ash Standalone Compatibility (Special & C0 Characters)..."
 if command -v busybox >/dev/null 2>&1; then
     _bb_result=$(busybox sh -c '
     . "'"$HEALTH_SH"'"
     val="BusyBox \"Test\" with \\single\\ and \\\\double\\\\ slashes,	tabs and
 newlines"
-    esc=$(matrix_json_escape "$val")
-    python3 -c "import sys, json; doc = \"{\\\"val\\\": \\\"\" + sys.argv[2] + \"\\\"}\"; sys.exit(0 if json.loads(doc)[\"val\"] == sys.argv[1] else 1)" "$val" "$esc"
+    raw_esc=$(matrix_json_escape "$val"; printf ".")
+    esc="${raw_esc%.}"
+    python3 -c "import sys, json; doc = \"{\\\"val\\\": \\\"\" + sys.argv[2] + \"\\\"}\"; sys.exit(0 if json.loads(doc)[\"val\"] == sys.argv[1] else 1)" "$val" "$esc" || exit 1
+
+    # C0 control characters under BusyBox ash
+    c0_val=$(printf "bb\b\f\a\v\033\001\037end.")
+    c0_val="${c0_val%.}"
+    c0_raw_esc=$(matrix_json_escape "$c0_val"; printf ".")
+    c0_esc="${c0_raw_esc%.}"
+    python3 -c "import sys, json; doc = \"{\\\"val\\\": \\\"\" + sys.argv[2] + \"\\\"}\"; sys.exit(0 if json.loads(doc)[\"val\"] == sys.argv[1] else 1)" "$c0_val" "$c0_esc" || exit 1
+
+    # Trailing newline under BusyBox ash
+    tr_val=$(printf "bb_trailing\n.")
+    tr_val="${tr_val%.}"
+    tr_raw_esc=$(matrix_json_escape "$tr_val"; printf ".")
+    tr_esc="${tr_raw_esc%.}"
+    python3 -c "import sys, json; doc = \"{\\\"val\\\": \\\"\" + sys.argv[2] + \"\\\"}\"; sys.exit(0 if json.loads(doc)[\"val\"] == sys.argv[1] else 1)" "$tr_val" "$tr_esc" || exit 1
     ' 2>&1)
     
     if [ $? -eq 0 ]; then
-        pass "BusyBox ash shell round-trip parity verified"
+        pass "BusyBox ash shell round-trip parity verified (special chars, C0 control chars, trailing newlines)"
     else
         fail "BusyBox ash shell round-trip failed: $_bb_result"
     fi
 else
-    echo "[!] BusyBox not found on system; skipped BusyBox test"
+    skip "BusyBox not found on system; skipped BusyBox test"
 fi
 
-# Test 16: Verify Generated Health Report Parses Cleanly in Python
-echo "[*] Test 16: Full Generated Health Report JSON Validation..."
+# Test 23: Verify Generated Health Report Parses Cleanly in Python
+echo "[*] Test 23: Full Generated Health Report JSON Validation..."
 TMP_HEALTH_FILE="/tmp/matrix_test_health_$$.json"
 export MATRIX_HEALTH_FILE="$TMP_HEALTH_FILE"
 matrix_health_generate_report
@@ -240,6 +219,7 @@ else
 fi
 
 echo "=================================================="
+echo " Results: $PASSES passed, $ERRORS failed, $SKIPS skipped."
 if [ "$ERRORS" -eq 0 ]; then
     echo "[+] All JSON Round-Trip & Oracle Tests PASSED (0 errors)."
     exit 0

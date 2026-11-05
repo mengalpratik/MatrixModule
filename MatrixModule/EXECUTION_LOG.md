@@ -1,13 +1,14 @@
 # MatrixModule Project Execution & Validation Log
 
 > [!IMPORTANT]
-> **CURRENT PRODUCTION RELEASE STATUS: v1.0.2 (ACTIVE & VERIFIED)**  
+> **CURRENT PRODUCTION RELEASE STATUS: v1.0.2 FINAL (ACTIVE & POST-BUNDLE REVIEW VERIFIED)**  
 > - **Release Archive:** [`dist/MatrixModule-v1.0.2.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.2.zip)  
-> - **SHA-256 Checksum:** `9d748a809f0d1cd7a9c257e1ef4dbe8c96432d3bc7292c5ce3c2408cbcdea7f9`  
-> - **Archive Size:** 19,811 bytes (21 files, verified via `unzip -t` and `unzip -l`)  
+> - **SHA-256 Checksum:** `1d4387bab8de44aa8275feca4a4c503d605187b3afd41bd191b7b04485b5e88a`  
+> - **Archive Size:** 21,118 bytes (21 files, verified via `unzip -t` and `unzip -l`)  
 > - **Automated Test Coverage:** 12/12 Test Suites Passing (100% Pass Rate across 23 Shell Scripts, Node.js VM, & Python JSON Oracles)  
-> - **C0 Control Character Parity:** Complete RFC 8259 compliance across all 31 C0 control characters (0x01–0x1F)  
-> - **Historical Releases Preserved:** `dist/MatrixModule-v1.0.0.zip` (19,179 B) and `dist/MatrixModule-v1.0.1.zip` (19,179 B)  
+> - **Verified Device Telemetry:** WebUI diagnostics uses live `core/matrix_health.sh` CLI output with verified KernelSU version synchronization  
+> - **Hardened Permissions:** Installer guarantees 0644 for `module.prop` and webroot assets, 0755 for scripts and directories  
+> - **Historical Builds Preserved in Log:** Initial intermediate (19,619 B) and C0 intermediate (19,811 B) transparently recorded  
 > - **Reference Projects Integrity:** `AlwaysStrong-v1.0.5` and `HMA-OSS-oss-173` remain quarantined and unmodified.
 
 ---
@@ -322,13 +323,60 @@ Testing Directory: /home/neuro/Projects/MatrixModule/MatrixModule
 - **Result**: **12/12 Test Suites PASSED (0 errors, 100% pass rate)**.
 - **Reference Modules**: `AlwaysStrong-v1.0.5` and `HMA-OSS-oss-173` remain untouched and clean.
 
-### 7.4 Final Release Package Generation
+### 7.4 Historical Intermediate Release Packages (Milestone 3)
 - Version bumped to `v1.0.2` (`versionCode=102`) in `module.prop`.
-- Built deployable package `dist/MatrixModule-v1.0.2.zip`.
-- Checksum verification:
-  - `dist/MatrixModule-v1.0.0.zip`: 19,179 bytes | SHA-256: `965cc7714228c21f23f05f63b1ca62e5a67e69ac55fbbea2887b41037124c1bd`
-  - `dist/MatrixModule-v1.0.1.zip`: 19,179 bytes | SHA-256: `367c1eb2875bae7b3c3906eeb531eec57538ae30d144d665d463c97e63acc91b`
-  - `dist/MatrixModule-v1.0.2.zip`: 19,811 bytes | SHA-256: `9d748a809f0d1cd7a9c257e1ef4dbe8c96432d3bc7292c5ce3c2408cbcdea7f9`
-- Final release audit deliverable created: [`docs/FINAL_RELEASE_AUDIT.md`](file:///home/neuro/Projects/MatrixModule/MatrixModule/docs/FINAL_RELEASE_AUDIT.md).
+- Built initial deployable package `dist/MatrixModule-v1.0.2.zip` (19,619 bytes, SHA-256: `a31efae7c2d2804e43e15e60375400043526dc5ddb7055ce263973fa13506b8e`).
+- Built C0 escaping update `dist/MatrixModule-v1.0.2.zip` (19,811 bytes, SHA-256: `9d748a809f0d1cd7a9c257e1ef4dbe8c96432d3bc7292c5ce3c2408cbcdea7f9`).
+- Both intermediate builds are historically recorded and superseded by the Milestone 4 final release.
+- Audit deliverable created: [`docs/FINAL_RELEASE_AUDIT.md`](file:///home/neuro/Projects/MatrixModule/MatrixModule/docs/FINAL_RELEASE_AUDIT.md).
+
+---
+
+## 8. Milestone 4: Independent Bundle Review Remediation & Production Acceptance
+
+### 8.1 Scope & Remediated Issues
+An independent engineering review of `PROJECT_REVIEW_BUNDLE.zip` identified 7 specific issues across WebUI diagnostics, installer permissions, test suite quality, and bundle structure:
+
+1. **Issue 1 (High Priority - WebUI Diagnostics Data Source):**
+   - Replaced non-producing command `matrix_env.sh` with live executable JSON diagnostics command:
+     `sh /data/adb/modules/matrix_module/core/matrix_health.sh json 2>/dev/null || cat /data/adb/matrix_module/health.json 2>/dev/null`.
+   - Enabled direct CLI execution in [`core/matrix_health.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/core/matrix_health.sh), generating and outputting valid JSON report.
+   - Enhanced health report with verified KernelSU version codes (`ksu_manager_code`, `ksu_kernel_code`, `ksu_version_match`).
+   - Hardened [`webroot/main.js`](file:///home/neuro/Projects/MatrixModule/MatrixModule/webroot/main.js): validates bridge exit code (`res.code === 0`), validates JSON parsing (`JSON.parse`), displays explicit unavailable/error state on failure (never falling back to fake simulated data when running under Manager), and dynamically verifies KernelSU synchronization text.
+   - Added Node.js VM tests in [`tests/test_webui_api.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/tests/test_webui_api.sh) verifying device data integration, exit-code failure handling, and malformed JSON recovery.
+
+2. **Issue 2 (Installation Permissions & Lifecycle):**
+   - Corrected permission model in [`customize.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/customize.sh): `module.prop` (0644), shell scripts (0755), webroot assets (0644), directories (0755), ownership `0:0`, SELinux context `u:object_r:system_file:s0`.
+   - Implemented `apply_perm` wrapper calling `set_perm`/`set_perm_recursive` when available with POSIX fallback.
+   - Made `$DATA_DIR` configurable (`${DATA_DIR:-/data/adb/matrix_module}`) so tests never write to `/data/adb`.
+   - Added automated sandbox permission validation in [`tests/test_installer_failures.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/tests/test_installer_failures.sh).
+
+3. **Issue 3 (Review Bundle Structure Test):**
+   - Included [`references/README.md`](file:///home/neuro/Projects/MatrixModule/MatrixModule/references/README.md) in review bundle while maintaining quarantine of source trees.
+   - Updated [`tests/test_structure.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/tests/test_structure.sh) to verify `references/` and `references/README.md`.
+
+4. **Issue 4 (Dynamic Installer Test Validation & Skip Accounting):**
+   - Updated [`tests/test_installer_failures.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/tests/test_installer_failures.sh) to dynamically detect current version from `module.prop` and test against the current release ZIP.
+   - Added explicit skip reporting (`skip()`) distinguishing skipped tests from passed tests.
+   - Added corrupt ZIP extraction failure test verifying safe abort code 2.
+
+5. **Issue 5 (JSON Round-Trip Test Quality):**
+   - Fixed trailing newline preservation in [`tests/test_json_roundtrip.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/tests/test_json_roundtrip.sh) using sentinel capture (`_raw=$(printf "... \n."); _val="${_raw%.}"`), preventing shell command substitution from stripping newlines.
+   - Added actual trailing newline, multiple trailing newlines, and only-newline test cases.
+   - Added BusyBox ash standalone compatibility test covering C0 control characters and trailing newlines.
+   - Documented POSIX shell limitation on ASCII NUL byte (`\0`).
+
+6. **Issue 6 (Documentation Reconciliation):**
+   - Reconciled build records, exact test counts (24 round-trip tests, 12 suites), and superseding package checksums across `PROJECT_CONTEXT.md`, `EXECUTION_LOG.md`, `docs/CHANGELOG.md`, and `docs/FINAL_RELEASE_AUDIT.md`.
+   - Created comprehensive post-bundle review report: [`docs/POST_BUNDLE_REVIEW_REPORT.md`](file:///home/neuro/Projects/MatrixModule/MatrixModule/docs/POST_BUNDLE_REVIEW_REPORT.md).
+
+7. **Issue 7 (Test Packaging Safety):**
+   - Made `DIST_DIR` configurable in [`build.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/build.sh).
+   - Updated [`tests/test_packaging.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/tests/test_packaging.sh) to build into a sandboxed temporary directory, preventing test runs from overwriting accepted release artifacts.
+
+### 8.2 Final Verification Metrics
+- Master test runner: `sh tests/run_all_tests.sh` -> **12/12 Suites Passed (100% Pass Rate)**.
+- Release Package: [`dist/MatrixModule-v1.0.2.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/dist/MatrixModule-v1.0.2.zip) (21,118 bytes | `1d4387bab8de44aa8275feca4a4c503d605187b3afd41bd191b7b04485b5e88a`).
+- Master Review Bundle: [`PROJECT_REVIEW_BUNDLE.zip`](file:///home/neuro/Projects/MatrixModule/MatrixModule/PROJECT_REVIEW_BUNDLE.zip).
 
 

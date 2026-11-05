@@ -21,3 +21,10 @@
    - Author: frknkrc44 (based on tsng)
    - Preserved at: `references/HMA-OSS-oss-173/`
    - Scope: Audited for KernelSU kernel vs manager driver checks (`21-enforce-ksu-kernel.sh`), boot completion notifications (`boot-completed.d`), and Zygisk provider detection (`22-check-zygisk.sh`).
+
+---
+
+## Packaging Exclusion Policy
+
+- **Deployable Release ZIPs (`dist/MatrixModule-*.zip`):** The entire `references/` directory is strictly excluded from release packages to adhere to Phase 4 Security Boundaries and minimize package size.
+- **Review Bundles (`PROJECT_REVIEW_BUNDLE.zip`):** The `references/` directory contains only this `README.md`. The actual reference upstream source trees (`AlwaysStrong-v1.0.5/` and `HMA-OSS-oss-173/`) are intentionally excluded from review bundles to enforce source quarantine and prevent code bloat while satisfying directory structure validation.

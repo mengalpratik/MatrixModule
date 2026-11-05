@@ -1,52 +1,102 @@
 #!/bin/sh
 ##########################################################################################
-# MatrixModule Test: Packaging & ZIP Integrity Validation
+# MatrixModule Test: Packaging & ZIP Integrity Validation (Isolated & Safe)
 ##########################################################################################
 
 BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-DIST_DIR="$BASE_DIR/dist"
+SANDBOX_DIST="/tmp/matrix_test_dist_$$"
+
+cleanup() {
+    rm -rf "$SANDBOX_DIST" 2>/dev/null
+}
+trap cleanup EXIT INT TERM
+
 ERRS=0
+PASSES=0
+SKIPS=0
 
-echo "[*] Testing Module Packaging via build.sh..."
+pass() {
+    echo "  [PASS] $1"
+    PASSES=$((PASSES + 1))
+}
 
-sh "$BASE_DIR/build.sh"
+fail() {
+    echo "  [FAIL] $1"
+    ERRS=$((ERRS + 1))
+}
 
-VERSION=$(grep "^version=" "$BASE_DIR/module.prop" | cut -d= -f2)
-ZIP_FILE="$DIST_DIR/MatrixModule-${VERSION}.zip"
+skip() {
+    echo "  [SKIP] $1"
+    SKIPS=$((SKIPS + 1))
+}
 
-if [ ! -f "$ZIP_FILE" ]; then
-    echo "  [FAIL] ZIP file was not created in $DIST_DIR"
+echo "[*] Testing Module Packaging in isolated sandbox: $SANDBOX_DIST..."
+mkdir -p "$SANDBOX_DIST"
+
+# Execute build.sh pointing exclusively to the temporary sandbox
+DIST_DIR="$SANDBOX_DIST" sh "$BASE_DIR/build.sh" >/dev/null 2>&1
+build_code=$?
+
+if [ "$build_code" -ne 0 ]; then
+    fail "build.sh failed with exit code $build_code"
     exit 1
 fi
 
-echo "  [PASS] Found generated package: $ZIP_FILE"
+VERSION=$(grep "^version=" "$BASE_DIR/module.prop" | cut -d= -f2 | tr -d '[:space:]')
+ZIP_FILE="$SANDBOX_DIST/MatrixModule-${VERSION}.zip"
+
+if [ ! -f "$ZIP_FILE" ]; then
+    fail "ZIP file was not created in sandbox $SANDBOX_DIST"
+    exit 1
+fi
+
+pass "Found generated package in isolated directory: $ZIP_FILE"
 
 # 1. Archive integrity test
 if unzip -t "$ZIP_FILE" >/dev/null 2>&1; then
-    echo "  [PASS] ZIP archive integrity verified (unzip -t passed)"
+    pass "ZIP archive integrity verified (unzip -t passed)"
 else
-    echo "  [FAIL] ZIP archive corrupted"
-    ERRS=$((ERRS + 1))
+    fail "ZIP archive corrupted"
 fi
 
-# 2. Check for required inclusions
+# 2. Check for required inclusions at root
 for req in "module.prop" "customize.sh" "post-fs-data.sh" "service.sh" "action.sh" "core/matrix_env.sh" "webroot/index.html"; do
-    if unzip -l "$ZIP_FILE" | grep -q "$req"; then
-        echo "  [PASS] Archive contains: $req"
+    if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "$req" || unzip -l "$ZIP_FILE" | grep -q "$req"; then
+        pass "Archive contains: $req"
     else
-        echo "  [FAIL] Missing required entry in ZIP: $req"
-        ERRS=$((ERRS + 1))
+        fail "Missing required entry in ZIP: $req"
     fi
 done
 
 # 3. Security Boundary: Ensure references/ is EXCLUDED
 if unzip -l "$ZIP_FILE" 2>/dev/null | grep -q "references/"; then
-    echo "  [FAIL] SECURITY VIOLATION: references/ included in deployable ZIP!"
-    ERRS=$((ERRS + 1))
+    fail "SECURITY VIOLATION: references/ included in deployable ZIP!"
 else
-    echo "  [PASS] Security Boundary: references/ correctly excluded from release ZIP"
+    pass "Security Boundary: references/ correctly excluded from release ZIP"
 fi
 
+# 4. Root structure check: module.prop must be at ZIP root, not nested
+if unzip -l "$ZIP_FILE" | grep -Eq '^[ ]*[0-9]+[ ]+[^ ]+[ ]+[^ ]+[ ]+module\.prop$'; then
+    pass "Root placement verified: module.prop is at ZIP root"
+else
+    fail "Root placement failed: module.prop is nested or missing"
+fi
+
+# 5. Production release artifact verification in dist/
+PROD_ZIP="$BASE_DIR/dist/MatrixModule-${VERSION}.zip"
+if [ -f "$PROD_ZIP" ]; then
+    echo "[*] Verifying production release artifact in dist/..."
+    if unzip -t "$PROD_ZIP" >/dev/null 2>&1; then
+        pass "Production release ZIP exists and passes integrity check ($PROD_ZIP)"
+    else
+        fail "Production release ZIP is corrupted: $PROD_ZIP"
+    fi
+else
+    skip "Production release ZIP not yet built in dist/; sandbox build verified"
+fi
+
+echo "=================================================="
+echo " Results: $PASSES passed, $ERRS failed, $SKIPS skipped."
 if [ "$ERRS" -eq 0 ]; then
     echo "[+] Packaging validation passed."
     exit 0
