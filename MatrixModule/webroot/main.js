@@ -30,7 +30,7 @@ function initTabs() {
     });
 }
 
-// Check for KernelSU exec bridge (supports synchronous string, asynchronous Promise, and structured objects)
+// Check for KernelSU exec bridge (supports synchronous string, asynchronous Promise, structured objects, and async callbacks)
 async function execCommand(cmd) {
     if (typeof ksu !== 'undefined' && typeof ksu.exec === 'function') {
         try {
@@ -39,18 +39,39 @@ async function execCommand(cmd) {
                 ? await rawRes
                 : rawRes;
 
-            if (res === null || res === undefined) {
-                return { stdout: '', stderr: 'Empty response from ksu.exec', code: 1 };
+            if (res !== null && res !== undefined) {
+                if (typeof res === 'object') {
+                    const stdout = typeof res.stdout === 'string' ? res.stdout : (res.stdout ? String(res.stdout) : '');
+                    const stderr = typeof res.stderr === 'string' ? res.stderr : (res.stderr ? String(res.stderr) : '');
+                    const code = typeof res.errno === 'number' ? res.errno : (typeof res.code === 'number' ? res.code : 0);
+                    return { stdout, stderr, code };
+                }
+                return { stdout: String(res), stderr: '', code: 0 };
             }
 
-            if (typeof res === 'object') {
-                const stdout = typeof res.stdout === 'string' ? res.stdout : (res.stdout ? String(res.stdout) : '');
-                const stderr = typeof res.stderr === 'string' ? res.stderr : (res.stderr ? String(res.stderr) : '');
-                const code = typeof res.errno === 'number' ? res.errno : (typeof res.code === 'number' ? res.code : 0);
-                return { stdout, stderr, code };
-            }
-
-            return { stdout: String(res), stderr: '', code: 0 };
+            // If rawRes is undefined, attempt the KernelSU Manager async callback pattern
+            return new Promise((resolve) => {
+                const cbName = `__ksu_cb_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+                const globalScope = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
+                globalScope[cbName] = (errno, stdout, stderr) => {
+                    delete globalScope[cbName];
+                    resolve({
+                        stdout: typeof stdout === 'string' ? stdout : (stdout ? String(stdout) : ''),
+                        stderr: typeof stderr === 'string' ? stderr : (stderr ? String(stderr) : ''),
+                        code: typeof errno === 'number' ? errno : 0
+                    });
+                };
+                try {
+                    ksu.exec(cmd, "{}", cbName);
+                } catch {
+                    try {
+                        ksu.exec(cmd, cbName);
+                    } catch (err) {
+                        delete globalScope[cbName];
+                        resolve({ stdout: '', stderr: String(err), code: 1 });
+                    }
+                }
+            });
         } catch (e) {
             const errMsg = e instanceof Error ? e.message : String(e);
             return { stdout: '', stderr: errMsg, code: 1 };

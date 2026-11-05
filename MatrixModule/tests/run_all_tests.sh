@@ -44,6 +44,7 @@ run_test "Uninstall Boundaries & Isolation" "$TESTS_DIR/test_uninstall_boundarie
 run_test "Installer Failure Scenarios" "$TESTS_DIR/test_installer_failures.sh"
 run_test "WebUI API & Structure Validation" "$TESTS_DIR/test_webui_api.sh"
 run_test "Action Interface & Dynamic Paths" "$TESTS_DIR/test_action_dynamic.sh"
+run_test "JSON Escaping Round-Trip Oracle" "$TESTS_DIR/test_json_roundtrip.sh"
 
 echo ""
 echo "=================================================="

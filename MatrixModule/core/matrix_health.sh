@@ -66,9 +66,28 @@ matrix_scan_conflicts() {
 }
 
 matrix_json_escape() {
-    # Convert newlines, returns, tabs to spaces, strip non-printable control chars (0x00-0x1F),
-    # then escape backslashes (\ -> \\) and double quotes (" -> \")
-    printf "%s" "$1" | tr "\r\n\t" "   " | tr -d '\000-\037' | sed 's/\\/\\\\\\\\/g; s/"/\\"/g'
+    # Properly escape JSON special characters:
+    # 1. Backslashes (\ -> \\)
+    # 2. Double quotes (" -> \")
+    # 3. Carriage returns (\r -> \r)
+    # 4. Tabs (\t -> \t)
+    # 5. Newlines (\n -> \n)
+    # Uses awk with a sentinel suffix to preserve trailing newlines while remaining
+    # fully compatible with BusyBox, Android toybox, and POSIX awk/sed.
+    printf "%s." "$1" | awk '
+    BEGIN { first = 1 }
+    {
+        gsub(/\\/, "\\\\")
+        gsub(/"/, "\\\"")
+        gsub(/\r/, "\\r")
+        gsub(/\t/, "\\t")
+        if (first) {
+            printf "%s", $0
+            first = 0
+        } else {
+            printf "\\n%s", $0
+        }
+    }' | sed 's/.$//'
 }
 
 matrix_health_generate_report() {

@@ -11,7 +11,8 @@ echo "[*] Testing Module Packaging via build.sh..."
 
 sh "$BASE_DIR/build.sh"
 
-ZIP_FILE=$(find "$DIST_DIR" -name "MatrixModule-*.zip" | head -n1)
+VERSION=$(grep "^version=" "$BASE_DIR/module.prop" | cut -d= -f2)
+ZIP_FILE="$DIST_DIR/MatrixModule-${VERSION}.zip"
 
 if [ ! -f "$ZIP_FILE" ]; then
     echo "  [FAIL] ZIP file was not created in $DIST_DIR"

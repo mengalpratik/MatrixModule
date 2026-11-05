@@ -1,5 +1,24 @@
 # MatrixModule Changelog
 
+## [1.0.2] - 2026-11-05
+
+### Fixed (Post-Remediation Independent Verification)
+- **Critical JSON Escaping Remediation**:
+  - Rewrote `matrix_json_escape()` in `core/matrix_health.sh` to eliminate backslash inflation caused by `sed 's/\\/\\\\\\\\/g'` (which generated 4 backslashes in JSON, decoding to 2 backslashes).
+  - Eliminated whitespace loss from `tr "\r\n\t" "   "` that previously transformed control whitespace into spaces.
+  - Implemented sentinel-based POSIX/BusyBox awk escaping preserving trailing newlines and escaping `\`, `"`, `\r`, `\t`, `\n` to valid RFC 8259 escape sequences.
+  - Verified 100% exact round-trip parity against Python JSON oracle.
+- **WebUI Runtime Bridge Hardening**:
+  - Added support for asynchronous callback bridge (`ksu.exec(cmd, options, callback)`) in `webroot/main.js` alongside Promise-based, synchronous string, and simulation fallback modes.
+  - Used `globalScope` resolution supporting `window`, `globalThis`, and isolated execution contexts.
+
+### Added
+- Added Test Suite 12 (`tests/test_json_roundtrip.sh`):
+  - 16 targeted round-trip tests covering single backslashes, consecutive backslashes (2, 3, 4), double quotes, tabs, newlines, carriage returns, CRLF, trailing newlines, and complex mixed payloads.
+  - Verified Android BusyBox ash parity and generated health report JSON validation.
+- Master test runner reports 12/12 suites passed (100% pass rate).
+- Packaged release `dist/MatrixModule-v1.0.2.zip` (19,619 bytes, SHA-256: `a31efae7c2d2804e43e15e60375400043526dc5ddb7055ce263973fa13506b8e`).
+
 ## [1.0.1] - 2026-11-05
 
 ### Fixed (Milestone 2 Engineering Remediation)

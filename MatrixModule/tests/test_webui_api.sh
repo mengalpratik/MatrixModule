@@ -160,6 +160,26 @@ if command -v node >/dev/null 2>&1; then
                 throw new Error("Failed simulation fallback: " + JSON.stringify(res4));
             }
 
+            // Test 4.5: KernelSU Manager asynchronous callback pattern
+            const ctx5 = vm.createContext({
+                document: { addEventListener: () => {}, querySelectorAll: () => [], getElementById: () => null },
+                ksu: {
+                    exec: (cmd, opts, cbName) => {
+                        // Simulates Java WebView asynchronous callback
+                        setTimeout(() => {
+                            if (typeof ctx5[cbName] === "function") {
+                                ctx5[cbName](0, "CALLBACK_SUCCESS", "");
+                            }
+                        }, 5);
+                    }
+                }
+            });
+            vm.runInContext(code, ctx5);
+            const res5 = await ctx5.execCommand("test_callback");
+            if (res5.code !== 0 || res5.stdout !== "CALLBACK_SUCCESS") {
+                throw new Error("Failed async callback handling: " + JSON.stringify(res5));
+            }
+
             console.log("ALL_BRIDGE_TESTS_OK");
         }
 
