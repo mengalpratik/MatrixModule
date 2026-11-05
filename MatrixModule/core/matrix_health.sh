@@ -66,26 +66,40 @@ matrix_scan_conflicts() {
 }
 
 matrix_json_escape() {
-    # Properly escape JSON special characters:
-    # 1. Backslashes (\ -> \\)
-    # 2. Double quotes (" -> \")
-    # 3. Carriage returns (\r -> \r)
-    # 4. Tabs (\t -> \t)
-    # 5. Newlines (\n -> \n)
+    # Properly escape JSON special characters and all C0 control characters (0x01-0x1F):
+    # - Backslash (\ -> \\) and Double quote (" -> \")
+    # - Standard concise JSON C0 escapes: \b (0x08), \t (0x09), \n (0x0A), \f (0x0C), \r (0x0D)
+    # - Standard Unicode C0 escapes: \u0001-\u001f for remaining control characters (e.g. \u0007, \u000b, \u001b)
     # Uses awk with a sentinel suffix to preserve trailing newlines while remaining
     # fully compatible with BusyBox, Android toybox, and POSIX awk/sed.
     printf "%s." "$1" | awk '
-    BEGIN { first = 1 }
+    BEGIN {
+        first = 1
+        for (i = 1; i <= 31; i++) {
+            c = sprintf("%c", i)
+            if (i == 8) map[c] = "\\b"
+            else if (i == 9) map[c] = "\\t"
+            else if (i == 10) map[c] = "\\n"
+            else if (i == 12) map[c] = "\\f"
+            else if (i == 13) map[c] = "\\r"
+            else map[c] = sprintf("\\u%04x", i)
+        }
+        map["\\"] = "\\\\"
+        map["\""] = "\\\""
+    }
     {
-        gsub(/\\/, "\\\\")
-        gsub(/"/, "\\\"")
-        gsub(/\r/, "\\r")
-        gsub(/\t/, "\\t")
-        if (first) {
-            printf "%s", $0
-            first = 0
-        } else {
-            printf "\\n%s", $0
+        if (!first) {
+            printf "\\n"
+        }
+        first = 0
+        n = split($0, chars, "")
+        for (i = 1; i <= n; i++) {
+            ch = chars[i]
+            if (ch in map) {
+                printf "%s", map[ch]
+            } else {
+                printf "%s", ch
+            }
         }
     }' | sed 's/.$//'
 }

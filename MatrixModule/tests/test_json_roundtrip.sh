@@ -165,11 +165,39 @@ run_test_case "Multiple trailing newlines" "$_mtr_nl_val"
 _only_nl_val=$(printf "\n\n")
 run_test_case "String containing only newlines" "$_only_nl_val"
 
-# 13. Complex mixed payload
-_complex_val=$(printf "Path\\to\\\"file\"\twith\r\nnewlines and \\\\double slashes\\\\ and \"quotes\"")
+# 13. C0 Control Character: Backspace (\b, 0x08)
+_bs_val=$(printf "before\bafter")
+run_test_case "C0 Control Character: Backspace (\b / 0x08)" "$_bs_val"
+
+# 14. C0 Control Character: Form Feed (\f, 0x0C)
+_ff_val=$(printf "page1\fpage2")
+run_test_case "C0 Control Character: Form Feed (\f / 0x0C)" "$_ff_val"
+
+# 15. C0 Control Character: Bell / Alert (\a, 0x07 -> \u0007)
+_bel_val=$(printf "alert\aalert")
+run_test_case "C0 Control Character: Bell (\a / 0x07 -> \u0007)" "$_bel_val"
+
+# 16. C0 Control Character: Vertical Tab (\v, 0x0B -> \u000b)
+_vt_val=$(printf "row1\vrow2")
+run_test_case "C0 Control Character: Vertical Tab (\v / 0x0B -> \u000b)" "$_vt_val"
+
+# 17. C0 Control Character: Escape (\033, 0x1B -> \u001b)
+_esc_val=$(printf "\033[31mRed Text\033[0m")
+run_test_case "C0 Control Character: ANSI Escape (\033 / 0x1B -> \u001b)" "$_esc_val"
+
+# 18. C0 Control Characters: Low octal codes (\001 SOH, \004 EOT, \037 US)
+_soh_val=$(printf "start\001data\004end\037unit")
+run_test_case "C0 Control Characters: Low octals (\001, \004, \037)" "$_soh_val"
+
+# 19. C0 Control Characters: Full 31-character C0 sweep (0x01 through 0x1F)
+_c0_all=$(python3 -c 'import sys; sys.stdout.write("".join(chr(i) for i in range(1, 32)))')
+run_test_case "C0 Control Characters: Full 31-character sweep (0x01-0x1F)" "$_c0_all"
+
+# 20. Complex mixed payload
+_complex_val=$(printf "Path\\to\\\"file\"\twith\r\nnewlines and \\\\double slashes\\\\ and \"quotes\" and \a\b\v\f\033")
 run_test_case "Complex mixed special characters payload" "$_complex_val"
 
-# 14. Real-world Android property simulation
+# 21. Real-world Android property simulation
 _prop_val='Samsung "Galaxy" S24 \ Ultra (SM-S928B\DS)	Build/UP1A.231005.007'
 run_test_case "Real-world Android model string with quotes and slashes" "$_prop_val"
 

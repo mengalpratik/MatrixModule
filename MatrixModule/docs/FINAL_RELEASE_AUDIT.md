@@ -5,8 +5,8 @@
 **Auditor:** Antigravity Autonomous Systems Agent  
 **Target Repository:** `/home/neuro/Projects/MatrixModule/MatrixModule/`  
 **Active Release Archive:** `dist/MatrixModule-v1.0.2.zip`  
-**Release Checksum (SHA-256):** `a31efae7c2d2804e43e15e60375400043526dc5ddb7055ce263973fa13506b8e`  
-**Release Archive Size:** 19,619 bytes  
+**Release Checksum (SHA-256):** `9d748a809f0d1cd7a9c257e1ef4dbe8c96432d3bc7292c5ce3c2408cbcdea7f9`  
+**Release Archive Size:** 19,811 bytes  
 
 ---
 
@@ -46,26 +46,40 @@ Two severe defects were confirmed:
 In `v1.0.2`, `matrix_json_escape()` was rewritten in [`core/matrix_health.sh`](file:///home/neuro/Projects/MatrixModule/MatrixModule/core/matrix_health.sh):
 ```sh
 matrix_json_escape() {
-    # Properly escape JSON special characters:
-    # 1. Backslashes (\ -> \\)
-    # 2. Double quotes (" -> \")
-    # 3. Carriage returns (\r -> \r)
-    # 4. Tabs (\t -> \t)
-    # 5. Newlines (\n -> \n)
+    # Properly escape JSON special characters and all C0 control characters (0x01-0x1F):
+    # - Backslash (\ -> \\) and Double quote (" -> \")
+    # - Standard concise JSON C0 escapes: \b (0x08), \t (0x09), \n (0x0A), \f (0x0C), \r (0x0D)
+    # - Standard Unicode C0 escapes: \u0001-\u001f for remaining control characters (e.g. \u0007, \u000b, \u001b)
     # Uses awk with a sentinel suffix to preserve trailing newlines while remaining
     # fully compatible with BusyBox, Android toybox, and POSIX awk/sed.
     printf "%s." "$1" | awk '
-    BEGIN { first = 1 }
+    BEGIN {
+        first = 1
+        for (i = 1; i <= 31; i++) {
+            c = sprintf("%c", i)
+            if (i == 8) map[c] = "\\b"
+            else if (i == 9) map[c] = "\\t"
+            else if (i == 10) map[c] = "\\n"
+            else if (i == 12) map[c] = "\\f"
+            else if (i == 13) map[c] = "\\r"
+            else map[c] = sprintf("\\u%04x", i)
+        }
+        map["\\"] = "\\\\"
+        map["\""] = "\\\""
+    }
     {
-        gsub(/\\/, "\\\\")
-        gsub(/"/, "\\\"")
-        gsub(/\r/, "\\r")
-        gsub(/\t/, "\\t")
-        if (first) {
-            printf "%s", $0
-            first = 0
-        } else {
-            printf "\\n%s", $0
+        if (!first) {
+            printf "\\n"
+        }
+        first = 0
+        n = split($0, chars, "")
+        for (i = 1; i <= n; i++) {
+            ch = chars[i]
+            if (ch in map) {
+                printf "%s", map[ch]
+            } else {
+                printf "%s", ch
+            }
         }
     }' | sed 's/.$//'
 }
@@ -271,7 +285,7 @@ Archive:  dist/MatrixModule-v1.0.2.zip
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **v1.0.0** | Initial Architectural Unification | `dist/MatrixModule-v1.0.0.zip` | 19,179 | `965cc7714228c21f23f05f63b1ca62e5a67e69ac55fbbea2887b41037124c1bd` | 4 Suites Passing |
 | **v1.0.1** | Milestone 2 Authorized Remediation (MM-DEF-01 to 06) | `dist/MatrixModule-v1.0.1.zip` | 19,179 | `367c1eb2875bae7b3c3906eeb531eec57538ae30d144d665d463c97e63acc91b` | 11 Suites Passing |
-| **v1.0.2** | Post-Remediation Verification & Hardening | `dist/MatrixModule-v1.0.2.zip` | 19,619 | `a31efae7c2d2804e43e15e60375400043526dc5ddb7055ce263973fa13506b8e` | 12 Suites Passing |
+| **v1.0.2** | Post-Remediation Verification & Hardening | `dist/MatrixModule-v1.0.2.zip` | 19,811 | `9d748a809f0d1cd7a9c257e1ef4dbe8c96432d3bc7292c5ce3c2408cbcdea7f9` | 12 Suites Passing |
 
 All release archives are preserved in `dist/` and their checksums are verified intact.
 

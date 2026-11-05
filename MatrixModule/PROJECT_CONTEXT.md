@@ -94,23 +94,25 @@ MatrixModule/
 ├── build.sh                        # Hermetic release packager (generates dist/MatrixModule-v${VERSION}.zip)
 ├── core/
 │   ├── matrix_env.sh               # Root environment detection, arch, SDK, Zygisk, SELinux probes
-│   ├── matrix_health.sh            # Boot timing tracker, health metrics, and robust JSON escaping
+│   ├── matrix_health.sh            # Boot timing tracker, health metrics, and robust C0/special JSON escaping
 │   ├── matrix_log.sh               # Rotating telemetry log engine (512KB cap) & logcat bridge
 │   └── matrix_store.sh             # Centralized atomic configuration, schema validation, and rollback
 ├── customize.sh                    # Installation lifecycle: env checks, extraction, data init
 ├── dist/
-│   ├── MatrixModule-v1.0.0.zip     # Previous milestone archive (19,179 bytes)
-│   └── MatrixModule-v1.0.1.zip     # Verified production ZIP archive (19,179 bytes)
+│   ├── MatrixModule-v1.0.0.zip     # Milestone 1 release archive (19,179 bytes)
+│   ├── MatrixModule-v1.0.1.zip     # Milestone 2 remediation archive (19,179 bytes)
+│   └── MatrixModule-v1.0.2.zip     # Milestone 3 active production release (19,811 bytes)
 ├── docs/
 │   ├── ARCHITECTURE.md             # System architecture & component breakdown
 │   ├── BOOT_SEQUENCE.md            # Detailed boot lifecycle & hook timing
 │   ├── BUILD.md                    # Build process & test execution guide
-│   ├── CHANGELOG.md                # Release history & milestone log (v1.0.0 and v1.0.1)
+│   ├── CHANGELOG.md                # Release history & milestone log (v1.0.0, v1.0.1, v1.0.2)
 │   ├── COMPATIBILITY.md            # KernelSU/APatch/Magisk compatibility matrix
+│   ├── FINAL_RELEASE_AUDIT.md      # Final release audit report & verification proof
 │   ├── REMEDIATION_REPORT.md       # Milestone 2 comprehensive remediation & verification report
 │   ├── SECOND_PASS_AUDIT.md        # Second-pass engineering audit report with remediation status
 │   └── SECURITY.md                 # Security architecture & Phase 4 boundary manifesto
-├── module.prop                     # Module metadata (id=matrix_module, version=v1.0.1, versionCode=101)
+├── module.prop                     # Module metadata (id=matrix_module, version=v1.0.2, versionCode=102)
 ├── post-fs-data.sh                 # Early boot hook: recovery check, boot start register
 ├── references/                     # Quarantined reference module copies for code auditing
 │   ├── AlwaysStrong-v1.0.5/
@@ -118,16 +120,17 @@ MatrixModule/
 │   └── README.md
 ├── service.sh                      # Late boot hook: boot completion wait, watchdog daemon
 ├── tests/
-│   ├── run_all_tests.sh            # Master test runner executing all 11 suites
+│   ├── run_all_tests.sh            # Master test runner executing all 12 suites
 │   ├── test_action_dynamic.sh      # MM-DEF-04 dynamic paths, spaces in paths, and custom $MODDIR
 │   ├── test_boot_mock.sh           # Mocked boot stages & MM-DEF-06 unusual property JSON escaping
 │   ├── test_config_store.sh        # Store atomic writes, MM-DEF-01 metacharacter rejection, MM-DEF-02 backup
 │   ├── test_installer_failures.sh  # customize.sh abort checks and MM-DEF-05 shebang validation
 │   ├── test_js_syntax.sh           # Node.js syntax & critical token validation for WebUI
+│   ├── test_json_roundtrip.sh      # C0 control character & special char JSON oracle round-trip suite
 │   ├── test_packaging.sh           # ZIP archive integrity, root structure, and exclusions
 │   ├── test_permissions.sh         # POSIX permissions & executable bit audit
 │   ├── test_structure.sh           # Directory hierarchy & metadata format validation
-│   ├── test_syntax.sh              # Shell syntax validation (sh -n) on all 23 scripts
+│   ├── test_syntax.sh              # Shell syntax validation (sh -n) on all shell scripts
 │   ├── test_uninstall_boundaries.sh# Sandboxed data isolation and cleanup safety checks
 │   └── test_webui_api.sh           # WebUI assets, MM-DEF-01 sanitization, and MM-DEF-03 Node.js VM bridge
 ├── uninstall.sh                    # Uninstallation script with data isolation boundaries
@@ -183,7 +186,7 @@ The master test runner (`tests/run_all_tests.sh`) executes **12 specialized auto
 
 | Package | Path | Size | SHA-256 Checksum |
 | :--- | :--- | :--- | :--- |
-| **MatrixModule v1.0.2 (Current)** | `dist/MatrixModule-v1.0.2.zip` | 19,619 bytes | `a31efae7c2d2804e43e15e60375400043526dc5ddb7055ce263973fa13506b8e` |
+| **MatrixModule v1.0.2 (Current)** | `dist/MatrixModule-v1.0.2.zip` | 19,811 bytes | `9d748a809f0d1cd7a9c257e1ef4dbe8c96432d3bc7292c5ce3c2408cbcdea7f9` |
 | **MatrixModule v1.0.1 (Archived)** | `dist/MatrixModule-v1.0.1.zip` | 19,179 bytes | `367c1eb2875bae7b3c3906eeb531eec57538ae30d144d665d463c97e63acc91b` |
 | **MatrixModule v1.0.0 (Archived)** | `dist/MatrixModule-v1.0.0.zip` | 19,179 bytes | `965cc7714228c21f23f05f63b1ca62e5a67e69ac55fbbea2887b41037124c1bd` |
 | **Source Reference (HMA-OSS)** | `/home/neuro/Projects/MatrixModule/HMA-OSS-oss-173.zip` | 1,461,848 bytes | `47b53727ae03c38ae145c5e45c3ebfea73d6e691b31078031f4c0d904305286e` |
