@@ -1,0 +1,19 @@
+# MatrixModule .gitignore
+
+# Quarantined third-party reference sources
+# (Preserved locally for static auditing only; excluded from distribution and Git repository)
+references/AlwaysStrong-v1.0.5/
+references/HMA-OSS-oss-173/
+references/*
+!references/README.md
+
+# Build outputs and intermediate archives
+*.tmp
+*.log
+.DS_Store
+__pycache__/
+*.pyc
+
+# Keep official distribution releases
+!dist/
+!dist/MatrixModule-*.zip

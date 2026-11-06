@@ -46,3 +46,10 @@
 ### 3.3 OnePlus / Realme / Oppo (Oplus)
 - **Issue**: ColorOS/OxygenOS may enforce strict SELinux contexts on `/data/misc/` and custom property providers.
 - **MatrixModule Approach**: All persistent data resides in `/data/adb/matrix_module`, which is owned by root and permitted across standard root manager sepolicy rules.
+
+---
+
+## 4. Platform Validation Status
+
+> [!NOTE]
+> Compatibility claims across root managers (KernelSU, APatch, Magisk), Android API levels (29–35), and OEM platforms have been verified through architectural source code analysis, standard root manager API contracts, and automated sandbox test suites. Physical device validation on physical hardware has not yet been performed. Testing on physical hardware should always be preceded by a verified system backup and knowledge of the device's hardware safe-mode key combination.

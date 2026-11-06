@@ -1,1 +1,0 @@
-Strong Play Integrity in one drop-in module. Hardware attestation + a Pixel fingerprint kept fresh automatically.
