@@ -52,7 +52,15 @@ cat << 'EOF' > "$SANDBOX/bin/sleep"
 #!/bin/sh
 if [ -n "$SLEEP_COUNT_FILE" ]; then
     _cnt=$(cat "$SLEEP_COUNT_FILE" 2>/dev/null || echo 0)
-    echo $((_cnt + 1)) > "$SLEEP_COUNT_FILE"
+    _next=$((_cnt + 1))
+    echo "$_next" > "$SLEEP_COUNT_FILE"
+    if [ -n "$TRIGGER_BOOT_COMPLETE_AT_SLEEP" ] && [ "$_next" -eq "$TRIGGER_BOOT_COMPLETE_AT_SLEEP" ]; then
+        if [ -n "$SANDBOX_PROPS" ] && [ -f "$SANDBOX_PROPS" ]; then
+            grep -v "^sys.boot_completed=" "$SANDBOX_PROPS" 2>/dev/null > "$SANDBOX_PROPS.tmp" || true
+            echo "sys.boot_completed=1" >> "$SANDBOX_PROPS.tmp"
+            mv -f "$SANDBOX_PROPS.tmp" "$SANDBOX_PROPS"
+        fi
+    fi
 fi
 exit 0
 EOF
@@ -165,8 +173,9 @@ else
     fail "service.sh failed with non-zero exit code"
 fi
 
-# 3b. Test service.sh Boot Completion Timeout (sys.boot_completed != 1)
-echo "[*] Test 3b: service.sh boot completion timeout (sys.boot_completed never becomes 1)..."
+# 3b. Boundary Regression Tests (Tests A, B, C, D)
+# Test A: sys.boot_completed remains 0 across all 150 sleeps -> exactly 150 sleeps, boot_stage=timeout
+echo "[*] Test 3b-A (Boundary Test A): sys.boot_completed remains 0 across all 150 sleeps..."
 echo "ro.boot.mode=normal" > "$PROPS_FILE"
 echo "sys.boot_completed=0" >> "$PROPS_FILE"
 echo "ro.build.version.sdk=34" >> "$PROPS_FILE"
@@ -175,52 +184,202 @@ echo "ro.product.model=MockPhone" >> "$PROPS_FILE"
 echo "boot_start_time=1000" > "$MOCK_DATADIR/state"
 echo "boot_stage=post-fs-data" >> "$MOCK_DATADIR/state"
 echo "boot_failure_count=0" >> "$MOCK_DATADIR/state"
+rm -f "$MOCK_DATADIR/health.json"
 
-SLEEP_COUNT_FILE="$SANDBOX/sleep_count"
+SLEEP_COUNT_FILE="$SANDBOX/sleep_count_3ba"
 rm -f "$SLEEP_COUNT_FILE"
+unset TRIGGER_BOOT_COMPLETE_AT_SLEEP
 export SLEEP_COUNT_FILE
 
 if sh "$MOCK_MODDIR/service.sh"; then
-    pass "service.sh handled timeout with exit code 0"
+    pass "Boundary Test A: service.sh completed with exit code 0"
     
-    # Verify deterministic 150 ticks (300s) boundary
     ticks_counted=$(cat "$SLEEP_COUNT_FILE" 2>/dev/null || echo 0)
     if [ "$ticks_counted" -eq 150 ]; then
-        pass "Verified exact 300s timeout boundary: 150 iterations of 2s sleep executed"
+        pass "Boundary Test A: verified exactly 150 timeout ticks (300s) consumed"
     else
-        fail "Expected exactly 150 timeout ticks (300s), got: '$ticks_counted'"
+        fail "Boundary Test A: expected exactly 150 ticks, got: '$ticks_counted'"
     fi
 
     timeout_stage=$(grep "^boot_stage=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
     timeout_reason=$(grep "^boot_timeout_reason=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2-)
     if [ "$timeout_stage" = "timeout" ]; then
-        pass "service.sh persisted boot_stage=timeout on timeout"
+        pass "Boundary Test A: persisted boot_stage=timeout"
     else
-        fail "Expected boot_stage=timeout on timeout, got: '$timeout_stage'"
+        fail "Boundary Test A: expected boot_stage=timeout, got: '$timeout_stage'"
     fi
 
     if [ -n "$timeout_reason" ]; then
-        pass "service.sh persisted meaningful timeout reason: $timeout_reason"
+        pass "Boundary Test A: persisted timeout reason: $timeout_reason"
     else
-        fail "service.sh missing boot_timeout_reason on timeout"
+        fail "Boundary Test A: missing boot_timeout_reason on timeout"
     fi
 
-    # Timeout must remain distinct (WARNING) and not increment failure count
     timeout_fail_count=$(grep "^boot_failure_count=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
     if [ "$timeout_fail_count" = "0" ]; then
-        pass "Boot timeout remained distinct: boot_failure_count not incremented (count=0)"
+        pass "Boundary Test A: boot_failure_count remained 0"
     else
-        fail "Expected boot_failure_count=0 on timeout, got: '$timeout_fail_count'"
+        fail "Boundary Test A: expected boot_failure_count=0, got: '$timeout_fail_count'"
     fi
 
     timeout_status=$(python3 -c "import json; print(json.load(open('$MOCK_DATADIR/health.json'))['status'])" 2>/dev/null)
     if [ "$timeout_status" = "WARNING" ]; then
-        pass "health.json status on boot timeout is WARNING (never HEALTHY)"
+        pass "Boundary Test A: health.json status is WARNING (never HEALTHY)"
     else
-        fail "Expected health.json status WARNING on timeout, got: '$timeout_status'"
+        fail "Boundary Test A: expected status WARNING, got: '$timeout_status'"
     fi
 else
-    fail "service.sh failed on timeout"
+    fail "Boundary Test A: service.sh failed on timeout"
+fi
+unset SLEEP_COUNT_FILE
+
+# Test B: sys.boot_completed becomes 1 during the 150th sleep interval -> exactly 150 sleeps, boot_stage=completed, boot_failure_count=0, no timeout reason
+echo "[*] Test 3b-B (Boundary Test B): sys.boot_completed becomes 1 during 150th sleep..."
+echo "ro.boot.mode=normal" > "$PROPS_FILE"
+echo "sys.boot_completed=0" >> "$PROPS_FILE"
+echo "ro.build.version.sdk=34" >> "$PROPS_FILE"
+echo "ro.product.model=MockPhone" >> "$PROPS_FILE"
+
+echo "boot_start_time=1000" > "$MOCK_DATADIR/state"
+echo "boot_stage=post-fs-data" >> "$MOCK_DATADIR/state"
+echo "boot_failure_count=0" >> "$MOCK_DATADIR/state"
+rm -f "$MOCK_DATADIR/health.json"
+
+SLEEP_COUNT_FILE="$SANDBOX/sleep_count_3bb"
+rm -f "$SLEEP_COUNT_FILE"
+export SLEEP_COUNT_FILE
+export TRIGGER_BOOT_COMPLETE_AT_SLEEP=150
+
+if sh "$MOCK_MODDIR/service.sh"; then
+    pass "Boundary Test B: service.sh completed with exit code 0"
+
+    ticks_counted=$(cat "$SLEEP_COUNT_FILE" 2>/dev/null || echo 0)
+    if [ "$ticks_counted" -eq 150 ]; then
+        pass "Boundary Test B: verified exactly 150 sleeps executed (no 151st sleep)"
+    else
+        fail "Boundary Test B: expected exactly 150 sleeps, got: '$ticks_counted'"
+    fi
+
+    b_stage=$(grep "^boot_stage=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+    if [ "$b_stage" = "completed" ]; then
+        pass "Boundary Test B: final poll caught completion -> boot_stage=completed"
+    else
+        fail "Boundary Test B: expected boot_stage=completed, got: '$b_stage'"
+    fi
+
+    b_fail_count=$(grep "^boot_failure_count=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+    if [ "$b_fail_count" = "0" ]; then
+        pass "Boundary Test B: boot_failure_count is 0"
+    else
+        fail "Boundary Test B: expected boot_failure_count=0, got: '$b_fail_count'"
+    fi
+
+    b_timeout_reason=$(grep "^boot_timeout_reason=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2-)
+    if [ -z "$b_timeout_reason" ]; then
+        pass "Boundary Test B: boot_timeout_reason was NOT written"
+    else
+        fail "Boundary Test B: unexpected boot_timeout_reason present: '$b_timeout_reason'"
+    fi
+
+    b_status=$(python3 -c "import json; print(json.load(open('$MOCK_DATADIR/health.json'))['status'])" 2>/dev/null)
+    if [ "$b_status" = "HEALTHY" ]; then
+        pass "Boundary Test B: health.json status is HEALTHY"
+    else
+        fail "Boundary Test B: expected status HEALTHY, got: '$b_status'"
+    fi
+else
+    fail "Boundary Test B: service.sh failed"
+fi
+unset SLEEP_COUNT_FILE
+unset TRIGGER_BOOT_COMPLETE_AT_SLEEP
+
+# Test C: sys.boot_completed becomes 1 earlier (tick 5) -> early completion, < 150 sleeps consumed
+echo "[*] Test 3b-C (Boundary Test C): sys.boot_completed becomes 1 earlier (sleep 5)..."
+echo "ro.boot.mode=normal" > "$PROPS_FILE"
+echo "sys.boot_completed=0" >> "$PROPS_FILE"
+echo "ro.build.version.sdk=34" >> "$PROPS_FILE"
+echo "ro.product.model=MockPhone" >> "$PROPS_FILE"
+
+echo "boot_start_time=1000" > "$MOCK_DATADIR/state"
+echo "boot_stage=post-fs-data" >> "$MOCK_DATADIR/state"
+echo "boot_failure_count=0" >> "$MOCK_DATADIR/state"
+rm -f "$MOCK_DATADIR/health.json"
+
+SLEEP_COUNT_FILE="$SANDBOX/sleep_count_3bc"
+rm -f "$SLEEP_COUNT_FILE"
+export SLEEP_COUNT_FILE
+export TRIGGER_BOOT_COMPLETE_AT_SLEEP=5
+
+if sh "$MOCK_MODDIR/service.sh"; then
+    pass "Boundary Test C: service.sh completed with exit code 0"
+
+    ticks_counted=$(cat "$SLEEP_COUNT_FILE" 2>/dev/null || echo 0)
+    if [ "$ticks_counted" -eq 5 ]; then
+        pass "Boundary Test C: verified early exit consuming < 150 sleeps (exactly 5 sleeps)"
+    else
+        fail "Boundary Test C: expected exactly 5 sleeps, got: '$ticks_counted'"
+    fi
+
+    c_stage=$(grep "^boot_stage=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+    if [ "$c_stage" = "completed" ]; then
+        pass "Boundary Test C: early completion recorded boot_stage=completed"
+    else
+        fail "Boundary Test C: expected boot_stage=completed, got: '$c_stage'"
+    fi
+
+    c_status=$(python3 -c "import json; print(json.load(open('$MOCK_DATADIR/health.json'))['status'])" 2>/dev/null)
+    if [ "$c_status" = "HEALTHY" ]; then
+        pass "Boundary Test C: health.json status is HEALTHY"
+    else
+        fail "Boundary Test C: expected status HEALTHY, got: '$c_status'"
+    fi
+else
+    fail "Boundary Test C: service.sh failed"
+fi
+unset SLEEP_COUNT_FILE
+unset TRIGGER_BOOT_COMPLETE_AT_SLEEP
+
+# Test D: sys.boot_completed remains empty/unset -> timeout recorded, health status WARNING, never HEALTHY
+echo "[*] Test 3b-D (Boundary Test D): sys.boot_completed empty/unset through final poll..."
+echo "ro.boot.mode=normal" > "$PROPS_FILE"
+echo "ro.build.version.sdk=34" >> "$PROPS_FILE"
+echo "ro.product.model=MockPhone" >> "$PROPS_FILE"
+
+echo "boot_start_time=1000" > "$MOCK_DATADIR/state"
+echo "boot_stage=post-fs-data" >> "$MOCK_DATADIR/state"
+echo "boot_failure_count=0" >> "$MOCK_DATADIR/state"
+rm -f "$MOCK_DATADIR/health.json"
+
+SLEEP_COUNT_FILE="$SANDBOX/sleep_count_3bd"
+rm -f "$SLEEP_COUNT_FILE"
+unset TRIGGER_BOOT_COMPLETE_AT_SLEEP
+export SLEEP_COUNT_FILE
+
+if sh "$MOCK_MODDIR/service.sh"; then
+    pass "Boundary Test D: service.sh completed with exit code 0"
+
+    ticks_counted=$(cat "$SLEEP_COUNT_FILE" 2>/dev/null || echo 0)
+    if [ "$ticks_counted" -eq 150 ]; then
+        pass "Boundary Test D: verified exactly 150 timeout ticks consumed for unset property"
+    else
+        fail "Boundary Test D: expected 150 ticks, got: '$ticks_counted'"
+    fi
+
+    d_stage=$(grep "^boot_stage=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+    if [ "$d_stage" = "timeout" ]; then
+        pass "Boundary Test D: unset property correctly persisted boot_stage=timeout"
+    else
+        fail "Boundary Test D: expected boot_stage=timeout, got: '$d_stage'"
+    fi
+
+    d_status=$(python3 -c "import json; print(json.load(open('$MOCK_DATADIR/health.json'))['status'])" 2>/dev/null)
+    if [ "$d_status" = "WARNING" ]; then
+        pass "Boundary Test D: health.json status is WARNING (never HEALTHY)"
+    else
+        fail "Boundary Test D: expected status WARNING, got: '$d_status'"
+    fi
+else
+    fail "Boundary Test D: service.sh failed on timeout"
 fi
 unset SLEEP_COUNT_FILE
 
@@ -301,6 +460,53 @@ if [ "$code_svc" -eq 1 ]; then
     pass "service.sh exited with code 1 upon fatal storage initialization failure"
 else
     fail "service.sh failed to exit 1 on storage failure: code=$code_svc, out=$out_svc"
+fi
+
+# 3e-loginit. Test Production Failure Handler Integration (Failing Log Init with Writable State)
+echo "[*] Test 3e-loginit: Production failure handler integration on log init failure..."
+echo "boot_start_time=1000" > "$MOCK_DATADIR/state"
+echo "boot_stage=post-fs-data" >> "$MOCK_DATADIR/state"
+echo "boot_failure_count=0" >> "$MOCK_DATADIR/state"
+rm -f "$MOCK_DATADIR/health.json"
+
+out_log_svc=$(MATRIX_DATA_DIR="$MOCK_DATADIR" MATRIX_LOG_DIR="/dev/null/matrix_logs" sh "$MOCK_MODDIR/service.sh" 2>&1)
+code_log_svc=$?
+if [ "$code_log_svc" -eq 1 ]; then
+    pass "service.sh exited with code 1 upon fatal log subsystem initialization failure"
+else
+    fail "service.sh failed to exit 1 on log failure: code=$code_log_svc, out=$out_log_svc"
+fi
+
+log_fail_stage=$(grep "^boot_stage=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+if [ "$log_fail_stage" = "failed" ]; then
+    pass "Production failure handler persisted boot_stage=failed"
+else
+    fail "Expected boot_stage=failed, got: '$log_fail_stage'"
+fi
+
+log_fail_count=$(grep "^boot_failure_count=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2)
+if [ "$log_fail_count" = "1" ]; then
+    pass "Production failure handler incremented boot_failure_count=1"
+else
+    fail "Expected boot_failure_count=1, got: '$log_fail_count'"
+fi
+
+log_fail_reason=$(grep "^boot_failure_reason=" "$MOCK_DATADIR/state" 2>/dev/null | cut -d= -f2-)
+if [ "$log_fail_reason" = "log subsystem initialization failed during late boot stage" ]; then
+    pass "Production failure handler persisted exact failure reason: '$log_fail_reason'"
+else
+    fail "Expected exact failure reason, got: '$log_fail_reason'"
+fi
+
+if [ -f "$MOCK_DATADIR/health.json" ]; then
+    log_fail_status=$(python3 -c "import json; print(json.load(open('$MOCK_DATADIR/health.json'))['status'])" 2>/dev/null)
+    if [ "$log_fail_status" = "ERROR" ]; then
+        pass "Production failure handler generated health.json with status ERROR"
+    else
+        fail "Expected health.json status ERROR on failure, got: '$log_fail_status'"
+    fi
+else
+    fail "health.json was not generated on production failure"
 fi
 
 # 3f. Test Self-Healing / Failure Reset on Successful Boot Completion

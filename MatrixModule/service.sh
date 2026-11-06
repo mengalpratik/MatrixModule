@@ -39,6 +39,13 @@ while [ "$_wait_ticks" -lt "$_max_ticks" ]; do
     _wait_ticks=$((_wait_ticks + 1))
 done
 
+# Perform final check if loop finished without completion
+if [ "$_boot_completed" -eq 0 ]; then
+    if [ "$(getprop sys.boot_completed 2>/dev/null)" = "1" ]; then
+        _boot_completed=1
+    fi
+fi
+
 if [ "$_boot_completed" -eq 1 ]; then
     # Register boot completion metrics
     if ! matrix_health_mark_boot_complete; then

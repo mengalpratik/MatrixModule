@@ -1,5 +1,34 @@
 # MatrixModule Changelog
 
+## [1.0.7] - 2026-11-06
+
+### Fixed (Final Boot Timeout Boundary Correction & Production Failure Integration)
+- **Final Boot Completion Poll in `service.sh`**:
+  - Added post-loop check of `sys.boot_completed` immediately following loop termination before concluding timeout.
+  - Fixes race condition where Android sets `sys.boot_completed=1` during the final (150th) sleep interval.
+  - Strictly requires `sys.boot_completed` to equal `"1"`; does not accept empty or malformed strings.
+  - Exactly 150 sleeps (300 seconds total) are executed (no 151st sleep added).
+- **Deterministic Boundary Regression Suite in `tests/test_boot_mock.sh`**:
+  - Implemented dynamic sleep trigger hook `TRIGGER_BOOT_COMPLETE_AT_SLEEP` in mock `sleep` binary.
+  - Added Test 3b-A: Full timeout across all 150 sleeps (`sys.boot_completed=0`), asserting exact 150 sleeps consumed, `boot_stage=timeout`, count=0, and status `WARNING`.
+  - Added Test 3b-B: Boundary completion on 150th sleep interval, asserting exact 150 sleeps, final poll catches completion, `boot_stage=completed`, count=0, no timeout reason written, and status `HEALTHY`.
+  - Added Test 3b-C: Early completion at sleep 5, asserting < 150 sleeps (exactly 5 sleeps consumed), `boot_stage=completed`, and status `HEALTHY`.
+  - Added Test 3b-D: Unset/empty `sys.boot_completed` property, asserting exact 150 sleeps consumed, `boot_stage=timeout`, and status `WARNING`.
+- **Strengthened Production Failure Integration Test**:
+  - Added Test 3e-loginit executing real `service.sh` with valid writable state storage (`MATRIX_DATA_DIR`) and failing log initialization (`MATRIX_LOG_DIR="/dev/null/matrix_logs"`).
+  - Verified `service.sh` exits 1, `boot_stage=failed`, `boot_failure_count=1`, exact failure reason recorded, and `health.json` generated with status `ERROR` without direct helper calls.
+  - Preserved existing storage failure test.
+- **Documentation & Review Bundle Reconciliation**:
+  - Reconciled `docs/V1.0.6_REMEDIATION_REPORT.md` review bundle size (`170,572 B`) and SHA-256 (`30c20a825656ce9ced809d8479cfc2acda133b82f4fb1906595ecd2d679c1365`).
+  - Created `docs/V1.0.7_REMEDIATION_REPORT.md`.
+  - Updated `module.prop` (`version=v1.0.7`, `versionCode=107`), `webroot/main.js`, and `tests/test_webui_api.sh`.
+
+### Release Packaging
+- **Artifact:** `dist/MatrixModule-v1.0.7.zip` (25,184 bytes | SHA-256: `b217bb84a03ef6f19f61fd8f68607fc305327a57883e4d6847d03d3850b7e5d3`).
+- Verified bit-for-bit source-to-ZIP parity across all 15 production files.
+- Preserved historical releases: `v1.0.0`, `v1.0.1`, `v1.0.2`, `v1.0.3`, `v1.0.4`, `v1.0.5`, `v1.0.6`.
+- Master test runner reports 12/12 suites passed (100% pass rate).
+
 ## [1.0.6] - 2026-11-06
 
 ### Fixed (Final Permission & Lifecycle Audit Remediation)

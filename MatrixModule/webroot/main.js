@@ -82,7 +82,7 @@ async function execCommand(cmd) {
     }
 }
 
-const MODULE_VERSION = 'v1.0.6';
+const MODULE_VERSION = 'v1.0.7';
 
 function simulateCommand(cmd) {
     if (cmd.includes('matrix_health.sh') || cmd.includes('health.json') || cmd.includes('matrix_env.sh')) {
