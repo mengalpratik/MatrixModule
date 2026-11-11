@@ -72,7 +72,7 @@ engine_install_pif() {
     _src="$1"
     [ -s "$_src" ] || return 1
     [ -f "$MODPATH/migrate.sh" ] || return 1
-    cp -f "$_src" "$MODPATH/pif.prop" 2>/dev/null
+    cp -f "$_src" /data/adb/modules/tricky_store/pif.prop 2>/dev/null
     rm -f /data/adb/modules/tricky_store/custom.pif.prop /data/adb/modules/tricky_store/custom.pif.json 2>/dev/null
     # A file that already carries the migrated System-Properties lines
     # (*api_level / *.build.id) is a finished custom.pif.prop. Upstream
@@ -80,12 +80,12 @@ engine_install_pif() {
     # writes nothing), which surfaced as "engine rejected the fingerprint"
     # for any completed custom.pif.prop the user imported. Use it as-is; only
     # run migrate.sh to convert a raw pif.prop/json that lacks those lines.
-    if grep -qE '^[[:space:]]*#?[[:space:]]*\*(api_level|\.build\.id)=' "$MODPATH/pif.prop" 2>/dev/null; then
-        cp -f "$MODPATH/pif.prop" "$MODPATH/custom.pif.prop" 2>/dev/null
+    if grep -qE '^[[:space:]]*#?[[:space:]]*\*(api_level|\.build\.id)=' /data/adb/modules/tricky_store/pif.prop 2>/dev/null; then
+        cp -f /data/adb/modules/tricky_store/pif.prop /data/adb/modules/tricky_store/custom.pif.prop 2>/dev/null
     else
-        sh "$MODPATH/migrate.sh" -i -a "$MODPATH/pif.prop" >/dev/null 2>&1
+        sh "$MODPATH/migrate.sh" -i -a /data/adb/modules/tricky_store/pif.prop >/dev/null 2>&1
     fi
-    [ -s "$MODPATH/custom.pif.prop" ] || return 1
+    [ -s /data/adb/modules/tricky_store/custom.pif.prop ] || return 1
     # migrate.sh writes spoofProvider=1 / spoofVendingFinger=0, a WEAK config
     # that breaks STRONG. Enforce here so every caller is correct without
     # needing its own enforce step.

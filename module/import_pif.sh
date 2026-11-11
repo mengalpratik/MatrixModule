@@ -31,33 +31,33 @@ mkdir -p /data/adb/modules/tricky_store/temp 2>/dev/null
 # JSON if the first non-space byte is '{', else treat as a prop file.
 FIRST=$(head -c 256 "$SRC" 2>/dev/null | tr -d ' \t\r\n' | cut -c1)
 if [ "$FIRST" = "{" ]; then
-    : > "$TMP"
+    : > /data/adb/modules/tricky_store/temp/import.pif.prop
     # "KEY":"value"  (string values, incl. FINGERPRINT / *.security_patch)
     grep -oE '"[A-Za-z0-9_.*]+"[[:space:]]*:[[:space:]]*"[^"]*"' "$SRC" | \
     while IFS= read -r pair; do
         k=$(printf '%s' "$pair" | sed -E 's/^"([^"]+)".*/\1/')
         v=$(printf '%s' "$pair" | sed -E 's/^"[^"]+"[[:space:]]*:[[:space:]]*"(.*)"$/\1/')
         printf '%s=%s\n' "$k" "$v"
-    done >> "$TMP"
+    done >> /data/adb/modules/tricky_store/temp/import.pif.prop
     # "KEY": <number|true|false>  (e.g. DEVICE_INITIAL_SDK_INT, spoofBuild)
     grep -oE '"[A-Za-z0-9_.*]+"[[:space:]]*:[[:space:]]*(true|false|[0-9]+)' "$SRC" | \
     while IFS= read -r pair; do
         k=$(printf '%s' "$pair" | sed -E 's/^"([^"]+)".*/\1/')
         v=$(printf '%s' "$pair" | sed -E 's/.*:[[:space:]]*//')
         printf '%s=%s\n' "$k" "$v"
-    done >> "$TMP"
+    done >> /data/adb/modules/tricky_store/temp/import.pif.prop
 else
-    cp -f "$SRC" "$TMP" 2>/dev/null
+    cp -f "$SRC" /data/adb/modules/tricky_store/temp/import.pif.prop 2>/dev/null
 fi
 
-if ! grep -q '^FINGERPRINT=google/' "$TMP" 2>/dev/null && \
-   ! grep -q '^FINGERPRINT=' "$TMP" 2>/dev/null; then
+if ! grep -q '^FINGERPRINT=google/' /data/adb/modules/tricky_store/temp/import.pif.prop 2>/dev/null && \
+   ! grep -q '^FINGERPRINT=' /data/adb/modules/tricky_store/temp/import.pif.prop 2>/dev/null; then
     echo "ERR: no FINGERPRINT found in file"
     rm -f /data/adb/modules/tricky_store/temp/import.pif.prop 2>/dev/null
     exit 1
 fi
 
-if engine_install_pif "$TMP"; then
+if engine_install_pif /data/adb/modules/tricky_store/temp/import.pif.prop; then
     # An imported fingerprint is a custom pif, the fingerprint counterpart of a
     # custom keybox: turn the auto fingerprint refresh OFF so the next boot /
     # hourly / Action pass does not fetch over it, and remember the file name so
@@ -69,8 +69,8 @@ if engine_install_pif "$TMP"; then
         # The pif's own device identity (brand + model), shown next to the file
         # name in the WebUI and the Action — e.g. "Google Pixel 6a". MODEL keeps
         # its spaces, so grep/cut rather than word-splitting.
-        _man=$(grep -m1 '^MANUFACTURER=' "$TMP" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
-        _mdl=$(grep -m1 '^MODEL=' "$TMP" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
+        _man=$(grep -m1 '^MANUFACTURER=' /data/adb/modules/tricky_store/temp/import.pif.prop 2>/dev/null | cut -d= -f2- | tr -d '"\r')
+        _mdl=$(grep -m1 '^MODEL=' /data/adb/modules/tricky_store/temp/import.pif.prop 2>/dev/null | cut -d= -f2- | tr -d '"\r')
         case "$_mdl" in "$_man "*|"$_man") _dev="$_mdl" ;; *) _dev="$_man $_mdl" ;; esac
         _dev=$(echo "$_dev" | sed 's/^ *//;s/ *$//')
         [ -n "$_dev" ] && st_set pif_model "$_dev" || st_del pif_model

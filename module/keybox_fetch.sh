@@ -176,8 +176,8 @@ if [ -n "$DISK_HASH" ] && [ "$DISK_HASH" = "$NEW_XML_HASH" ]; then
 fi
 
 # ---- Atomic replace ----
-mv -f "$TMP/keybox.xml" "$TARGET" || { log "mv to $TARGET failed."; exit 1; }
-chmod 600 "$TARGET"
+mv -f /data/adb/modules/tricky_store/temp/keybox/keybox.xml /data/adb/tricky_store/keybox.xml || { log "mv to /data/adb/tricky_store/keybox.xml failed."; exit 1; }
+chmod 600 /data/adb/tricky_store/keybox.xml
 log "$TARGET updated ($(wc -c < "$TARGET") bytes)."
 
 # Tell the attestation engine the keybox changed. TEESimulator-RS and

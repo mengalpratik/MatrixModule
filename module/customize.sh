@@ -233,9 +233,9 @@ if [ -f "$MODPATH/hma_sync.sh" ]; then
   ui_print "HMA hiding architecture initialized"
 fi
 
-if [ ! -f "$CONFIG_DIR/hbk" ]; then
-  head -c 32 /dev/random > "$CONFIG_DIR/hbk"
-  chmod 600 "$CONFIG_DIR/hbk"
+if [ ! -f /data/adb/tricky_store/hbk ]; then
+  head -c 32 /dev/random > /data/adb/tricky_store/hbk
+  chmod 600 /data/adb/tricky_store/hbk
 fi
 rm -f /data/adb/tricky_store/tee_status.txt /data/adb/tricky_store/tee_status 2>/dev/null || :
 

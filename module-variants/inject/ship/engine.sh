@@ -72,11 +72,11 @@ engine_install_pif() {
     _src="$1"
     [ -s "$_src" ] || return 1
     mkdir -p "$CONFIG_DIR"
-    cp -f "$_src" "$MODPATH/pif.prop" 2>/dev/null
-    cp -f "$_src" "$CONFIG_DIR/pif.prop" 2>/dev/null
+    cp -f "$_src" /data/adb/modules/tricky_store/pif.prop 2>/dev/null
+    cp -f "$_src" /data/adb/tricky_store/pif.prop 2>/dev/null
     # leftovers from a Fork install upgraded in place
     rm -f /data/adb/modules/tricky_store/custom.pif.prop /data/adb/modules/tricky_store/custom.pif.json 2>/dev/null
-    [ -s "$MODPATH/pif.prop" ] || return 1
+    [ -s /data/adb/modules/tricky_store/pif.prop ] || return 1
     # An imported file can be a complete Fork-format custom.pif.prop (e.g. a beta
     # from the WebUI picker). inject-s reads this same field format straight from
     # pif.prop — there is no migrate.sh step, so unlike Fork it is never rejected
@@ -84,7 +84,7 @@ engine_install_pif() {
     # verboseLogs). Drop those Fork-only keys; engine_enforce_spoof below writes
     # inject's own true/false flags (spoofVendingBuild, DEBUG, …) so the effective
     # config is correct regardless of what the imported file shipped.
-    for _pf in "$MODPATH/pif.prop" "$CONFIG_DIR/pif.prop"; do
+    for _pf in "/data/adb/modules/tricky_store/pif.prop" "/data/adb/tricky_store/pif.prop"; do
         [ -f "$_pf" ] && sed -i '/^spoofVendingFinger=/d;/^verboseLogs=/d' "$_pf" 2>/dev/null
     done
     engine_enforce_spoof
@@ -97,9 +97,9 @@ engine_install_pif() {
 engine_autopif() {
     [ -f "$MODPATH/autopif.sh" ] || return 1
     sh "$MODPATH/autopif.sh"
-    grep -q 'FINGERPRINT=google/' "$MODPATH/pif.prop" 2>/dev/null || return 1
+    grep -q 'FINGERPRINT=google/' /data/adb/modules/tricky_store/pif.prop 2>/dev/null || return 1
     mkdir -p "$CONFIG_DIR"
-    cp -f "$MODPATH/pif.prop" "$CONFIG_DIR/pif.prop" 2>/dev/null
+    cp -f /data/adb/modules/tricky_store/pif.prop /data/adb/tricky_store/pif.prop 2>/dev/null
     engine_enforce_spoof
     return 0
 }

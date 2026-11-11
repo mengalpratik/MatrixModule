@@ -88,7 +88,7 @@ mkdir -p "$CONFIG_DIR"
 # TrickyStore's security_patch.txt accepts per-partition keys (system/boot/vendor,
 # dotted). Written per-partition so a manual override for one lands exactly; with
 # no override all three carry the single auto date.
-printf 'system=%s\nvendor=%s\nboot=%s\n' "$SYS" "$VEN" "$BOOT" > "$CONFIG_DIR/security_patch.txt"
+printf 'system=%s\nvendor=%s\nboot=%s\n' "$SYS" "$VEN" "$BOOT" > /data/adb/tricky_store/security_patch.txt
 
 # --- 2. PIF wildcard prop: spoof ro.build/ro.vendor/ro.system .security_patch
 # A single `*.security_patch=<date>` line makes PIF's zygisk hook report the

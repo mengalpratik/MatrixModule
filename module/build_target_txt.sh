@@ -144,7 +144,7 @@ FORCED="com.android.vending com.google.android.gms com.google.android.gsf"
             }' "$MAP" | sort | awk -F'\t' '
             $1!=prev{ printf "\n[%s]\n", $1; prev=$1 } { print $2 }'
     fi
-} > /data/adb/tricky_store/target.txt.tmp 2>/dev/null && mv -f /data/adb/tricky_store/target.txt.tmp "$TGT" 2>/dev/null || :
+} > /data/adb/tricky_store/target.txt.tmp 2>/dev/null && mv -f /data/adb/tricky_store/target.txt.tmp /data/adb/tricky_store/target.txt 2>/dev/null || :
 
 # --- Clean unreferenced entries in WebUI-imported keybox manifest ---------
 MANIFEST="/data/adb/tricky_store/alwaysstrong/imported"

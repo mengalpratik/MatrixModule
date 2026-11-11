@@ -172,7 +172,7 @@ try_beta() { # $1=codename -> installs it into the engine, 0 on success
     grep -q '^FINGERPRINT=' "$W/identity.prop" || return 1
     engine_spoof_block >> "$W/identity.prop"
     engine_install_pif "$W/identity.prop" || return 1
-    cp -f "$W/identity.prop" "$TARGET" 2>/dev/null
+    cp -f "$W/identity.prop" /data/adb/tricky_store/pif.prop 2>/dev/null
     log "installed STRONG Pixel 6 fingerprint ($ENGINE): $(grep '^FINGERPRINT=' "$W/identity.prop" | cut -d= -f2-)"
     return 0
 }
@@ -296,7 +296,7 @@ mkdir -p "$CONFIG_DIR"
 # the config-dir copy is for display + sync_patch, written only once the engine
 # has accepted the fingerprint.
 engine_install_pif "$TMP" || { log "$ENGINE could not install the fingerprint."; exit 1; }
-cp -f "$TMP" "$TARGET" 2>/dev/null
+cp -f "$TMP" /data/adb/tricky_store/pif.prop 2>/dev/null
 
 log "installed fingerprint ($ENGINE): $FP"
 exit 0
