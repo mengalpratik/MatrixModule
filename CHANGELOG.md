@@ -19,6 +19,10 @@ Fix duplicate module display in root manager, restore 100% Play Integrity spoofi
   - Live System Health & Root Protection Dashboard (`#healthCard`).
   - Built-in HMA Blacklist Management ("Target apps" & "Apps to hide" syncing directly to `/data/misc/hide_my_applist_*` with zero APK requirement).
 
+### Support & Donation
+- **Buy Me a Coffee**: [buymeacoffee.com/pratikmengal](https://buymeacoffee.com/pratikmengal)
+- **Author**: Pratik Mengal ([@mengalpratik](https://github.com/mengalpratik))
+
 ## v1.1.0
 
 Major update introducing Zero-APK Headless HMA (Hide My Applist) integration, live System Health & Root Protection indicators, and cyber theme polish.
