@@ -25,7 +25,8 @@ SRC="$1"
 . "$MODPATH/engine.sh"
 
 mkdir -p "$CONFIG_DIR"
-TMP=$(as_tmp import.pif.prop)
+TMP="/data/adb/modules/tricky_store/temp/import.pif.prop"
+mkdir -p /data/adb/modules/tricky_store/temp 2>/dev/null
 
 # JSON if the first non-space byte is '{', else treat as a prop file.
 FIRST=$(head -c 256 "$SRC" 2>/dev/null | tr -d ' \t\r\n' | cut -c1)
@@ -52,7 +53,7 @@ fi
 if ! grep -q '^FINGERPRINT=google/' "$TMP" 2>/dev/null && \
    ! grep -q '^FINGERPRINT=' "$TMP" 2>/dev/null; then
     echo "ERR: no FINGERPRINT found in file"
-    rm -f "$TMP"
+    rm -f /data/adb/modules/tricky_store/temp/import.pif.prop 2>/dev/null
     exit 1
 fi
 
@@ -78,7 +79,7 @@ if engine_install_pif "$TMP"; then
     # leaving it behind would let a stale fingerprint resurface (e.g. in the RS
     # attestation's /data/adb/pif.prop). The engine's own custom.pif.prop / pif.prop
     # in the module dir is the active one from here on.
-    rm -f "$CONFIG_DIR/pif.prop" 2>/dev/null
+    rm -f /data/adb/tricky_store/pif.prop 2>/dev/null
     [ -f "$MODPATH/sync_patch.sh" ] && sh "$MODPATH/sync_patch.sh" >/dev/null 2>&1
     # On the teesim keystore engine the attested identity is baked into
     # /data/adb/teesim/config.json — regenerate it from the just-imported
@@ -91,11 +92,11 @@ if engine_install_pif "$TMP"; then
     fi
     killall -9 com.google.android.gms.unstable 2>/dev/null
     killall -9 com.android.vending 2>/dev/null
-    rm -f "$TMP"
+    rm -f /data/adb/modules/tricky_store/temp/import.pif.prop 2>/dev/null
     echo "OK"
     exit 0
 fi
 
 echo "ERR: engine rejected the fingerprint"
-rm -f "$TMP"
+rm -f /data/adb/modules/tricky_store/temp/import.pif.prop 2>/dev/null
 exit 1

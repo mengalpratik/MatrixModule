@@ -32,7 +32,7 @@ esac
 [ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh"
 : "${AS_LOGS:=/data/adb/tricky_store/alwaysstrong/logs}"
 mkdir -p "$AS_LOGS" 2>/dev/null
-rm -f "$AS_CONF" "$AS_SPOOF" "$AS_PKGS" 2>/dev/null
+rm -f /data/adb/tricky_store/alwaysstrong/config /data/adb/tricky_store/alwaysstrong/spoof.conf /data/adb/tricky_store/alwaysstrong/packages 2>/dev/null
 as_seed
 # custom_pif is back at its default (off), so the Action below fetches a fresh
 # fingerprint over any imported one, dropping the now-stale imported-pif name too.

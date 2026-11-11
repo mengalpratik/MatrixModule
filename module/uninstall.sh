@@ -29,13 +29,14 @@ if command -v magisk >/dev/null 2>&1; then
     done
 fi
 
-# Our settings, state and logs (one directory since 1.0.5)
-rm -rf "$CONFIG_DIR/alwaysstrong"
+# Our settings, state and logs
+rm -rf /data/adb/tricky_store/alwaysstrong
+rm -rf /data/adb/modules/tricky_store/temp 2>/dev/null
 
 # Wipe TEESimulator runtime state
-rm -rf "$CONFIG_DIR/persistent_keys"
-rm -f "$CONFIG_DIR/tee_status.txt"
-rm -f "$CONFIG_DIR/boot_hash.bin" "$CONFIG_DIR/boot_key.bin"
+rm -rf /data/adb/tricky_store/persistent_keys
+rm -f /data/adb/tricky_store/tee_status.txt
+rm -f /data/adb/tricky_store/boot_hash.bin /data/adb/tricky_store/boot_key.bin
 
 # JingMatrix TEESimulator data dir: drop the config, the root-of-trust override
 # and the harvested record we generated so a reinstall (or a switch to another
@@ -46,25 +47,6 @@ rm -f /data/adb/teesim/config.json /data/adb/teesim/overrides.json \
 
 # Global PIF prop we dropped for the TEE PatchLevelManager (sync_patch.sh)
 rm -f /data/adb/pif.prop
-
-# A stale playintegrityfix folder from a very old shim-based AlwaysStrong build
-# can be cleaned up here — but this exact path is ALSO where a user's OWN
-# standalone PlayIntegrityFork / Fix inject-s lives (the module id is shared, and
-# the "Lite" line depends on that separate module). Never delete the user's real
-# module on uninstall: on the Lite line (ENGINE=none) the folder is always theirs,
-# and on any line a folder whose module.prop identifies a real Fork / Fix inject-s
-# / id-squatting keystore toolkit is theirs too. Only remove a folder that is clearly not a live
-# third-party module (a true leftover shim with no recognizable module.prop).
-PIF_MOD=/data/adb/modules/playintegrityfix
-if [ -d "$PIF_MOD" ]; then
-    keep_pif=0
-    [ -f "$MODDIR/engine.sh" ] && grep -q '^ENGINE=none' "$MODDIR/engine.sh" 2>/dev/null && keep_pif=1
-    if [ "$keep_pif" = 0 ] && [ -f "$PIF_MOD/module.prop" ]; then
-        grep -qiE 'Fork|osm0sis|PlayIntegrityFix|inject|chiteroman|KOWX712|MeowDump|ntegrity.?[Bb]ox|webuiIcon' \
-            "$PIF_MOD/module.prop" 2>/dev/null && keep_pif=1
-    fi
-    [ "$keep_pif" = 0 ] && rm -rf "$PIF_MOD" 2>/dev/null
-fi
 
 # Restore ROM-level spoof engines that rom_spoof_block.sh disabled, so removing
 # AlwaysStrong frees the ROM's own PixelProps / pihooks / entryhooks again.

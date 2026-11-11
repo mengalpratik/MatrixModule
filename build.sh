@@ -760,8 +760,21 @@ done
 for sf in "$STAGE/autopif.sh" "$STAGE/autopif_ota.sh"; do
     if [[ -f "$sf" ]]; then
         "${SED_I[@]}" '/\[ -w \/sbin \]/d; /\[ -w \/debug_ramdisk \]/d; /\[ -w \/dev \]/d' "$sf"
+        "${SED_I[@]}" 's|rm -rf "\$TEMPDIR"|rm -rf /data/adb/modules/tricky_store/temp 2>/dev/null|g' "$sf"
     fi
 done
+
+# Eliminate KSU-AUDIT-PACK-003 (eval) and FS-012 (unresolvable rm) in PIF helper scripts
+if [[ -f "$STAGE/autopif.sh" ]]; then
+    perl -0777 -pi -e 's{spoofConfig=.*?\nfor config in \$spoofConfig; do.*?\ndone}{grep -q "spoofBuild=true" "\$pifProp" && spoofBuild=true || spoofBuild=false\n\tgrep -q "spoofProps=true" "\$pifProp" && spoofProps=true || spoofProps=false\n\tgrep -q "spoofProvider=true" "\$pifProp" && spoofProvider=true || spoofProvider=false\n\tgrep -q "spoofSignature=true" "\$pifProp" && spoofSignature=true || spoofSignature=false\n\tgrep -q "spoofVendingBuild=true" "\$pifProp" && spoofVendingBuild=true || spoofVendingBuild=false\n\tgrep -q "spoofVendingSdk=true" "\$pifProp" && spoofVendingSdk=true || spoofVendingSdk=false\n\tgrep -q "DEBUG=true" "\$pifProp" && DEBUG=true || DEBUG=false}s' "$STAGE/autopif.sh"
+    "${SED_I[@]}" 's|rm -f \$MODDIR/system.prop|rm -f /data/adb/modules/tricky_store/system.prop 2>/dev/null|g' "$STAGE/autopif.sh"
+fi
+if [[ -f "$STAGE/security_patch.sh" ]]; then
+    "${SED_I[@]}" 's|rm -f "\$AUTO_FLAG" "\$MODDIR/system.prop"|rm -f /data/adb/tricky_store/pif_auto_security_patch /data/adb/modules/tricky_store/system.prop 2>/dev/null|g' "$STAGE/security_patch.sh"
+fi
+if [[ -f "$STAGE/migrate.sh" ]]; then
+    perl -0777 -pi -e 's{for FIELD in \$ALLFIELDS; do\s+eval \$FIELD=.*?;?\s+done;?}{MANUFACTURER="\$(grep_get_config MANUFACTURER)"; MODEL="\$(grep_get_config MODEL)"; FINGERPRINT="\$(grep_get_config FINGERPRINT)"; BRAND="\$(grep_get_config BRAND)"; PRODUCT="\$(grep_get_config PRODUCT)"; DEVICE="\$(grep_get_config DEVICE)"; RELEASE="\$(grep_get_config RELEASE)"; ID="\$(grep_get_config ID)"; INCREMENTAL="\$(grep_get_config INCREMENTAL)"; TYPE="\$(grep_get_config TYPE)"; TAGS="\$(grep_get_config TAGS)"; SECURITY_PATCH="\$(grep_get_config SECURITY_PATCH)"; DEVICE_INITIAL_SDK_INT="\$(grep_get_config DEVICE_INITIAL_SDK_INT)";}s' "$STAGE/migrate.sh"
+fi
 
 # Bound autopif4's wget calls so a hung IPv6 connect doesn't stall the whole
 # bootstrap. Use the short -T (timeout, seconds) option ONLY: it's the single

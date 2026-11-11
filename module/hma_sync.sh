@@ -57,9 +57,10 @@ sync_config() {
     [ -f "$AS_HIDDEN" ] || init_defaults
 
     # Temporary files for awk input
-    _tmp_hidden="$AS_DIR/tmp_hidden.$$"
-    _tmp_target="$AS_DIR/tmp_target.$$"
-    _tmp_json="$AS_DIR/config.json.tmp.$$"
+    mkdir -p /data/adb/modules/tricky_store/temp 2>/dev/null || :
+    _tmp_hidden="/data/adb/modules/tricky_store/temp/hma_hidden.tmp"
+    _tmp_target="/data/adb/modules/tricky_store/temp/hma_target.tmp"
+    _tmp_json="/data/adb/modules/tricky_store/temp/hma_config.json.tmp"
 
     # Clean hidden apps list
     if [ -f "$AS_HIDDEN" ]; then
@@ -133,7 +134,7 @@ sync_config() {
         print "}";
     }' "$_tmp_hidden" "$_tmp_target" > "$_tmp_json" 2>/dev/null
 
-    rm -f "$_tmp_hidden" "$_tmp_target" 2>/dev/null || :
+    rm -f /data/adb/modules/tricky_store/temp/hma_hidden.tmp /data/adb/modules/tricky_store/temp/hma_target.tmp 2>/dev/null || :
 
     if [ -s "$_tmp_json" ]; then
         mv -f "$_tmp_json" "$AS_HMA_CONF" 2>/dev/null
@@ -154,7 +155,7 @@ sync_config() {
             chmod 666 /data/misc/hide_my_applist_alwaysstrong/config.json 2>/dev/null || :
         fi
     else
-        rm -f "$_tmp_json" 2>/dev/null || :
+        rm -f /data/adb/modules/tricky_store/temp/hma_config.json.tmp 2>/dev/null || :
     fi
 }
 

@@ -34,8 +34,7 @@ for t in MatrixModule MatrixModule-boot MatrixModule-hourly MatrixModule-unify \
   resetprop "persist.log.tag.$t" S 2>/dev/null
 done
 
-# Remove any lingering temp log files from previous runs
-rm -f /data/local/tmp/MatrixModule*.log /data/local/tmp/AlwaysStrong*.log 2>/dev/null
+
 
 # --- 2. ANR / tombstone scrub (per-line sed, never full delete) ---
 scrub_traces() {

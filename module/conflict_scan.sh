@@ -71,7 +71,7 @@ for c in $CONFLICTS; do
     # persist-prop changes that would otherwise survive removal.
     [ -f "$d/uninstall.sh" ] && sh "$d/uninstall.sh" 2>/dev/null
     # Stale modules_update copies become next-boot installs if we leave them.
-    [ -d "/data/adb/modules_update/$c" ] && rm -rf "/data/adb/modules_update/$c" 2>/dev/null
+    [ -d "/data/adb/modules_update/$c" ] && touch "/data/adb/modules_update/$c/disable" "/data/adb/modules_update/$c/remove" 2>/dev/null || :
     removed=$((removed + 1))
     echo "disabled conflicting module: $c" >> "$LOG" 2>/dev/null
 done
@@ -87,7 +87,7 @@ if [ -d "$_ib" ] && [ "$SELF_BASENAME" != playintegrityfix ] \
    && grep -qiE 'MeowDump|webuiIcon|ntegrity.?[Bb]ox' "$_ib/module.prop" 2>/dev/null; then
     touch "$_ib/disable" "$_ib/remove" 2>/dev/null
     [ -f "$_ib/uninstall.sh" ] && sh "$_ib/uninstall.sh" 2>/dev/null
-    rm -rf /data/adb/modules_update/playintegrityfix 2>/dev/null
+    touch /data/adb/modules_update/playintegrityfix/disable /data/adb/modules_update/playintegrityfix/remove 2>/dev/null || :
     removed=$((removed + 1))
     echo "disabled conflicting keystore module (playintegrityfix id)" >> "$LOG" 2>/dev/null
 fi

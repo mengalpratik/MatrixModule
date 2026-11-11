@@ -269,20 +269,7 @@ if ! _valid_hash "$_cur"; then
 fi
 }&
 
-# --- Housekeeping in background ---
-{
-    sleep 3
-    # Hide TWRP-style recovery folders on /sdcard if empty
-    for rdir in TWRP Fox OrangeFox PBRP PitchBlack Recovery; do
-        target="/sdcard/$rdir"
-        if [ -d "$target" ] && [ "$(ls -A "$target" 2>/dev/null)" ]; then
-            mv "$target" "/data/adb/.recovery_backup_${rdir}" 2>/dev/null
-        elif [ -d "$target" ]; then
-            rmdir "$target" 2>/dev/null
-        fi
-    done
-    rm -f /sdcard/.twrps 2>/dev/null
-}&
+
 
 # --- TEESimulator + aswatcher watchdog ---
 {

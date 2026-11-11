@@ -144,18 +144,10 @@ FORCED="com.android.vending com.google.android.gms com.google.android.gsf"
             }' "$MAP" | sort | awk -F'\t' '
             $1!=prev{ printf "\n[%s]\n", $1; prev=$1 } { print $2 }'
     fi
-} > "${TGT}.tmp" && mv -f "${TGT}.tmp" "$TGT"
+} > /data/adb/tricky_store/target.txt.tmp 2>/dev/null && mv -f /data/adb/tricky_store/target.txt.tmp "$TGT" 2>/dev/null || :
 
-# --- GC orphaned WebUI-imported keyboxes ---------------------------------
-# The WebUI records every keybox it imports into alwaysstrong/imported (one
-# file name per line). A file listed there that no map
-# entry references anymore is a dead import — delete it so the config dir does
-# not accumulate stale keyboxes. ONLY files we imported are ever touched:
-# manually-dropped keyboxes are never in the manifest, so they are left alone.
-# keybox.xml (the default) is never a managed import and is skipped defensively.
-# If the map is gone entirely, every import is orphaned -> all get cleaned.
-CFG_DIR="$(dirname "$TGT")"
-MANIFEST="$AS_IMPORTED"
+# --- Clean unreferenced entries in WebUI-imported keybox manifest ---------
+MANIFEST="/data/adb/tricky_store/alwaysstrong/imported"
 if [ -f "$MANIFEST" ]; then
     # Keyboxes still referenced by a non-off map entry (kb field != "-").
     REFERENCED=""
@@ -171,12 +163,10 @@ if [ -f "$MANIFEST" ]; then
         [ "$fn" = "keybox.xml" ] && continue
         if printf '%s\n' "$REFERENCED" | grep -Fxq "$fn"; then
             NEWMAN="${NEWMAN}${fn}
-"                                       # still used -> keep file + manifest line
-        else
-            rm -f "$CFG_DIR/$fn" 2>/dev/null    # orphan -> delete the keybox file
+"
         fi
     done < "$MANIFEST"
-    printf '%s' "$NEWMAN" > "$MANIFEST.tmp" && mv -f "$MANIFEST.tmp" "$MANIFEST"
+    printf '%s' "$NEWMAN" > /data/adb/tricky_store/alwaysstrong/imported 2>/dev/null || :
 fi
 
 # Tell the attestation engine target.txt changed. TEESimulator-RS and

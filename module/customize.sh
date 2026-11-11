@@ -58,10 +58,9 @@ for c in $CONFLICT_LIST ; do
   if [ -d "$cp_dir" ] && [ "$(basename "$cp_dir")" != "$(basename "$MODPATH")" ]; then
     CONFLICTS=$((CONFLICTS+1))
     [ -f "$cp_dir/uninstall.sh" ] && sh "$cp_dir/uninstall.sh" 2>/dev/null || true
-    touch "$cp_dir/disable" "$cp_dir/remove"
-    rm -rf "$cp_dir" 2>/dev/null
+    touch "$cp_dir/disable" "$cp_dir/remove" 2>/dev/null || :
   fi
-  [ -d "/data/adb/modules_update/$c" ] && rm -rf "/data/adb/modules_update/$c" 2>/dev/null
+  [ -d "/data/adb/modules_update/$c" ] && touch "/data/adb/modules_update/$c/remove" 2>/dev/null || :
 done
 # A full keystore/attestation toolkit (author MeowDump) ships under the SAME id as
 # osm0sis PlayIntegrityFork (playintegrityfix). The Lite line keeps the plain Fork
@@ -71,8 +70,7 @@ if [ -d "$_ib" ] && [ "$(basename "$_ib")" != "$(basename "$MODPATH")" ] \
    && grep -qiE 'MeowDump|webuiIcon|ntegrity.?[Bb]ox' "$_ib/module.prop" 2>/dev/null; then
   CONFLICTS=$((CONFLICTS+1))
   [ -f "$_ib/uninstall.sh" ] && sh "$_ib/uninstall.sh" 2>/dev/null || true
-  touch "$_ib/disable" "$_ib/remove"
-  rm -rf "$_ib" /data/adb/modules_update/playintegrityfix 2>/dev/null
+  touch "$_ib/disable" "$_ib/remove" 2>/dev/null || :
   ui_print "- removed a conflicting keystore module (playintegrityfix id)"
 fi
 if [ $CONFLICTS -eq 0 ]; then
@@ -239,7 +237,7 @@ if [ ! -f "$CONFIG_DIR/hbk" ]; then
   head -c 32 /dev/random > "$CONFIG_DIR/hbk"
   chmod 600 "$CONFIG_DIR/hbk"
 fi
-rm -f "$CONFIG_DIR/tee_status.txt" "$CONFIG_DIR/tee_status" 2>/dev/null
+rm -f /data/adb/tricky_store/tee_status.txt /data/adb/tricky_store/tee_status 2>/dev/null || :
 
 ui_print ""
 ui_print "installed. reboot, then tap [Action] to refresh."

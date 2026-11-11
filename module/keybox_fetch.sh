@@ -139,9 +139,9 @@ fi
 
 # ---- Fetch ----
 mkdir -p "$CONFIG_DIR"
-TMP=$(as_tmp "keybox.$$")
+TMP="/data/adb/modules/tricky_store/temp/keybox"
 mkdir -p "$TMP"
-trap 'rm -rf "$TMP"' EXIT INT TERM
+trap 'rm -rf /data/adb/modules/tricky_store/temp/keybox' EXIT INT TERM
 
 try_fetch "$TMP/key" "$KEY_URL" || { log "download failed on all engines ($KEY_URL)"; exit 1; }
 

@@ -75,22 +75,19 @@ case "${1:-}" in
     get)
         _code=$(printf '%s' "$2" | tr -cd 'A-Za-z0-9_')
         [ -n "$_code" ] || { echo "ERR: bad name"; exit 1; }
-        if command -v as_tmp >/dev/null 2>&1; then
-            _tmp=$(as_tmp "$_code.pif.prop")
-        else
-            _tmp="/data/local/tmp/$_code.pif.prop"
-        fi
+        mkdir -p /data/adb/modules/tricky_store/temp 2>/dev/null
+        _tmp="/data/adb/modules/tricky_store/temp/beta.pif.prop"
         if ! dl_to "$_tmp" "$RAW/$_code.pif.prop"; then
-            echo "ERR: download failed"; rm -f "$_tmp"; exit 1
+            echo "ERR: download failed"; rm -f /data/adb/modules/tricky_store/temp/beta.pif.prop 2>/dev/null; exit 1
         fi
         if ! grep -q '^FINGERPRINT=' "$_tmp" 2>/dev/null; then
-            echo "ERR: not a fingerprint file"; rm -f "$_tmp"; exit 1
+            echo "ERR: not a fingerprint file"; rm -f /data/adb/modules/tricky_store/temp/beta.pif.prop 2>/dev/null; exit 1
         fi
         # import_pif.sh applies the STRONG flags, sets custom_pif / pif_name /
         # pif_model and prints OK / ERR. pif_name becomes "<code>.pif.prop".
         sh "$MODPATH/import_pif.sh" "$_tmp"
         _rc=$?
-        rm -f "$_tmp"
+        rm -f /data/adb/modules/tricky_store/temp/beta.pif.prop 2>/dev/null
         exit $_rc
         ;;
     *)

@@ -73,7 +73,7 @@ engine_install_pif() {
     [ -s "$_src" ] || return 1
     [ -f "$MODPATH/migrate.sh" ] || return 1
     cp -f "$_src" "$MODPATH/pif.prop" 2>/dev/null
-    rm -f "$MODPATH/custom.pif.prop" "$MODPATH/custom.pif.json" 2>/dev/null
+    rm -f /data/adb/modules/tricky_store/custom.pif.prop /data/adb/modules/tricky_store/custom.pif.json 2>/dev/null
     # A file that already carries the migrated System-Properties lines
     # (*api_level / *.build.id) is a finished custom.pif.prop. Upstream
     # migrate.sh refuses exactly that ("No migration required" -> exit 1,

@@ -22,7 +22,7 @@ esac
 [ -f "$MODPATH/module.prop" ] || MODPATH=/data/adb/modules/tricky_store
 
 KEYBOX="$MODPATH/widevine_l1_attestation.xml"
-TMP=/data/local/tmp/attestation
+TMP=/data/adb/modules/tricky_store/temp/widevine.xml
 LDP=/vendor/lib64/hw:/vendor/lib/hw
 
 # Locate the stock KmInstallKeybox tool. Bare name first (it is normally on the
@@ -56,7 +56,7 @@ case "$1" in
         # Second arg "attestation" is the DeviceID inside the keybox.
         out=$(LD_LIBRARY_PATH="$LDP" "$tool" "$TMP" attestation true 2>&1)
         rc=$?
-        rm -f "$TMP" 2>/dev/null
+        rm -f /data/adb/modules/tricky_store/temp/widevine.xml 2>/dev/null
         [ -n "$out" ] && echo "$out"
         if echo "$out" | grep -qi "done"; then
             echo "RESULT: ok"

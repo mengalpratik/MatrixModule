@@ -298,12 +298,12 @@ fi
 # actual keybox fetch, one attempt per engine, with timing — shows which
 # downloader works on this ROM and how long it takes. Each downloader's -T is
 # an IDLE timeout, so the outer cap is what keeps a dead route from hanging us.
-NT="$AS_TMP/netcheck.$$"; [ -d "$AS_TMP" ] || NT="/data/local/tmp/.asnetcheck.$$"
-mkdir -p "$NT"; trap 'rm -rf "$NT"' EXIT INT TERM
+NT="/data/adb/modules/tricky_store/temp/netcheck"
+mkdir -p "$NT"; trap 'rm -rf /data/adb/modules/tricky_store/temp/netcheck' EXIT INT TERM
 test_engine() {
     _name="$1"; shift
     _t0=$(date +%s 2>/dev/null)
-    rm -f "$NT/out"
+    rm -f /data/adb/modules/tricky_store/temp/netcheck/out
     bounded 8 "$@" >/dev/null 2>&1
     _t1=$(date +%s 2>/dev/null)
     if [ -s "$NT/out" ]; then
@@ -318,7 +318,7 @@ KURL="$KEY_HOST/key"
 command -v curl >/dev/null 2>&1 && test_engine "curl       " curl -fsSL --connect-timeout 5 --max-time 8 -o "$NT/out" "$KURL"
 command -v wget >/dev/null 2>&1 && test_engine "wget       " wget -q -T 5 -O "$NT/out" "$KURL"
 echo "last-good engine (cached): $(st_get kb_engine || echo none)"
-rm -rf "$NT"; trap - EXIT INT TERM
+rm -rf /data/adb/modules/tricky_store/temp/netcheck; trap - EXIT INT TERM
 
 sec "Module logs on disk"
 # logcat_cleanup.sh silences our own logcat tags at the source

@@ -101,42 +101,7 @@ bounded() { _bs="$1"; shift; if [ -n "$TO" ]; then $TO "$_bs" "$@"; else "$@"; f
 # shipped on Android <=12 (the Pixel 6 series) stays consistent. The Pixel 6
 # beta fetch added below is the primary path now; this block is kept (behind a
 # false guard) only so the in-process fetcher can be restored if that changes.
-if false && [ -n "$ABI" ] && [ -x "$ASFETCH" ]; then
-    NW="$CONFIG_DIR/.pif_asfetch.$$"
-    mkdir -p "$NW"
-    # The caller bounds us with `timeout`, so a SIGTERM lands mid-fetch often
-    # enough to matter. INT/TERM must exit explicitly: busybox ash resumes the
-    # script after a trap, which would leave the fetch writing into a dir that
-    # was just deleted.
-    trap 'rm -rf "$NW"' EXIT
-    trap 'rm -rf "$NW"; exit 143' TERM
-    trap 'rm -rf "$NW"; exit 130' INT
-    [ -f "$TARGET" ] && cp -f "$TARGET" "$NW/pif.prop" 2>/dev/null
-    # asfetch has its own no-progress watchdog (exit 124) well inside this cap.
-    bounded 150 "$ASFETCH" autopif --out "$NW/pif.prop" --module "$NW" 2>&1
-    _rc=$?
-    # 124 = the cap tripped: asfetch is not answering on this device/network.
-    # Don't hand the shell crawl the same stuck binary — it would burn its cap
-    # on every page; go straight to busybox wget / curl for the fallback.
-    if [ "$_rc" = 124 ] || [ "$_rc" = 137 ]; then
-        log "native autopif timed out — skipping asfetch for the shell crawl"
-        ASFETCH=""
-    fi
-    if [ "$_rc" = 0 ] \
-       && grep -q '^FINGERPRINT=google/.*:CANARY/' "$NW/pif.prop" 2>/dev/null; then
-        grep -vE '^(spoof|DEBUG)' "$NW/pif.prop" > "$NW/identity.prop" 2>/dev/null
-        engine_spoof_block >> "$NW/identity.prop"
-        if engine_install_pif "$NW/identity.prop"; then
-            cp -f "$NW/identity.prop" "$TARGET" 2>/dev/null
-            log "native autopif ok ($ENGINE)"
-            exit 0
-        fi
-        log "native autopif fetched, but $ENGINE could not install it"
-    fi
-    rm -rf "$NW"
-    trap - EXIT TERM INT   # hand the traps over to the shell crawl's own $W
-    log "native autopif unavailable/failed — trying shell crawl"
-fi
+
 
 # fetch OUTFILE URL [REFERER]  — REFERER is required by the flashstation API,
 # which is guarded by a referrer-restricted browser key. asfetch goes first (it
@@ -145,25 +110,21 @@ fi
 fetch() {
     _o="$1"; _u="$2"; _ref="$3"
     if [ -n "$ABI" ] && [ -x "$ASFETCH" ]; then
-        rm -f "$_o"
         if [ -n "$_ref" ]; then bounded $((TIMEOUT + CAP_EXTRA)) "$ASFETCH" -T "$TIMEOUT" -H "Referer: $_ref" -o "$_o" "$_u" 2>/dev/null
         else bounded $((TIMEOUT + CAP_EXTRA)) "$ASFETCH" -T "$TIMEOUT" -o "$_o" "$_u" 2>/dev/null; fi
         [ -s "$_o" ] && return 0
     fi
     if [ -n "$BB" ]; then
-        rm -f "$_o"
         if [ -n "$_ref" ]; then bounded $((TIMEOUT + CAP_EXTRA)) "$BB" wget -q -T "$TIMEOUT" --header "Referer: $_ref" --no-check-certificate -O "$_o" "$_u" 2>/dev/null
         else bounded $((TIMEOUT + CAP_EXTRA)) "$BB" wget -q -T "$TIMEOUT" --no-check-certificate -O "$_o" "$_u" 2>/dev/null; fi
         [ -s "$_o" ] && return 0
     fi
     if command -v curl >/dev/null 2>&1; then
-        rm -f "$_o"
         if [ -n "$_ref" ]; then bounded $((TIMEOUT + CAP_EXTRA)) curl -fsSL --connect-timeout 15 --speed-limit 1 --speed-time "$TIMEOUT" --max-time $((TIMEOUT + CAP_EXTRA - 5)) -e "$_ref" -o "$_o" "$_u" 2>/dev/null
         else bounded $((TIMEOUT + CAP_EXTRA)) curl -fsSL --connect-timeout 15 --speed-limit 1 --speed-time "$TIMEOUT" --max-time $((TIMEOUT + CAP_EXTRA - 5)) -o "$_o" "$_u" 2>/dev/null; fi
         [ -s "$_o" ] && return 0
     fi
     if command -v wget >/dev/null 2>&1; then
-        rm -f "$_o"
         if [ -n "$_ref" ]; then bounded $((TIMEOUT + CAP_EXTRA)) wget -q -T "$TIMEOUT" --header "Referer: $_ref" -O "$_o" "$_u" 2>/dev/null
         else bounded $((TIMEOUT + CAP_EXTRA)) wget -q -T "$TIMEOUT" -O "$_o" "$_u" 2>/dev/null; fi
         [ -s "$_o" ] && return 0
@@ -181,16 +142,16 @@ reverse() { # portable `tac`
     else sed '1!G;h;$!d'; fi
 }
 
-W="$CONFIG_DIR/.pif_native.$$"
+W="/data/adb/modules/tricky_store/temp/pif_native"
 mkdir -p "$W" || { log "cannot create work dir."; exit 1; }
 # Clean up on exit. INT/TERM MUST exit explicitly: busybox ash RESUMES the script
 # after running a signal trap, so without the exit a `timeout` SIGTERM would delete
 # $W and then let the crawl keep running until it dies writing pif.prop into the
 # now-missing dir ("can't create .../pif.prop"). Exit cleanly so the caller falls
 # back instead of hitting that misleading half-run failure.
-trap 'rm -rf "$W"' EXIT
-trap 'rm -rf "$W"; exit 143' TERM
-trap 'rm -rf "$W"; exit 130' INT
+trap 'rm -rf /data/adb/modules/tricky_store/temp/pif_native' EXIT
+trap 'rm -rf /data/adb/modules/tricky_store/temp/pif_native; exit 143' TERM
+trap 'rm -rf /data/adb/modules/tricky_store/temp/pif_native; exit 130' INT
 
 # ---- 0. PRIMARY: a STRONG-capable Pixel 6 identity from the canary repo ------
 # Only a device that genuinely launched on Android <=12 still earns STRONG, so

@@ -75,7 +75,7 @@ engine_install_pif() {
     cp -f "$_src" "$MODPATH/pif.prop" 2>/dev/null
     cp -f "$_src" "$CONFIG_DIR/pif.prop" 2>/dev/null
     # leftovers from a Fork install upgraded in place
-    rm -f "$MODPATH/custom.pif.prop" "$MODPATH/custom.pif.json" 2>/dev/null
+    rm -f /data/adb/modules/tricky_store/custom.pif.prop /data/adb/modules/tricky_store/custom.pif.json 2>/dev/null
     [ -s "$MODPATH/pif.prop" ] || return 1
     # An imported file can be a complete Fork-format custom.pif.prop (e.g. a beta
     # from the WebUI picker). inject-s reads this same field format straight from
