@@ -6,7 +6,7 @@
 <br>
 
 [![License](https://img.shields.io/badge/license-GPL--3.0-orange)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v1.0.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v1.1.0-blue)](CHANGELOG.md)
 
 <img src="screenshots/webui.jpg" width="30%" alt="WebUI"> &nbsp; <img src="screenshots/advanced.jpg" width="30%" alt="Advanced"> &nbsp; <img src="screenshots/languages.jpg" width="30%" alt="Translated into 15 languages">
 

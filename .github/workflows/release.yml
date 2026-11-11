@@ -6,9 +6,9 @@ name: Release
 #
 # One tag ships the three release lines, all on the default TEESimulator-RS
 # keystore and all built from this tree:
-#   AlwaysStrong-<ver>.zip           PlayIntegrityFork  + TEESimulator-RS
-#   AlwaysStrong-<ver>-inject.zip    PlayIntegrityFix   + TEESimulator-RS
-#   AlwaysStrong-<ver>-nopif.zip     PIF-less / Lite    + TEESimulator-RS
+#   MatrixModule-<ver>.zip           PlayIntegrityFork  + TEESimulator-RS
+#   MatrixModule-<ver>-inject.zip    PlayIntegrityFix   + TEESimulator-RS
+#   MatrixModule-<ver>-nopif.zip     PIF-less / Lite    + TEESimulator-RS
 #
 # The alternative keystore engines - TrickyStoreOSS (-TSOSS) and TEESimulator /
 # JingMatrix (-TEESIM) - are never released. They stay buildable
@@ -71,7 +71,7 @@ jobs:
           name: ${{ github.ref_name }}
           body_path: RELEASE_NOTES.md
           files: |
-            out/AlwaysStrong-*.zip
+            out/MatrixModule-*.zip
           draft: false
           prerelease: false
           fail_on_unmatched_files: true
@@ -101,9 +101,9 @@ jobs:
             printf '{\n  "version": "%s",\n  "versionCode": %s,\n  "zipUrl": "https://github.com/%s/releases/download/%s/%s",\n  "changelog": "https://raw.githubusercontent.com/%s/main/CHANGELOG.md"\n}\n' \
               "$ver" "$code" "$GITHUB_REPOSITORY" "$tag" "$2" "$GITHUB_REPOSITORY" > "$1"
           }
-          write_manifest update.json        "AlwaysStrong-${ver}.zip"
-          write_manifest update-inject.json "AlwaysStrong-${ver}-inject.zip"
-          write_manifest update-nopif.json  "AlwaysStrong-${ver}-nopif.zip"
+          write_manifest update.json        "MatrixModule-${ver}.zip"
+          write_manifest update-inject.json "MatrixModule-${ver}-inject.zip"
+          write_manifest update-nopif.json  "MatrixModule-${ver}-nopif.zip"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add update.json update-inject.json update-nopif.json

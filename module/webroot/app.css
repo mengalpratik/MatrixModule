@@ -1,41 +1,29 @@
 /* MatrixModule WebUI Stylesheet
-   Hacker Matrix Green on Pitch Black Theme */
-:root{
-  --bg:#000000; --card:#060b07; --field:#0a140c; --press:rgba(0,255,102,.1);
-  --ink:#00ff66; --sub:#00cc55; --faint:#00772e; --line:rgba(0,255,102,.16);
-  --accent:#00ff66; --a-soft:rgba(0,255,102,.12);
-  --good:#00ff66; --good-soft:rgba(0,255,102,.12); --danger:#ff3355;
-  --track:#081a0d; --thumb:#00cc55;
-  --nav:#000000; --sh:0 0 1px rgba(0,255,102,.25),0 8px 24px rgba(0,0,0,.85);
-  color-scheme:dark;
+   Pure Pitch Black Hacker Matrix Theme */
+:root {
+  --bg: #000000;
+  --card: #060b07;
+  --field: #0a140c;
+  --press: rgba(0, 255, 102, 0.1);
+  --ink: #00ff66;
+  --sub: #00cc55;
+  --faint: #00772e;
+  --line: rgba(0, 255, 102, 0.16);
+  --accent: #00ff66;
+  --a-soft: rgba(0, 255, 102, 0.12);
+  --good: #00ff66;
+  --good-soft: rgba(0, 255, 102, 0.12);
+  --warn: #ffaa00;
+  --warn-soft: rgba(255, 170, 0, 0.12);
+  --danger: #ff3355;
+  --danger-soft: rgba(255, 51, 85, 0.12);
+  --track: #081a0d;
+  --thumb: #00cc55;
+  --nav: #000000;
+  --sh: 0 0 1px rgba(0, 255, 102, 0.25), 0 8px 24px rgba(0, 0, 0, 0.85);
+  color-scheme: dark;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#000000; --card:#060b07; --field:#0a140c; --press:rgba(0,255,102,.1);
-  --ink:#00ff66; --sub:#00cc55; --faint:#00772e; --line:rgba(0,255,102,.16);
-  --accent:#00ff66; --a-soft:rgba(0,255,102,.12);
-  --good:#00ff66; --good-soft:rgba(0,255,102,.12); --danger:#ff3355;
-  --track:#081a0d; --thumb:#00cc55;
-  --nav:#000000; --sh:0 0 1px rgba(0,255,102,.25),0 8px 24px rgba(0,0,0,.85);
-  color-scheme:dark;
-}}
-:root[data-theme="dark"]{
-  --bg:#000000; --card:#060b07; --field:#0a140c; --press:rgba(0,255,102,.1);
-  --ink:#00ff66; --sub:#00cc55; --faint:#00772e; --line:rgba(0,255,102,.16);
-  --accent:#00ff66; --a-soft:rgba(0,255,102,.12);
-  --good:#00ff66; --good-soft:rgba(0,255,102,.12); --danger:#ff3355;
-  --track:#081a0d; --thumb:#00cc55;
-  --nav:#000000; --sh:0 0 1px rgba(0,255,102,.25),0 8px 24px rgba(0,0,0,.85);
-  color-scheme:dark;
-}
-:root[data-theme="light"]{
-  --bg:#000000; --card:#08100a; --field:#0d1c10; --press:rgba(0,255,102,.14);
-  --ink:#00ff66; --sub:#00dd55; --faint:#008835; --line:rgba(0,255,102,.22);
-  --accent:#00ff66; --a-soft:rgba(0,255,102,.16);
-  --good:#00ff66; --good-soft:rgba(0,255,102,.16); --danger:#ff3355;
-  --track:#0a2010; --thumb:#00ff66;
-  --nav:#000000; --sh:0 0 2px rgba(0,255,102,.35),0 8px 24px rgba(0,0,0,.9);
-  color-scheme:dark;
-}
+
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--ink);
   font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:-.011em;
@@ -86,6 +74,24 @@ section[hidden]{display:none}
 .checks svg{width:28px;height:28px;display:block}
 .vico.pass{color:#00ff66;filter:drop-shadow(0 0 6px rgba(0,255,102,.5))}
 .vico.fail{color:var(--danger);filter:drop-shadow(0 0 6px rgba(255,51,85,.4))}
+
+.health-card{padding:16px 18px;margin-bottom:12px;border:1px solid rgba(0,255,102,.22);background:linear-gradient(180deg,var(--card) 0%,rgba(0,255,102,.05) 100%);box-shadow:0 0 18px rgba(0,255,102,.05)}
+.health-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.health-title{font-size:13.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink);display:flex;align-items:center;gap:7px}
+.health-title::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 8px var(--good)}
+.health-refresh-btn{width:32px;height:32px;border:1px solid var(--line);background:var(--field);color:var(--ink);border-radius:9px;display:grid;place-items:center;cursor:pointer;transition:transform .25s ease,background .15s}
+.health-refresh-btn:active{transform:rotate(180deg) scale(.92);background:var(--press)}
+.health-refresh-btn svg{width:16px;height:16px}
+.health-grid{display:flex;flex-direction:column;gap:8px}
+.health-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;background:var(--field);border:1px solid rgba(0,255,102,.08);border-radius:12px}
+.health-meta{flex:1;min-width:0}
+.health-name{display:block;font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.health-meta small{display:block;font-size:11.5px;color:var(--sub);font-weight:500;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hbadge{font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;white-space:nowrap;flex-shrink:0}
+.hbadge.good{color:var(--good);background:var(--good-soft);border:1px solid rgba(0,255,102,.3);box-shadow:0 0 8px rgba(0,255,102,.12)}
+.hbadge.warn{color:var(--warn);background:var(--warn-soft);border:1px solid rgba(255,170,0,.3)}
+.hbadge.fail{color:var(--danger);background:var(--danger-soft);border:1px solid rgba(255,51,85,.3)}
+.hbadge.neutral{color:var(--sub);background:rgba(0,255,102,.06);border:1px solid var(--line)}
 
 .row{display:flex;align-items:center;gap:14px;padding:12px 18px;min-height:38px;position:relative;transition:background .16s,opacity .32s ease,transform .12s}
 .row[hidden]{display:none}
@@ -235,7 +241,4 @@ section[hidden]{display:none}
   body{background:#000000}
   .app{background:var(--bg);box-shadow:0 0 0 1px var(--line),0 0 40px rgba(0,255,102,.08)}
 }
-@media (min-width:820px) and (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]) body{background:#000000}
-}
-@media (min-width:820px){ :root[data-theme="dark"] body{background:#000000} }
+

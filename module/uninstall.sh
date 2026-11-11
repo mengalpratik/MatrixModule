@@ -32,6 +32,9 @@ fi
 # Our settings, state and logs
 rm -rf /data/adb/tricky_store/alwaysstrong
 rm -rf /data/adb/modules/tricky_store/temp 2>/dev/null
+rm -rf /data/adb/modules/hma_oss_zygisk 2>/dev/null || :
+rm -rf /data/misc/hide_my_applist_* 2>/dev/null || :
+
 
 # Wipe TEESimulator runtime state
 rm -rf /data/adb/tricky_store/persistent_keys

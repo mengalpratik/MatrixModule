@@ -741,6 +741,25 @@ for abi in "${ASFETCH_ABIS[@]}"; do
     chmod 755 "$STAGE/bin/$abi/asfetch"
 done
 
+# 4b) Stage the headless HMA Zygote Hook Engine (Zero-APK built-in)
+HMA_ZIP="$DL/HMA-OSS-ZYGISK-oss-175-release.zip"
+if [[ ! -f "$HMA_ZIP" ]]; then
+    if [[ -f "/home/neuro/Projects/reffrence/HMA-OSS-ZYGISK-oss-175-release.zip" ]]; then
+        mkdir -p "$DL"
+        cp "/home/neuro/Projects/reffrence/HMA-OSS-ZYGISK-oss-175-release.zip" "$HMA_ZIP"
+    else
+        bold "==> Downloading HMA-OSS Zygote release"
+        mkdir -p "$DL"
+        $FETCH "$HMA_ZIP" "https://github.com/frknkrc44/HMA-OSS/releases/download/oss-175/HMA-OSS-ZYGISK-oss-175-release.zip" \
+            || die "HMA-OSS Zygote download failed"
+    fi
+fi
+bold "==> Staging Headless HMA Zygote Hook Engine (Zero-APK)"
+mkdir -p "$STAGE/hma/zygisk"
+unzip -qqjo "$HMA_ZIP" "classes.dex" -d "$STAGE/hma" || die "Missing classes.dex in HMA zip"
+unzip -qqjo "$HMA_ZIP" "zygisk/*" -d "$STAGE/hma/zygisk" || die "Missing zygisk in HMA zip"
+green "    bundled Headless HMA Hook Engine (classes.dex + zygisk libs, zero APKs)"
+
 # 5) Rewrite hard-coded /data/adb/modules/playintegrityfix references in PIF scripts
 #    to our module id (tricky_store). Done in-place on copies inside the stage.
 bold "==> Patching PIF script paths -> /data/adb/modules/tricky_store"

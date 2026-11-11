@@ -70,7 +70,7 @@ for PROP in $(resetprop | grep -oE 'ro.*.build.type'); do
 done
 
 resetprop_if_diff ro.adb.secure 1
-if ! $SKIPDELPROP; then
+if ! ${SKIPDELPROP:-false}; then
     delprop_if_exist ro.boot.verifiedbooterror
     delprop_if_exist ro.boot.verifyerrorpart
 fi

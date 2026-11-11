@@ -1,7 +1,7 @@
 id=tricky_store
 name=MatrixModule
-version=v1.0.0
-versionCode=100
+version=v1.1.0
+versionCode=110
 author=Pratik Mengal
 donate=https://buymeacoffee.com/pratikmengal
 description=Strong Play Integrity in one drop-in module. TEE-Simulator-RS + PlayIntegrityFork, auto-refreshed. Tap Action.

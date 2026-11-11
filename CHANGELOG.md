@@ -1,5 +1,32 @@
 # MatrixModule changelog
 
+## v1.1.0
+
+Major update introducing Zero-APK Headless HMA (Hide My Applist) integration, live System Health & Root Protection indicators, and cyber theme polish.
+
+**Core Highlights**
+- **Zero-APK App Isolation (Headless HMA Engine)**:
+  - Bundled HMA OSS Zygote Hook Engine directly inside MatrixModule (`/data/adb/modules/hma_oss_zygisk`).
+  - No need to install any external HMA manager APK. Package isolation and stealth hooks run transparently from the Zygote layer.
+  - Zero-touch auto-configuration targeting system and root apps with dynamic hook triggers.
+  - Automatic cleanup hooks on uninstallation.
+- **System Health & Root Hiding Indicators**:
+  - Live security dashboard in the Matrix WebUI with real-time status:
+    - Attestation Daemon (PID tracking)
+    - Play Integrity Fingerprint Spoof
+    - Magisk DenyList Mount Protection
+    - HMA App Isolation engine status
+    - SELinux Enforcing status
+  - Added instant "Refresh Health" audit action.
+- **Pure Pitch-Black Matrix WebUI**:
+  - Permanent deep-black aesthetic (`#000000` / `#060b07`) with high-contrast cyber-green neon accents (`#00ff66`).
+  - Removed unnecessary theme switching controls.
+- **Bug Fixes & Hardening**:
+  - Fixed backdrop dismiss click bug on "Apps to hide" modal.
+  - Fixed variable expansion check in `post-fs-data.sh`.
+  - Added safe directory staging for Widevine keybox installation.
+  - Updated release workflows and asset naming conventions.
+
 ## v1.0.0
 
 Initial release of MatrixModule.

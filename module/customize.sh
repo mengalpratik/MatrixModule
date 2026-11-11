@@ -233,6 +233,36 @@ if [ -f "$MODPATH/hma_sync.sh" ]; then
   ui_print "HMA hiding architecture initialized"
 fi
 
+# Deploy Headless HMA Zygote Hook Engine (Zero-APK Built-in)
+if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "hma/classes.dex"; then
+  ui_print "- Deploying Built-in HMA App Isolation Engine..."
+  HMA_DIR="/data/adb/modules/hma_oss_zygisk"
+  rm -rf "$HMA_DIR" 2>/dev/null || :
+  mkdir -p "$HMA_DIR/zygisk" "$HMA_DIR/packages" 2>/dev/null
+  install_file "hma/classes.dex" "$HMA_DIR"
+  touch "$HMA_DIR/packages/android"
+
+  if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "hma/zygisk/$ABI_DIR.so"; then
+    unzip -qqjo "$ZIPFILE" "hma/zygisk/$ABI_DIR.so" -d "$HMA_DIR/zygisk" 2>/dev/null || :
+  fi
+  if [ "$ABI_DIR" = "arm64-v8a" ] && unzip -l "$ZIPFILE" 2>/dev/null | grep -q "hma/zygisk/armeabi-v7a.so"; then
+    unzip -qqjo "$ZIPFILE" "hma/zygisk/armeabi-v7a.so" -d "$HMA_DIR/zygisk" 2>/dev/null || :
+  fi
+
+  cat > "$HMA_DIR/module.prop" <<'EOF'
+id=hma_oss_zygisk
+name=MatrixModule · App Isolation Engine
+version=v1.1.0 (Zero-APK)
+versionCode=110
+author=MatrixModule
+description=Built-in Zygisk hook engine for MatrixModule package isolation (system_server PMS interceptor, zero APK required).
+EOF
+  chmod 755 "$HMA_DIR" "$HMA_DIR/zygisk" "$HMA_DIR/packages" 2>/dev/null || :
+  chmod 644 "$HMA_DIR/module.prop" "$HMA_DIR/classes.dex" "$HMA_DIR/zygisk/"*.so 2>/dev/null || :
+  ui_print "  HMA App Isolation Engine deployed (0 APKs required)"
+fi
+
+
 if [ ! -f /data/adb/tricky_store/hbk ]; then
   head -c 32 /dev/random > /data/adb/tricky_store/hbk
   chmod 600 /data/adb/tricky_store/hbk
