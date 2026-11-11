@@ -29,17 +29,18 @@ log_private() {
 }
 
 # --- 1. Suppress our log tags at the source (logd drops them) ---
-for t in MatrixModule MatrixModule-boot MatrixModule-hourly MatrixModule-unify \
-         MatrixModule-proc MatrixModule-keybox AlwaysStrong AlwaysStrong-boot; do
+for t in AlwaysStrong AlwaysStrong-boot AlwaysStrong-hourly AlwaysStrong-unify \
+         AlwaysStrong-proc AlwaysStrong-keybox; do
   resetprop "persist.log.tag.$t" S 2>/dev/null
 done
 
-
+# Remove any lingering temp log files from previous runs
+rm -f /data/local/tmp/AlwaysStrong*.log 2>/dev/null
 
 # --- 2. ANR / tombstone scrub (per-line sed, never full delete) ---
 scrub_traces() {
   local changed=0
-  local pat='TEESimulator\|aswatcher\|MatrixModule\|AlwaysStrong\|libinject\|libTEESimulator\|supervisor'
+  local pat='TEESimulator\|aswatcher\|AlwaysStrong\|libinject\|libTEESimulator\|supervisor'
 
   for anr in /data/anr/anr_* /data/anr/traces.txt; do
     [ -f "$anr" ] || continue

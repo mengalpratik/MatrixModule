@@ -101,7 +101,7 @@ sleep_pause() {
 
 download_fail() {
     dl_domain=$(echo "$1" | awk -F[/:] '{print $4}')
-    rm -rf /data/adb/modules/tricky_store/temp 2>/dev/null
+    rm -rf "$TEMPDIR"
     ping -c 1 -W 5 "$dl_domain" > /dev/null 2>&1 || {
         echo "[!] Unable to connect to $dl_domain, check your internet connection and try again"
         sleep_pause

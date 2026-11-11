@@ -8,7 +8,7 @@ MODPATH="${0%/*}"
 # directory behind, and nothing else ever cleans it up. The loop pids in state
 # belong to processes that died with the last boot, and a line that outlives
 # the process it names only makes a log harder to read.
-rm -rf /data/adb/tricky_store/alwaysstrong/tmp 2>/dev/null; mkdir -p /data/adb/tricky_store/alwaysstrong/tmp 2>/dev/null
+[ -n "$AS_TMP" ] && rm -rf "$AS_TMP"/* 2>/dev/null
 command -v st_del >/dev/null 2>&1 && { st_del refresh; st_del ts_loop; st_del teesim_loop; }
 
 # Our PIF zygisk binary is binary-patched at build time to read its dex/config

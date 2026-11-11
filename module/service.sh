@@ -439,8 +439,7 @@ fi
             [ -n "$kbout" ] && echo "$kbout" | log -t "MatrixModule-hourly"
             if [ "$kbrc" = "0" ]; then
                 log -t "MatrixModule-hourly" "keybox updated, restarting PI"
-                killall -9 com.google.android.gms.unstable 2>/dev/null
-                killall -9 com.android.vending 2>/dev/null
+                as_killpi
             fi
         fi
         # Status — independent of toggles; cheap GET, idempotent module.prop write

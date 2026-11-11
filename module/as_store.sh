@@ -37,8 +37,6 @@ AS_CONF="$AS_DIR/config"
 AS_STATE="$AS_DIR/state"
 AS_APPS="$AS_DIR/apps.map"
 AS_PKGS="$AS_DIR/packages"
-AS_HIDDEN="$AS_DIR/hidden_apps"
-AS_HMA_CONF="$AS_DIR/config.json"
 AS_SPOOF="$AS_DIR/spoof.conf"
 AS_IMPORTED="$AS_DIR/imported"
 AS_LOGS="$AS_DIR/logs"
@@ -56,17 +54,66 @@ as_init() {
     return 0
 }
 
+# Recycle the Play Integrity stack so a freshly applied fingerprint / keybox
+# takes effect at once — the user shouldn't have to force-close Play Store by
+# hand for the new identity to show up.
+#
+# NOT `killall com.google.android.gms.unstable` / `killall com.android.vending`:
+#   * The DroidGuard sandbox (com.google.android.gms.unstable) runs in an
+#     isolated SELinux domain that denies SIGKILL from the shell/root domain
+#     (killall returns "Operation not permitted"), so the integrity sandbox was
+#     never actually recycled — the new fingerprint only took on the next cold
+#     boot or when the user killed it from Settings.
+#   * killall matches a process's full argv[0], so `com.android.vending` kills
+#     the main process but leaves the :background / :quick_launch children (a
+#     different argv[0]) alive, holding the stale identity.
+# Play Store (com.android.vending) takes a full `am force-stop`: it has no
+# dependency link back to the root manager app, so the stop stays contained, and
+# it clears the verdict cache plus the :background / :quick_launch children in
+# one shot.
+#
+# GMS must NOT be force-stopped. forceStopPackage also tears down every package
+# bound to GMS, and on a root manager that includes the Magisk / KernelSU /
+# APatch app running this very Action. The ROM logs it plainly:
+#   am_kill: com.topjohnwu.magisk ... stop com.google.android.gms due to from pid N
+# so the user is thrown out of the app the instant Action finishes (STRONG still
+# lands, since the spoof is already applied by then). Use `am kill`: it still
+# routes through system_server, so it signals the isolated DroidGuard sandbox
+# that killall could not (no EPERM), but it recycles only GMS's own background
+# processes without the force-stop dependency cascade. GMS restarts on demand
+# with the new props injected at fork.
+#
+# `am` is not always usable though. On some Android 17 builds (seen on a Pixel
+# 10 Pro Fold, CP2A.260605.012, Magisk 31.1) the binder call behind it fails:
+#   cmd: Failure calling service activity: Failed transaction (2147483646)
+# so neither call does anything, Play Store / DroidGuard keep the old keybox and
+# fingerprint, and STRONG never lands. On those same devices `killall -9` works
+# (the sandbox is not shielded there), so it always runs after `am` as a second
+# path: where `am` already recycled everything there is nothing left to match,
+# and where the sandbox denies SIGKILL it just fails quietly. Both stdout and
+# stderr go to /dev/null so the cmd failure line no longer leaks into the log.
+as_killpi() {
+    am force-stop com.android.vending >/dev/null 2>&1
+    am kill com.google.android.gms >/dev/null 2>&1
+    killall -9 com.google.android.gms.unstable com.android.vending com.android.vending:background com.android.vending:quick_launch >/dev/null 2>&1
+    return 0
+}
+
 # Every setting there is, in the order the config file lists them.
 AS_KEYS="auto_fp auto_keybox status_indicator rom_spoof_block spoof_patch_props
          force_patch_props logcat_cleanup prop_unify denylist_gms auto_target hide_rom_markers
          custom_keybox custom_pif patch_system patch_vendor patch_boot interval_sec"
 
 # What a setting means when nothing has been written. Everything the module does
-# on its own is on; the two opt-ins are off.
+# on its own is on; the opt-ins are off. spoof_patch_props is opt-in: by default
+# the device keeps its real Settings / getprop patch date (Play Integrity reads
+# the patch through the PIF hook + the TEE attestation, both of which still
+# follow the fingerprint), and only a user who wants Build.VERSION.SECURITY_PATCH
+# rewritten to the attested date turns it on.
 as_default() {
     case "$1" in
-        auto_fp|auto_keybox|status_indicator|rom_spoof_block|spoof_patch_props|logcat_cleanup|prop_unify|denylist_gms|auto_target) echo 1 ;;
-        custom_keybox|custom_pif|force_patch_props|hide_rom_markers) echo 0 ;;
+        auto_fp|auto_keybox|status_indicator|rom_spoof_block|logcat_cleanup|prop_unify|denylist_gms|auto_target) echo 1 ;;
+        custom_keybox|custom_pif|spoof_patch_props|force_patch_props|hide_rom_markers) echo 0 ;;
         interval_sec) echo 3600 ;;
         *) echo "" ;;
     esac
@@ -203,6 +250,32 @@ st_get() { _kv_get "$AS_STATE" "$1"; }
 st_set() { _kv_set "$AS_STATE" "$1" "$2"; }
 st_del() { _kv_del "$AS_STATE" "$1"; }
 
+# _kv_set_multi <file> <k1> <v1> [<k2> <v2> ...] — set several keys in ONE rewrite
+# of the file (one temp + mv) instead of a read-modify-write per key. Use when a
+# caller sets a batch of keys back to back (e.g. import_pif.sh): one grep + one
+# write for the lot, and as_set_multi reseeds the config just once instead of per
+# key (as_set -> as_seed walks all AS_KEYS, so N sets = N full reseeds).
+_kv_set_multi() {
+    as_init
+    _kvf="$1"; shift
+    [ -f "$_kvf" ] || : > "$_kvf"
+    _pat=""; _add=""
+    while [ "$#" -ge 2 ]; do
+        _pat="${_pat:+$_pat|}^$1="
+        _add="$_add$1=$2
+"
+        shift 2
+    done
+    [ -n "$_pat" ] || return 0
+    { grep -vE "$_pat" "$_kvf" 2>/dev/null; printf '%s' "$_add"; } > "$_kvf.new" 2>/dev/null &&
+        mv -f "$_kvf.new" "$_kvf" 2>/dev/null
+    chmod 600 "$_kvf" 2>/dev/null || :
+    unset _kvf _pat _add
+    return 0
+}
+as_set_multi() { _kv_set_multi "$AS_CONF" "$@"; as_seed; }
+st_set_multi() { _kv_set_multi "$AS_STATE" "$@"; }
+
 # --- scratch space --------------------------------------------------------
 # as_tmp <name> — a path under tmp/, created on demand. Callers append $$ when
 # they need a per-process file.
@@ -214,7 +287,77 @@ as_tmp() { as_init; echo "$AS_TMP/$1"; }
 # old files are gone it does nothing. The old names are removed after import so
 # the directory actually gets tidier instead of holding both layouts.
 as_migrate() {
+    _old="$AS_CFG_ROOT"
+    [ -d "$_old" ] || return 0
+
+    # marker present = the feature was switched OFF
+    for _m in no_auto_fp:auto_fp no_auto_keybox:auto_keybox \
+              no_auto_indicator:status_indicator no_rom_spoof_block:rom_spoof_block \
+              no_spoof_patch_props:spoof_patch_props no_logcat_cleanup:logcat_cleanup \
+              no_prop_unify:prop_unify; do
+        if [ -f "$_old/${_m%%:*}" ]; then
+            as_set "${_m#*:}" 0
+            rm -f "$_old/${_m%%:*}" 2>/dev/null
+        fi
+    done
+
+    # marker present = the opt-in was switched ON
+    for _m in custom_keybox:custom_keybox hide_rom_markers:hide_rom_markers \
+              spoof_patch_props:force_patch_props; do
+        if [ -f "$_old/${_m%%:*}" ]; then
+            as_set "${_m#*:}" 1
+            rm -f "$_old/${_m%%:*}" 2>/dev/null
+        fi
+    done
+
+    if [ -f "$_old/hourly_interval_sec" ]; then
+        _iv=$(tr -dc '0-9' < "$_old/hourly_interval_sec" 2>/dev/null)
+        [ -n "$_iv" ] && as_set interval_sec "$_iv" ; :
+        rm -f "$_old/hourly_interval_sec" 2>/dev/null
+        unset _iv
+    fi
+
+    # files that keep their shape, only their home changes
+    as_init
+    for _f in app_keybox.map:apps.map custom_packages:packages spoof.conf:spoof.conf \
+              .imported_keyboxes:imported; do
+        if [ -f "$_old/${_f%%:*}" ] && [ ! -f "$AS_DIR/${_f#*:}" ]; then
+            mv -f "$_old/${_f%%:*}" "$AS_DIR/${_f#*:}" 2>/dev/null || :
+        fi
+        rm -f "$_old/${_f%%:*}" 2>/dev/null || :
+    done
+
+    # loose state files become one key=value file
+    for _s in .fp_idx:fp_idx .kb_engine:kb_engine .custom_keybox_name:keybox_name \
+              .last_log:last_log; do
+        if [ -s "$_old/${_s%%:*}" ]; then
+            _sv=$(head -1 "$_old/${_s%%:*}" 2>/dev/null | tr -d '\r')
+            [ -n "$_sv" ] && st_set "${_s#*:}" "$_sv" ; :
+            unset _sv
+        fi
+        rm -f "$_old/${_s%%:*}" 2>/dev/null
+    done
+
+    for _l in autopif.log:autopif.log .action_boot.log:action-boot.log \
+              .action_reset.log:action-reset.log; do
+        if [ -f "$_old/${_l%%:*}" ]; then
+            mv -f "$_old/${_l%%:*}" "$AS_LOGS/${_l#*:}" 2>/dev/null || :
+        fi
+        rm -f "$_old/${_l%%:*}" 2>/dev/null || :
+    done
+
+    # leftovers from older versions: locks, half-finished downloads, a probe file
+    # nothing writes any more
+    rm -f "$_old/.action_probe" "$_old/.keybox.sha256" "$_old/.import.pif.prop" \
+          "$_old/.ts_loop" "$_old/.teesim_loop" 2>/dev/null
+    rm -f "$_old"/.keybox_fetch.* "$_old"/.pif_native.* "$_old"/.pif_asfetch.* \
+          "$_old"/.netcheck.* 2>/dev/null
+    # and from our own tmp/: the stamp an earlier build polled against, which
+    # nothing reads now that the loop is told about a change instead
+    rm -f "$AS_TMP/interval.stamp" "$AS_TMP/refresh.pid" \
+          "$AS_TMP/ts_loop.pid" "$AS_TMP/teesim_loop.pid" 2>/dev/null
     as_seed
+    unset _old _m _f _s _l
     return 0
 }
 

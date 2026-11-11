@@ -335,9 +335,15 @@ sleep 1
 fi
 
 # --- Restart PI + status ---
-killall -9 com.google.android.gms.unstable 2>/dev/null
-killall -9 com.android.vending 2>/dev/null
-bounded 45 am force-stop com.android.vending >/dev/null 2>&1
+# Recycle Play Store + the GMS DroidGuard via as_killpi (am, then killall as a
+# second path for ROMs where the am binder call fails, see as_store.sh).
+if command -v as_killpi >/dev/null 2>&1; then
+    as_killpi
+else
+    am force-stop com.android.vending >/dev/null 2>&1
+    am kill com.google.android.gms >/dev/null 2>&1
+    killall -9 com.google.android.gms.unstable com.android.vending com.android.vending:background com.android.vending:quick_launch >/dev/null 2>&1
+fi
 
 # Status indicator — network again, and it runs right before "done": this is
 # the call that froze the Action for good whenever asfetch hung.

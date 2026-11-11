@@ -57,10 +57,9 @@ sync_config() {
     [ -f "$AS_HIDDEN" ] || init_defaults
 
     # Temporary files for awk input
-    mkdir -p /data/adb/modules/tricky_store/temp 2>/dev/null || :
-    _tmp_hidden="/data/adb/modules/tricky_store/temp/hma_hidden.tmp"
-    _tmp_target="/data/adb/modules/tricky_store/temp/hma_target.tmp"
-    _tmp_json="/data/adb/modules/tricky_store/temp/hma_config.json.tmp"
+    _tmp_hidden="$AS_DIR/.hma_hidden.$$.tmp"
+    _tmp_target="$AS_DIR/.hma_target.$$.tmp"
+    _tmp_json="$AS_DIR/.hma_config.$$.tmp"
 
     # Clean hidden apps list
     if [ -f "$AS_HIDDEN" ]; then
@@ -134,16 +133,16 @@ sync_config() {
         print "}";
     }' "$_tmp_hidden" "$_tmp_target" > "$_tmp_json" 2>/dev/null
 
-    rm -f /data/adb/modules/tricky_store/temp/hma_hidden.tmp /data/adb/modules/tricky_store/temp/hma_target.tmp 2>/dev/null || :
+    rm -f "$_tmp_hidden" "$_tmp_target" 2>/dev/null || :
 
-    if [ -s /data/adb/modules/tricky_store/temp/hma_config.json.tmp ]; then
-        mv -f /data/adb/modules/tricky_store/temp/hma_config.json.tmp /data/adb/tricky_store/alwaysstrong/config.json 2>/dev/null
-        chmod 644 /data/adb/tricky_store/alwaysstrong/config.json 2>/dev/null || :
+    if [ -s "$_tmp_json" ]; then
+        mv -f "$_tmp_json" "$AS_HMA_CONF" 2>/dev/null
+        chmod 644 "$AS_HMA_CONF" 2>/dev/null || :
 
         # Sync to any HMA service directories on device
         for d in /data/misc/hide_my_applist_* /data/system/hide_my_applist_*; do
             if [ -d "$d" ]; then
-                cp -f /data/adb/tricky_store/alwaysstrong/config.json "$d/config.json" 2>/dev/null || :
+                cp -f "$AS_HMA_CONF" "$d/config.json" 2>/dev/null || :
                 chmod 666 "$d/config.json" 2>/dev/null || :
             fi
         done
@@ -151,11 +150,11 @@ sync_config() {
         if ! ls -d /data/misc/hide_my_applist_* >/dev/null 2>&1; then
             mkdir -p /data/misc/hide_my_applist_alwaysstrong 2>/dev/null || :
             chmod 777 /data/misc/hide_my_applist_alwaysstrong 2>/dev/null || :
-            cp -f /data/adb/tricky_store/alwaysstrong/config.json /data/misc/hide_my_applist_alwaysstrong/config.json 2>/dev/null || :
+            cp -f "$AS_HMA_CONF" /data/misc/hide_my_applist_alwaysstrong/config.json 2>/dev/null || :
             chmod 666 /data/misc/hide_my_applist_alwaysstrong/config.json 2>/dev/null || :
         fi
     else
-        rm -f /data/adb/modules/tricky_store/temp/hma_config.json.tmp 2>/dev/null || :
+        rm -f "$_tmp_json" 2>/dev/null || :
     fi
 }
 

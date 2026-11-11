@@ -224,6 +224,22 @@ else
   ui_print "demo keybox seeded — the real one is fetched on first boot"
 fi
 
+# Restore an imported / beta fingerprint that this reinstall just wiped. On Fork
+# and inject-s the active pif lives in the module dir, which was re-extracted
+# empty; import_pif.sh keeps a persistent source copy at
+# $CONFIG_DIR/custom.pif.prop. If the user had a custom pif (custom_pif=1) and
+# that copy is present, re-install it into the fresh module dir now — otherwise
+# the update strands the device with custom_pif=1 and no spoof identity, and
+# STRONG silently drops to whatever Fork's own boot autopif fetches. No-op on
+# Lite (ENGINE=none already keeps its pif under CONFIG_DIR) and when the user
+# was on the automatic fingerprint. engine.sh is sourced above.
+if [ "${ENGINE:-none}" != "none" ] && [ -s "$CONFIG_DIR/custom.pif.prop" ] && \
+   grep -q '^custom_pif=1' "$CONFIG_DIR/alwaysstrong/config" 2>/dev/null; then
+  if engine_install_pif "$CONFIG_DIR/custom.pif.prop" 2>/dev/null; then
+    ui_print "imported fingerprint restored"
+  fi
+fi
+
 # target.txt is (re)built on boot (service.sh) and on every [Action] tap — just
 # drop a default seed here so TrickyStore has something to read on first boot.
 [ -f "$CONFIG_DIR/target.txt" ] || install_file "target.txt" "$CONFIG_DIR"
@@ -233,42 +249,16 @@ if [ -f "$MODPATH/hma_sync.sh" ]; then
   ui_print "HMA hiding architecture initialized"
 fi
 
-# Deploy Headless HMA Zygote Hook Engine (Zero-APK Built-in)
-if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "hma/classes.dex"; then
-  ui_print "- Deploying Built-in HMA App Isolation Engine..."
-  HMA_DIR="/data/adb/modules/hma_oss_zygisk"
-  rm -rf "$HMA_DIR" 2>/dev/null || :
-  mkdir -p "$HMA_DIR/zygisk" "$HMA_DIR/packages" 2>/dev/null
-  install_file "hma/classes.dex" "$HMA_DIR"
-  touch "$HMA_DIR/packages/android"
+# Clean up any leftover duplicate HMA module from v1.1.0 so only 1 module shows in manager
+rm -rf /data/adb/modules/hma_oss_zygisk /data/adb/modules_update/hma_oss_zygisk 2>/dev/null || :
 
-  if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "hma/zygisk/$ABI_DIR.so"; then
-    unzip -qqjo "$ZIPFILE" "hma/zygisk/$ABI_DIR.so" -d "$HMA_DIR/zygisk" 2>/dev/null || :
-  fi
-  if [ "$ABI_DIR" = "arm64-v8a" ] && unzip -l "$ZIPFILE" 2>/dev/null | grep -q "hma/zygisk/armeabi-v7a.so"; then
-    unzip -qqjo "$ZIPFILE" "hma/zygisk/armeabi-v7a.so" -d "$HMA_DIR/zygisk" 2>/dev/null || :
-  fi
-
-  cat > "$HMA_DIR/module.prop" <<'EOF'
-id=hma_oss_zygisk
-name=MatrixModule · App Isolation Engine
-version=v1.1.0 (Zero-APK)
-versionCode=110
-author=MatrixModule
-description=Built-in Zygisk hook engine for MatrixModule package isolation (system_server PMS interceptor, zero APK required).
-EOF
-  chmod 755 "$HMA_DIR" "$HMA_DIR/zygisk" "$HMA_DIR/packages" 2>/dev/null || :
-  chmod 644 "$HMA_DIR/module.prop" "$HMA_DIR/classes.dex" "$HMA_DIR/zygisk/"*.so 2>/dev/null || :
-  ui_print "  HMA App Isolation Engine deployed (0 APKs required)"
+if [ ! -f "$CONFIG_DIR/hbk" ]; then
+  head -c 32 /dev/random > "$CONFIG_DIR/hbk"
+  chmod 600 "$CONFIG_DIR/hbk"
 fi
-
-
-if [ ! -f /data/adb/tricky_store/hbk ]; then
-  head -c 32 /dev/random > /data/adb/tricky_store/hbk
-  chmod 600 /data/adb/tricky_store/hbk
-fi
-rm -f /data/adb/tricky_store/tee_status.txt /data/adb/tricky_store/tee_status 2>/dev/null || :
+rm -f "$CONFIG_DIR/tee_status.txt" "$CONFIG_DIR/tee_status" 2>/dev/null || :
 
 ui_print ""
 ui_print "installed. reboot, then tap [Action] to refresh."
 ui_print ""
+

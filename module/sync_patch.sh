@@ -88,7 +88,7 @@ mkdir -p "$CONFIG_DIR"
 # TrickyStore's security_patch.txt accepts per-partition keys (system/boot/vendor,
 # dotted). Written per-partition so a manual override for one lands exactly; with
 # no override all three carry the single auto date.
-printf 'system=%s\nvendor=%s\nboot=%s\n' "$SYS" "$VEN" "$BOOT" > /data/adb/tricky_store/security_patch.txt
+printf 'system=%s\nvendor=%s\nboot=%s\n' "$SYS" "$VEN" "$BOOT" > "$CONFIG_DIR/security_patch.txt"
 
 # --- 2. PIF wildcard prop: spoof ro.build/ro.vendor/ro.system .security_patch
 # A single `*.security_patch=<date>` line makes PIF's zygisk hook report the
@@ -103,16 +103,17 @@ for pf in "$MODPATH/custom.pif.prop" "$CONFIG_DIR/custom.pif.prop"; do
     fi
 done
 
-# --- 3. real system props (boot only — needs resetprop) -------------------
+# --- 3. real system props (boot only, needs resetprop) --------------------
 # What every app that PIF does NOT hook reads: Build.VERSION.SECURITY_PATCH,
-# getprop. Banking apps and attestation checkers compare that against the
-# osPatchLevel in the hardware attestation (security_patch.txt above). They must
-# be EQUAL, so the props are set to exactly the attested date — the fingerprint's
-# own SECURITY_PATCH (or the manual override). This is set verbatim, including
-# when it is OLDER than the device's real patch: a Pixel fingerprint attests a
-# specific date, and the prop has to match it, not the device's real OTA level,
-# or the two disagree and STRONG drops. Opt-out for users who want Settings to
-# show the untouched date: spoof_patch_props=0 in alwaysstrong/config.
+# getprop. Writing these device-wide freezes the date Settings shows (it stops
+# following an OTA) and can diverge from the device's real patch, which on custom
+# ROMs is exactly the "patch date never updates" complaint. It is NOT needed for
+# a STRONG verdict: Play Integrity reads the patch through the PIF hook
+# (*.security_patch, step 2) and the TEE attestation (security_patch.txt, step 1),
+# both of which already follow the fingerprint. So this is OPT-IN (default off):
+# spoof_patch_props=1 in alwaysstrong/config (Advanced -> Spoof security patch)
+# rewrites the props to the attested date for the few third-party key-attestation
+# checkers that compare the two; off keeps the device's real date.
 _wp() {   # _wp PROP VALUE — set the prop to VALUE exactly (the attested date)
     _p="$1"; _v="$2"
     cur=$(resetprop "$_p" 2>/dev/null)

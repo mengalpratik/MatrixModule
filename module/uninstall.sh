@@ -15,9 +15,13 @@ pkill -9 -f org.matrix.TEESimulator 2>/dev/null || true
 pkill -9 -f io.github.beakthoven.TrickyStoreOSS 2>/dev/null || true
 
 # Kill GMS + Vending so they reload without our hooks
-killall -9 com.google.android.gms.unstable 2>/dev/null
-killall -9 com.google.android.gms 2>/dev/null
-am force-stop com.android.vending 2>/dev/null
+if [ -f "$MODDIR/as_store.sh" ]; then
+    . "$MODDIR/as_store.sh" 2>/dev/null && as_killpi
+else
+    am force-stop com.android.vending >/dev/null 2>&1
+    am kill com.google.android.gms >/dev/null 2>&1
+    killall -9 com.google.android.gms.unstable com.android.vending com.android.vending:background com.android.vending:quick_launch >/dev/null 2>&1
+fi
 
 # Remove the DenyList entries we added (entries only, never the enforcement
 # toggle). Only on Magisk; rm by package drops all of that package's processes.

@@ -88,6 +88,7 @@ bounded() { _bs="$1"; shift; if [ -n "$TO" ]; then $TO "$_bs" "$@"; else "$@"; f
 # run_engine NAME OUTFILE URL — one download attempt with the named engine.
 # Each engine's own -T bounds one idle wait; the outer cap bounds the call.
 run_engine() {
+    rm -f "$2"
     case "$1" in
         asfetch) [ -n "$ABI" ] && [ -f "$ASFETCH" ] && { [ -x "$ASFETCH" ] || chmod 0755 "$ASFETCH" 2>/dev/null; } && bounded 90 "$ASFETCH" -T 15 -o "$2" "$3" 2>/dev/null ;;
         bb)      [ -n "$BB" ] && bounded 90 "$BB" wget -q -T 20 -O "$2" "$3" 2>/dev/null ;;
@@ -139,9 +140,9 @@ fi
 
 # ---- Fetch ----
 mkdir -p "$CONFIG_DIR"
-TMP="/data/adb/modules/tricky_store/temp/keybox"
+TMP=$(as_tmp "keybox.$$")
 mkdir -p "$TMP"
-trap 'rm -rf /data/adb/modules/tricky_store/temp/keybox' EXIT INT TERM
+trap 'rm -rf "$TMP"' EXIT INT TERM
 
 try_fetch "$TMP/key" "$KEY_URL" || { log "download failed on all engines ($KEY_URL)"; exit 1; }
 
@@ -176,8 +177,8 @@ if [ -n "$DISK_HASH" ] && [ "$DISK_HASH" = "$NEW_XML_HASH" ]; then
 fi
 
 # ---- Atomic replace ----
-mv -f /data/adb/modules/tricky_store/temp/keybox/keybox.xml /data/adb/tricky_store/keybox.xml || { log "mv to /data/adb/tricky_store/keybox.xml failed."; exit 1; }
-chmod 600 /data/adb/tricky_store/keybox.xml
+mv -f "$TMP/keybox.xml" "$TARGET" || { log "mv to $TARGET failed."; exit 1; }
+chmod 600 "$TARGET"
 log "$TARGET updated ($(wc -c < "$TARGET") bytes)."
 
 # Tell the attestation engine the keybox changed. TEESimulator-RS and

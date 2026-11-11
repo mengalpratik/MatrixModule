@@ -55,6 +55,22 @@ com.google.android.gms
 com.google.android.gsf
 "
 
+# Known Play Integrity / root / attestation detector apps. Targeted in generate
+# mode ("!") by default like the Google trio (they probe the keybox chain
+# directly), and included whenever installed even with Auto targeting off. A name
+# that is not installed is simply skipped. Keep in sync with main.js DETECTORS.
+DETECTORS_LIST="
+com.eltavine.duckdetector
+gr.nikolasspyr.integritycheck
+com.henrikherzig.playintegritychecker
+rikka.safetynetchecker
+icu.nullptr.nativetest
+io.github.vvb2060.keyattestation
+com.anu.developers3k.rootchecker
+com.joeykrim.rootcheck
+com.scottyab.rootbeer.sample
+"
+
 is_installed() { printf '%s\n' "$ALL" | grep -Fxq "$1"; }
 
 # The base app pool (user installs + installed OEM wallet/store apps + the forced
@@ -75,6 +91,9 @@ build_default() {
         for p in $OEM_LIST; do is_installed "$p" && echo "$p"; done
     fi
     for p in $FORCED_LIST; do is_installed "$p" && echo "$p"; done
+    # Detector apps: include if installed, regardless of Auto targeting, so they
+    # are always spoofed (and get the "!" gen suffix via the forced-gen set below).
+    for p in $DETECTORS_LIST; do is_installed "$p" && echo "$p"; done
     # user-added custom packages (WebUI "Add custom package", stored in
     # alwaysstrong/packages). These are often system / pre-installed apps that
     # `pm list -3` never reports, so without reading this file a manually added
@@ -107,7 +126,9 @@ DEF=$(build_default | sort -u)
 #   (no line)             -> ticked, default keybox, auto; forced trio -> gen.
 MAP="$AS_APPS"
 [ -f "$MAP" ] || MAP=""
-FORCED="com.android.vending com.google.android.gms com.google.android.gsf"
+# The forced-generate set: the Google trio plus the detector apps, so both awk
+# passes below give them the "!" (generate) suffix by default.
+FORCED="com.android.vending com.google.android.gms com.google.android.gsf $(echo $DETECTORS_LIST)"
 
 {
     # --- default-keybox section (kb == "-"): plain list + per-app ! suffix ---
@@ -144,10 +165,18 @@ FORCED="com.android.vending com.google.android.gms com.google.android.gsf"
             }' "$MAP" | sort | awk -F'\t' '
             $1!=prev{ printf "\n[%s]\n", $1; prev=$1 } { print $2 }'
     fi
-} > /data/adb/tricky_store/target.txt.tmp 2>/dev/null && mv -f /data/adb/tricky_store/target.txt.tmp /data/adb/tricky_store/target.txt 2>/dev/null || :
+} > "${TGT}.tmp" && mv -f "${TGT}.tmp" "$TGT"
 
-# --- Clean unreferenced entries in WebUI-imported keybox manifest ---------
-MANIFEST="/data/adb/tricky_store/alwaysstrong/imported"
+# --- GC orphaned WebUI-imported keyboxes ---------------------------------
+# The WebUI records every keybox it imports into alwaysstrong/imported (one
+# file name per line). A file listed there that no map
+# entry references anymore is a dead import — delete it so the config dir does
+# not accumulate stale keyboxes. ONLY files we imported are ever touched:
+# manually-dropped keyboxes are never in the manifest, so they are left alone.
+# keybox.xml (the default) is never a managed import and is skipped defensively.
+# If the map is gone entirely, every import is orphaned -> all get cleaned.
+CFG_DIR="$(dirname "$TGT")"
+MANIFEST="$AS_IMPORTED"
 if [ -f "$MANIFEST" ]; then
     # Keyboxes still referenced by a non-off map entry (kb field != "-").
     REFERENCED=""
@@ -163,10 +192,12 @@ if [ -f "$MANIFEST" ]; then
         [ "$fn" = "keybox.xml" ] && continue
         if printf '%s\n' "$REFERENCED" | grep -Fxq "$fn"; then
             NEWMAN="${NEWMAN}${fn}
-"
+"                                       # still used -> keep file + manifest line
+        else
+            rm -f "$CFG_DIR/$fn" 2>/dev/null    # orphan -> delete the keybox file
         fi
     done < "$MANIFEST"
-    printf '%s' "$NEWMAN" > /data/adb/tricky_store/alwaysstrong/imported 2>/dev/null || :
+    printf '%s' "$NEWMAN" > "$MANIFEST.tmp" && mv -f "$MANIFEST.tmp" "$MANIFEST"
 fi
 
 # Tell the attestation engine target.txt changed. TEESimulator-RS and
@@ -183,9 +214,7 @@ if [ -f "$_md/attest.sh" ]; then
 fi
 
 # Sync target apps with HMA hiding scope
-if [ -f "$_asmd/hma_sync.sh" ]; then
-    sh "$_asmd/hma_sync.sh" sync "$TGT" >/dev/null 2>&1 || :
-elif [ -f "$_md/hma_sync.sh" ]; then
+if [ -f "$_md/hma_sync.sh" ]; then
     sh "$_md/hma_sync.sh" sync "$TGT" >/dev/null 2>&1 || :
 fi
 

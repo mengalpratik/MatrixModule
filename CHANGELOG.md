@@ -1,5 +1,24 @@
 # MatrixModule changelog
 
+## v1.1.1
+
+Fix duplicate module display in root manager, restore 100% Play Integrity spoofing via upstream AlwaysStrong alignment, and update November Canary baseline.
+
+**Core Highlights**
+- **Single Module Architecture (No Duplicate Module in Manager)**:
+  - Eliminated the phantom `hma_oss_zygisk` module folder. In Magisk, KernelSU, and APatch, MatrixModule is strictly rendered as **one single module** (`tricky_store`).
+  - Added automatic cleanup during installation to remove any lingering `hma_oss_zygisk` directories from v1.1.0 flashes.
+- **Play Integrity Spoofing Restored (AlwaysStrong Upstream Alignment)**:
+  - Fixed `$MODPATH` handling across `engine_install_pif`: fingerprints and configs now cleanly stage into `$MODPATH` and `$CONFIG_DIR` without failing during flashing or updates.
+  - Restored full native `asfetch` and shell crawl fallback with multi-CDN mirrors in `pif_native_fetch.sh`.
+  - Restored `as_killpi()` with `killall -9` fallback for GMS DroidGuard and Play Store recycling (upstream commit `7c1b312`).
+  - Updated fallback baseline to latest November Pixel 6a Canary fingerprint (`ZP11.261016.008`, `2026-11-05`).
+  - Restored `DETECTORS_LIST` auto-targeting in `build_target_txt.sh`.
+- **Preserved Features**:
+  - Pure Pitch-Black Matrix WebUI (`#000000` / `#060b07` / `#00ff66`).
+  - Live System Health & Root Protection Dashboard (`#healthCard`).
+  - Built-in HMA Blacklist Management ("Target apps" & "Apps to hide" syncing directly to `/data/misc/hide_my_applist_*` with zero APK requirement).
+
 ## v1.1.0
 
 Major update introducing Zero-APK Headless HMA (Hide My Applist) integration, live System Health & Root Protection indicators, and cyber theme polish.

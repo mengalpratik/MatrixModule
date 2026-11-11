@@ -22,7 +22,7 @@ esac
 [ -f "$MODPATH/module.prop" ] || MODPATH=/data/adb/modules/tricky_store
 
 KEYBOX="$MODPATH/widevine_l1_attestation.xml"
-TMP=/data/adb/modules/tricky_store/temp/widevine.xml
+TMP=/data/local/tmp/attestation
 LDP=/vendor/lib64/hw:/vendor/lib/hw
 
 # Locate the stock KmInstallKeybox tool. Bare name first (it is normally on the
@@ -51,13 +51,12 @@ case "$1" in
     --run)
         tool=$(find_tool) || { echo "ERROR: KmInstallKeybox not present on this device"; exit 1; }
         [ -f "$KEYBOX" ] || { echo "ERROR: attestation keybox missing"; exit 1; }
-        mkdir -p /data/adb/modules/tricky_store/temp 2>/dev/null || :
-        cp -f "$KEYBOX" /data/adb/modules/tricky_store/temp/widevine.xml 2>/dev/null || { echo "ERROR: cannot stage keybox to /data/adb/modules/tricky_store/temp/widevine.xml"; exit 1; }
-        chmod 600 /data/adb/modules/tricky_store/temp/widevine.xml 2>/dev/null
+        cp -f "$KEYBOX" "$TMP" 2>/dev/null || { echo "ERROR: cannot stage keybox to $TMP"; exit 1; }
+        chmod 600 "$TMP" 2>/dev/null
         # Second arg "attestation" is the DeviceID inside the keybox.
-        out=$(LD_LIBRARY_PATH="$LDP" "$tool" /data/adb/modules/tricky_store/temp/widevine.xml attestation true 2>&1)
+        out=$(LD_LIBRARY_PATH="$LDP" "$tool" "$TMP" attestation true 2>&1)
         rc=$?
-        rm -f /data/adb/modules/tricky_store/temp/widevine.xml 2>/dev/null
+        rm -f "$TMP" 2>/dev/null
         [ -n "$out" ] && echo "$out"
         if echo "$out" | grep -qi "done"; then
             echo "RESULT: ok"

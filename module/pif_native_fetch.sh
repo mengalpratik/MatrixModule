@@ -101,7 +101,42 @@ bounded() { _bs="$1"; shift; if [ -n "$TO" ]; then $TO "$_bs" "$@"; else "$@"; f
 # shipped on Android <=12 (the Pixel 6 series) stays consistent. The Pixel 6
 # beta fetch added below is the primary path now; this block is kept (behind a
 # false guard) only so the in-process fetcher can be restored if that changes.
-
+if false && [ -n "$ABI" ] && [ -x "$ASFETCH" ]; then
+    NW="$CONFIG_DIR/.pif_asfetch.$$"
+    mkdir -p "$NW"
+    # The caller bounds us with `timeout`, so a SIGTERM lands mid-fetch often
+    # enough to matter. INT/TERM must exit explicitly: busybox ash resumes the
+    # script after a trap, which would leave the fetch writing into a dir that
+    # was just deleted.
+    trap 'rm -rf "$NW"' EXIT
+    trap 'rm -rf "$NW"; exit 143' TERM
+    trap 'rm -rf "$NW"; exit 130' INT
+    [ -f "$TARGET" ] && cp -f "$TARGET" "$NW/pif.prop" 2>/dev/null
+    # asfetch has its own no-progress watchdog (exit 124) well inside this cap.
+    bounded 150 "$ASFETCH" autopif --out "$NW/pif.prop" --module "$NW" 2>&1
+    _rc=$?
+    # 124 = the cap tripped: asfetch is not answering on this device/network.
+    # Don't hand the shell crawl the same stuck binary — it would burn its cap
+    # on every page; go straight to busybox wget / curl for the fallback.
+    if [ "$_rc" = 124 ] || [ "$_rc" = 137 ]; then
+        log "native autopif timed out — skipping asfetch for the shell crawl"
+        ASFETCH=""
+    fi
+    if [ "$_rc" = 0 ] \
+       && grep -q '^FINGERPRINT=google/.*:CANARY/' "$NW/pif.prop" 2>/dev/null; then
+        grep -vE '^(spoof|DEBUG)' "$NW/pif.prop" > "$NW/identity.prop" 2>/dev/null
+        engine_spoof_block >> "$NW/identity.prop"
+        if engine_install_pif "$NW/identity.prop"; then
+            cp -f "$NW/identity.prop" "$TARGET" 2>/dev/null
+            log "native autopif ok ($ENGINE)"
+            exit 0
+        fi
+        log "native autopif fetched, but $ENGINE could not install it"
+    fi
+    rm -rf "$NW"
+    trap - EXIT TERM INT   # hand the traps over to the shell crawl's own $W
+    log "native autopif unavailable/failed — trying shell crawl"
+fi
 
 # fetch OUTFILE URL [REFERER]  — REFERER is required by the flashstation API,
 # which is guarded by a referrer-restricted browser key. asfetch goes first (it
@@ -110,21 +145,25 @@ bounded() { _bs="$1"; shift; if [ -n "$TO" ]; then $TO "$_bs" "$@"; else "$@"; f
 fetch() {
     _o="$1"; _u="$2"; _ref="$3"
     if [ -n "$ABI" ] && [ -x "$ASFETCH" ]; then
+        rm -f "$_o"
         if [ -n "$_ref" ]; then bounded $((TIMEOUT + CAP_EXTRA)) "$ASFETCH" -T "$TIMEOUT" -H "Referer: $_ref" -o "$_o" "$_u" 2>/dev/null
         else bounded $((TIMEOUT + CAP_EXTRA)) "$ASFETCH" -T "$TIMEOUT" -o "$_o" "$_u" 2>/dev/null; fi
         [ -s "$_o" ] && return 0
     fi
     if [ -n "$BB" ]; then
+        rm -f "$_o"
         if [ -n "$_ref" ]; then bounded $((TIMEOUT + CAP_EXTRA)) "$BB" wget -q -T "$TIMEOUT" --header "Referer: $_ref" --no-check-certificate -O "$_o" "$_u" 2>/dev/null
         else bounded $((TIMEOUT + CAP_EXTRA)) "$BB" wget -q -T "$TIMEOUT" --no-check-certificate -O "$_o" "$_u" 2>/dev/null; fi
         [ -s "$_o" ] && return 0
     fi
     if command -v curl >/dev/null 2>&1; then
+        rm -f "$_o"
         if [ -n "$_ref" ]; then bounded $((TIMEOUT + CAP_EXTRA)) curl -fsSL --connect-timeout 15 --speed-limit 1 --speed-time "$TIMEOUT" --max-time $((TIMEOUT + CAP_EXTRA - 5)) -e "$_ref" -o "$_o" "$_u" 2>/dev/null
         else bounded $((TIMEOUT + CAP_EXTRA)) curl -fsSL --connect-timeout 15 --speed-limit 1 --speed-time "$TIMEOUT" --max-time $((TIMEOUT + CAP_EXTRA - 5)) -o "$_o" "$_u" 2>/dev/null; fi
         [ -s "$_o" ] && return 0
     fi
     if command -v wget >/dev/null 2>&1; then
+        rm -f "$_o"
         if [ -n "$_ref" ]; then bounded $((TIMEOUT + CAP_EXTRA)) wget -q -T "$TIMEOUT" --header "Referer: $_ref" -O "$_o" "$_u" 2>/dev/null
         else bounded $((TIMEOUT + CAP_EXTRA)) wget -q -T "$TIMEOUT" -O "$_o" "$_u" 2>/dev/null; fi
         [ -s "$_o" ] && return 0
@@ -142,16 +181,16 @@ reverse() { # portable `tac`
     else sed '1!G;h;$!d'; fi
 }
 
-W="/data/adb/modules/tricky_store/temp/pif_native"
+W="$CONFIG_DIR/.pif_native.$$"
 mkdir -p "$W" || { log "cannot create work dir."; exit 1; }
 # Clean up on exit. INT/TERM MUST exit explicitly: busybox ash RESUMES the script
 # after running a signal trap, so without the exit a `timeout` SIGTERM would delete
 # $W and then let the crawl keep running until it dies writing pif.prop into the
 # now-missing dir ("can't create .../pif.prop"). Exit cleanly so the caller falls
 # back instead of hitting that misleading half-run failure.
-trap 'rm -rf /data/adb/modules/tricky_store/temp/pif_native' EXIT
-trap 'rm -rf /data/adb/modules/tricky_store/temp/pif_native; exit 143' TERM
-trap 'rm -rf /data/adb/modules/tricky_store/temp/pif_native; exit 130' INT
+trap 'rm -rf "$W"' EXIT
+trap 'rm -rf "$W"; exit 143' TERM
+trap 'rm -rf "$W"; exit 130' INT
 
 # ---- 0. PRIMARY: a STRONG-capable Pixel 6 identity from the canary repo ------
 # Only a device that genuinely launched on Android <=12 still earns STRONG, so
@@ -160,11 +199,25 @@ trap 'rm -rf /data/adb/modules/tricky_store/temp/pif_native; exit 130' INT
 # real Android *Canary* builds (`:CANARY/ZP11.…`), NOT the `betas/` QPR track
 # (`:17/DP11.…`), because the Canary identity is the one that holds STRONG.
 # bluejay (Pixel 6a) is the one confirmed to still hold STRONG.
-BETA_RAW="https://raw.githubusercontent.com/Vagelis1608/get_the_canary_miner/main/devices"
+# Two hosts for the SAME repo file, tried in order. raw.githubusercontent.com is
+# the origin; cdn.jsdelivr.net mirrors it over a CDN that stays reachable where
+# raw.github is throttled/blocked (common on TR / some mobile carriers). Without
+# the mirror a device on such a network can never fetch — the flashstation crawl
+# below has no bluejay canary of its own, so the refresh silently fails and the
+# phone stays frozen on whatever identity it last managed to pull (e.g. an older
+# month's security patch). jsDelivr's branch cache can lag the origin by a few
+# hours, which only ever matters for a device that cannot reach the origin at all
+# — for it a slightly-stale-but-reachable mirror beats never updating.
+BETA_HOSTS="https://raw.githubusercontent.com/Vagelis1608/get_the_canary_miner/main/devices
+https://cdn.jsdelivr.net/gh/Vagelis1608/get_the_canary_miner@main/devices"
 try_beta() { # $1=codename -> installs it into the engine, 0 on success
     _c="$1"
-    fetch "$W/$_c.pif.prop" "$BETA_RAW/$_c.pif.prop" || return 1
-    grep -q '^FINGERPRINT=google/' "$W/$_c.pif.prop" 2>/dev/null || return 1
+    _got=0
+    for _base in $BETA_HOSTS; do
+        fetch "$W/$_c.pif.prop" "$_base/$_c.pif.prop" || continue
+        grep -q '^FINGERPRINT=google/' "$W/$_c.pif.prop" 2>/dev/null && { _got=1; break; }
+    done
+    [ "$_got" = 1 ] || return 1
     # Keep only the canonical identity keys; the engine adapter appends the
     # spoof flags its own zygisk reads (the file's own spoof* lines are dropped).
     grep -E '^(MANUFACTURER|MODEL|FINGERPRINT|PRODUCT|DEVICE|SECURITY_PATCH|DEVICE_INITIAL_SDK_INT)=' \
@@ -172,7 +225,7 @@ try_beta() { # $1=codename -> installs it into the engine, 0 on success
     grep -q '^FINGERPRINT=' "$W/identity.prop" || return 1
     engine_spoof_block >> "$W/identity.prop"
     engine_install_pif "$W/identity.prop" || return 1
-    cp -f "$W/identity.prop" /data/adb/tricky_store/pif.prop 2>/dev/null
+    cp -f "$W/identity.prop" "$TARGET" 2>/dev/null
     log "installed STRONG Pixel 6 fingerprint ($ENGINE): $(grep '^FINGERPRINT=' "$W/identity.prop" | cut -d= -f2-)"
     return 0
 }
@@ -296,7 +349,7 @@ mkdir -p "$CONFIG_DIR"
 # the config-dir copy is for display + sync_patch, written only once the engine
 # has accepted the fingerprint.
 engine_install_pif "$TMP" || { log "$ENGINE could not install the fingerprint."; exit 1; }
-cp -f "$TMP" /data/adb/tricky_store/pif.prop 2>/dev/null
+cp -f "$TMP" "$TARGET" 2>/dev/null
 
 log "installed fingerprint ($ENGINE): $FP"
 exit 0
