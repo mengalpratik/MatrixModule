@@ -1,7 +1,7 @@
 #!/system/bin/sh
 MODDIR="${0%/*}"
 MODPATH="$MODDIR"
-cd "$MODDIR"
+cd "$MODDIR" || exit 1
 
 # Probe in a subshell first: under mksh / toybox sh the option is unknown and a
 # bare `set +o standalone` is a fatal special-builtin error (see action.sh).

@@ -244,6 +244,7 @@ for conf in "$VARIANT_SRC"/*/build.conf; do
         if [[ $APPLY -eq 1 ]]; then
             patch_kv "$conf" PIF_TAG   "$tag_new"
             patch_kv "$conf" PIF_ASSET "$asset_new"
+            patch_kv "$conf" PIF_CI_URL ""
             note "Updated $(basename "$repo") ($line line) to $tag_new."
         fi
     fi

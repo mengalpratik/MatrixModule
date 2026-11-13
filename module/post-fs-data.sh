@@ -1,5 +1,6 @@
+# shellcheck shell=sh
 MODPATH="${0%/*}"
-. $MODPATH/common_func.sh
+. "$MODPATH/common_func.sh"
 # Our settings/state/logs live in one directory (as_store.sh). This is the
 # earliest thing the module runs, so it is also where a pre-1.0.5 layout -
 # a loose marker file per toggle - gets imported and cleared away.
@@ -8,7 +9,7 @@ MODPATH="${0%/*}"
 # directory behind, and nothing else ever cleans it up. The loop pids in state
 # belong to processes that died with the last boot, and a line that outlives
 # the process it names only makes a log harder to read.
-[ -n "$AS_TMP" ] && rm -rf "$AS_TMP"/* 2>/dev/null
+[ -n "$AS_TMP" ] && [ -d "$AS_TMP" ] && rm -rf "${AS_TMP:?}"/* 2>/dev/null
 command -v st_del >/dev/null 2>&1 && { st_del refresh; st_del ts_loop; st_del teesim_loop; }
 
 # Our PIF zygisk binary is binary-patched at build time to read its dex/config

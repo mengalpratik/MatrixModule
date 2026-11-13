@@ -58,7 +58,7 @@ for p in /data/adb/modules/busybox-ndk/system/*/busybox /data/adb/magisk/busybox
     [ -f "$p" ] && BB="$p" && break
 done
 
-if [ -z "$BB" ] && [ -z "$ABI" -o ! -x "$ASFETCH" ] \
+if [ -z "$BB" ] && { [ -z "$ABI" ] || [ ! -x "$ASFETCH" ]; } \
    && ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
     log "no fetcher available (asfetch/curl/wget)."; exit 1
 fi
@@ -174,7 +174,7 @@ fetch() {
 # Prefer busybox grep/tac: toybox's `grep -A` (context lines) is unreliable on
 # some devices and returns nothing, which breaks the canary-block extraction.
 # autopif4 guards against the same broken-toybox-grep behaviour.
-if [ -n "$BB" ]; then GREP="$BB grep"; else GREP=grep; fi
+if [ -n "$BB" ]; then GREP="$BB grep"; else GREP="grep"; fi
 reverse() { # portable `tac`
     if [ -n "$BB" ]; then "$BB" tac
     elif command -v tac >/dev/null 2>&1; then tac

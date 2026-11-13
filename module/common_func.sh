@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # Shared helper functions for AlwaysStrong module scripts.
 # Adapted from PlayIntegrityFork's common_func.sh (osm0sis, chiteroman, Displax).
 
@@ -44,8 +45,8 @@ resetprop_hexpatch() {
     local CURVALUE
     CURVALUE="$(resetprop "$NAME")"
 
-    [ ! "$NEWVALUE" -o ! "$CURVALUE" ] && return 1
-    [ "$NEWVALUE" = "$CURVALUE" -a ! "$FORCE" ] && return 2
+    { [ -z "$NEWVALUE" ] || [ -z "$CURVALUE" ]; } && return 1
+    [ "$NEWVALUE" = "$CURVALUE" ] && [ -z "$FORCE" ] && return 2
 
     local NEWLEN=${#NEWVALUE}
     if [ -f /dev/__properties__ ]; then
@@ -81,7 +82,9 @@ resetprop_if_match() {
     local NAME="$1"
     local CONTAINS="$2"
     local VALUE="$3"
-    [[ "$(resetprop "$NAME")" = *"$CONTAINS"* ]] && $RESETPROP "$NAME" "$VALUE"
+    case "$(resetprop "$NAME")" in
+        *"$CONTAINS"*) $RESETPROP "$NAME" "$VALUE" ;;
+    esac
 }
 
 # stub for boot-time
@@ -107,9 +110,8 @@ download_fail() {
         sleep_pause
         exit 1
     }
-    conflict_module=$(ls /data/adb/modules | grep busybox)
-    for i in $conflict_module; do
-        echo "[!] Please remove $i and try again."
+    for mod in /data/adb/modules/*busybox*; do
+        [ -d "$mod" ] && echo "[!] Please remove ${mod##*/} and try again."
     done
     echo "[!] download failed!"
     echo "[x] bailing out!"

@@ -250,9 +250,11 @@ if [ -s "$KB" ]; then
     # The hash above is what tells a support reader whether this is the demo
     # keybox customize.sh seeds on a fresh install (compare with the one in the
     # module zip) or the fetched one — the Network section below shows whether
-    # the fetch can even reach the mirror from this device.
-    echo "per-app keyboxes (names only): $(ls "$CFG"/*.xml 2>/dev/null | grep -v '/keybox.xml$' | sed 's|.*/||' | tr '\n' ' ' | grep . || echo none)"
-else
+    pkbs=""
+    for x in "$CFG"/*.xml; do
+        [ -f "$x" ] && [ "${x##*/}" != "keybox.xml" ] && pkbs="${pkbs}${pkbs:+ }${x##*/}"
+    done
+    echo "per-app keyboxes (names only): ${pkbs:-none}"
     echo "no keybox.xml present"
 fi
 

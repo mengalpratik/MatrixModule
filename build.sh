@@ -62,7 +62,7 @@
 # fetch them yourself (e.g. `gh run download -R osm0sis/PlayIntegrityFork -D ci`)
 # and point --pif-file / --tee-file / --tsoss-file at the resulting module zip.
 #
-# Requires: bash, curl OR wget, unzip, zip, sha256sum (or shasum on macOS).
+# Requires: bash, curl OR wget, unzip, zip, sha256sum (or shasum on macOS), perl OR python3.
 
 set -euo pipefail
 
@@ -84,8 +84,8 @@ TSOSS_ASSET_DEFAULT="Tricky-Store-OSS-v3.1.0-172-41383f5-Release.zip"
 # keystore2. It uses its own /data/adb/teesim/config.json layout, so attest/
 # teesim.sh bridges the AlwaysStrong keybox + target list into it. Only used with
 # --engine teesim. Pinned here; --teesim / --teesim-file override. 64-bit only.
-TEESIM_TAG_DEFAULT="canary-71"
-TEESIM_ASSET_DEFAULT="TEESimulator-v4.0-71-17be1f0-Release.zip"
+TEESIM_TAG_DEFAULT="canary-76"
+TEESIM_ASSET_DEFAULT="TEESimulator-v4.0-76-06f9f2e-Release.zip"
 
 TEE_TAG="$TEE_TAG_DEFAULT"
 TEE_ASSET="$TEE_ASSET_DEFAULT"
@@ -177,6 +177,9 @@ die()    { red "ERROR: $*"; exit 1; }
 # ---------- Tool checks ----------
 need() { command -v "$1" >/dev/null 2>&1 || die "missing required tool: $1"; }
 need unzip
+if ! command -v perl >/dev/null 2>&1 && ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
+    die "need perl or python3 for regex patching"
+fi
 if command -v curl >/dev/null 2>&1; then
     FETCH="curl -fL --retry 3 --connect-timeout 15 -o"
 elif command -v wget >/dev/null 2>&1; then
@@ -765,15 +768,75 @@ for sf in "$STAGE/autopif.sh" "$STAGE/autopif_ota.sh"; do
 done
 
 # Eliminate KSU-AUDIT-PACK-003 (eval) and FS-012 (unresolvable rm) in PIF helper scripts
+patch_autopif_eval() {
+    local target="$1"
+    if command -v perl >/dev/null 2>&1; then
+        perl -0777 -pi -e 's{spoofConfig=.*?\nfor config in \$spoofConfig; do.*?\ndone}{grep -q "spoofBuild=true" "\$pifProp" && spoofBuild=true || spoofBuild=false\n\tgrep -q "spoofProps=true" "\$pifProp" && spoofProps=true || spoofProps=false\n\tgrep -q "spoofProvider=true" "\$pifProp" && spoofProvider=true || spoofProvider=false\n\tgrep -q "spoofSignature=true" "\$pifProp" && spoofSignature=true || spoofSignature=false\n\tgrep -q "spoofVendingBuild=true" "\$pifProp" && spoofVendingBuild=true || spoofVendingBuild=false\n\tgrep -q "spoofVendingSdk=true" "\$pifProp" && spoofVendingSdk=true || spoofVendingSdk=false\n\tgrep -q "DEBUG=true" "\$pifProp" && DEBUG=true || DEBUG=false}s' "$target"
+    else
+        local py; py=$(command -v python3 || command -v python)
+        "$py" - "$target" <<'PY'
+import sys, re
+p = sys.argv[1]
+with open(p, 'r', encoding='utf-8', errors='ignore') as f:
+    c = f.read()
+pattern = r'spoofConfig=.*?\nfor config in \$spoofConfig; do.*?\ndone'
+repl = 'grep -q "spoofBuild=true" "$pifProp" && spoofBuild=true || spoofBuild=false\n\tgrep -q "spoofProps=true" "$pifProp" && spoofProps=true || spoofProps=false\n\tgrep -q "spoofProvider=true" "$pifProp" && spoofProvider=true || spoofProvider=false\n\tgrep -q "spoofSignature=true" "$pifProp" && spoofSignature=true || spoofSignature=false\n\tgrep -q "spoofVendingBuild=true" "$pifProp" && spoofVendingBuild=true || spoofVendingBuild=false\n\tgrep -q "spoofVendingSdk=true" "$pifProp" && spoofVendingSdk=true || spoofVendingSdk=false\n\tgrep -q "DEBUG=true" "$pifProp" && DEBUG=true || DEBUG=false'
+c = re.sub(pattern, repl, c, flags=re.DOTALL)
+with open(p, 'w', encoding='utf-8') as f:
+    f.write(c)
+PY
+    fi
+}
+
+patch_migrate_eval() {
+    local target="$1"
+    if command -v perl >/dev/null 2>&1; then
+        perl -0777 -pi -e 's{for FIELD in \$ALLFIELDS; do\s+eval \$FIELD=.*?;?\s+done;?}{MANUFACTURER="\$(grep_get_config MANUFACTURER)"; MODEL="\$(grep_get_config MODEL)"; FINGERPRINT="\$(grep_get_config FINGERPRINT)"; BRAND="\$(grep_get_config BRAND)"; PRODUCT="\$(grep_get_config PRODUCT)"; DEVICE="\$(grep_get_config DEVICE)"; RELEASE="\$(grep_get_config RELEASE)"; ID="\$(grep_get_config ID)"; INCREMENTAL="\$(grep_get_config INCREMENTAL)"; TYPE="\$(grep_get_config TYPE)"; TAGS="\$(grep_get_config TAGS)"; SECURITY_PATCH="\$(grep_get_config SECURITY_PATCH)"; DEVICE_INITIAL_SDK_INT="\$(grep_get_config DEVICE_INITIAL_SDK_INT)";}s' "$target"
+    else
+        local py; py=$(command -v python3 || command -v python)
+        "$py" - "$target" <<'PY'
+import sys, re
+p = sys.argv[1]
+with open(p, 'r', encoding='utf-8', errors='ignore') as f:
+    c = f.read()
+pattern = r'for FIELD in \$ALLFIELDS; do\s+eval \$FIELD=.*?;?\s+done;?'
+repl = 'MANUFACTURER="$(grep_get_config MANUFACTURER)"; MODEL="$(grep_get_config MODEL)"; FINGERPRINT="$(grep_get_config FINGERPRINT)"; BRAND="$(grep_get_config BRAND)"; PRODUCT="$(grep_get_config PRODUCT)"; DEVICE="$(grep_get_config DEVICE)"; RELEASE="$(grep_get_config RELEASE)"; ID="$(grep_get_config ID)"; INCREMENTAL="$(grep_get_config INCREMENTAL)"; TYPE="$(grep_get_config TYPE)"; TAGS="$(grep_get_config TAGS)"; SECURITY_PATCH="$(grep_get_config SECURITY_PATCH)"; DEVICE_INITIAL_SDK_INT="$(grep_get_config DEVICE_INITIAL_SDK_INT)";'
+c = re.sub(pattern, repl, c, flags=re.DOTALL)
+with open(p, 'w', encoding='utf-8') as f:
+    f.write(c)
+PY
+    fi
+}
+
+patch_autopif4_busybox() {
+    local target="$1"
+    if command -v perl >/dev/null 2>&1; then
+        perl -0777 -pi -e 's{if ! which wget >/dev/null \|\| grep -q "wget-curl" \$\(which wget\); then}{if find_busybox; then wget() { \$BUSYBOX wget "\$\@"; }; elif ! which wget >/dev/null || grep -q "wget-curl" \$(which wget); then}' "$target"
+    else
+        local py; py=$(command -v python3 || command -v python)
+        "$py" - "$target" <<'PY'
+import sys, re
+p = sys.argv[1]
+with open(p, 'r', encoding='utf-8', errors='ignore') as f:
+    c = f.read()
+pattern = r'if ! which wget >/dev/null \|\| grep -q "wget-curl" \$\(which wget\); then'
+repl = 'if find_busybox; then wget() { $BUSYBOX wget "$@"; }; elif ! which wget >/dev/null || grep -q "wget-curl" $(which wget); then'
+c = re.sub(pattern, repl, c, flags=re.DOTALL)
+with open(p, 'w', encoding='utf-8') as f:
+    f.write(c)
+PY
+    fi
+}
+
 if [[ -f "$STAGE/autopif.sh" ]]; then
-    perl -0777 -pi -e 's{spoofConfig=.*?\nfor config in \$spoofConfig; do.*?\ndone}{grep -q "spoofBuild=true" "\$pifProp" && spoofBuild=true || spoofBuild=false\n\tgrep -q "spoofProps=true" "\$pifProp" && spoofProps=true || spoofProps=false\n\tgrep -q "spoofProvider=true" "\$pifProp" && spoofProvider=true || spoofProvider=false\n\tgrep -q "spoofSignature=true" "\$pifProp" && spoofSignature=true || spoofSignature=false\n\tgrep -q "spoofVendingBuild=true" "\$pifProp" && spoofVendingBuild=true || spoofVendingBuild=false\n\tgrep -q "spoofVendingSdk=true" "\$pifProp" && spoofVendingSdk=true || spoofVendingSdk=false\n\tgrep -q "DEBUG=true" "\$pifProp" && DEBUG=true || DEBUG=false}s' "$STAGE/autopif.sh"
+    patch_autopif_eval "$STAGE/autopif.sh"
     "${SED_I[@]}" 's|rm -f \$MODDIR/system.prop|rm -f /data/adb/modules/tricky_store/system.prop 2>/dev/null|g' "$STAGE/autopif.sh"
 fi
 if [[ -f "$STAGE/security_patch.sh" ]]; then
     "${SED_I[@]}" 's|rm -f "\$AUTO_FLAG" "\$MODDIR/system.prop"|rm -f /data/adb/tricky_store/pif_auto_security_patch /data/adb/modules/tricky_store/system.prop 2>/dev/null|g' "$STAGE/security_patch.sh"
 fi
 if [[ -f "$STAGE/migrate.sh" ]]; then
-    perl -0777 -pi -e 's{for FIELD in \$ALLFIELDS; do\s+eval \$FIELD=.*?;?\s+done;?}{MANUFACTURER="\$(grep_get_config MANUFACTURER)"; MODEL="\$(grep_get_config MODEL)"; FINGERPRINT="\$(grep_get_config FINGERPRINT)"; BRAND="\$(grep_get_config BRAND)"; PRODUCT="\$(grep_get_config PRODUCT)"; DEVICE="\$(grep_get_config DEVICE)"; RELEASE="\$(grep_get_config RELEASE)"; ID="\$(grep_get_config ID)"; INCREMENTAL="\$(grep_get_config INCREMENTAL)"; TYPE="\$(grep_get_config TYPE)"; TAGS="\$(grep_get_config TAGS)"; SECURITY_PATCH="\$(grep_get_config SECURITY_PATCH)"; DEVICE_INITIAL_SDK_INT="\$(grep_get_config DEVICE_INITIAL_SDK_INT)";}s' "$STAGE/migrate.sh"
+    patch_migrate_eval "$STAGE/migrate.sh"
 fi
 
 # Bound autopif4's wget calls so a hung IPv6 connect doesn't stall the whole
@@ -792,7 +855,7 @@ if [[ "$PATCH_AUTOPIF4_WGET" == "1" && -f "$STAGE/autopif4.sh" ]]; then
     # so the crawl dies. Magisk/KSU/APatch always ship a busybox that supports
     # all of them — prefer it whenever present.
     bold "==> Patching autopif4.sh: prefer busybox wget"
-    perl -0777 -pi -e 's{if ! which wget >/dev/null \|\| grep -q "wget-curl" \$\(which wget\); then}{if find_busybox; then wget() { \$BUSYBOX wget "\$\@"; }; elif ! which wget >/dev/null || grep -q "wget-curl" \$(which wget); then}' "$STAGE/autopif4.sh" \
+    patch_autopif4_busybox "$STAGE/autopif4.sh" \
         && grep -q 'if find_busybox; then wget()' "$STAGE/autopif4.sh" \
         && green "    busybox-wget preference applied" \
         || yellow "    warning: could not apply busybox-wget preference (autopif4 layout changed?)"

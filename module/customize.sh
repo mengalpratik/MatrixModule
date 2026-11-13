@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # shellcheck disable=SC2034
 SKIPUNZIP=1
 MIN_SDK=29
@@ -211,7 +212,7 @@ mkdir -p "$CONFIG_DIR"
 # import it now so an upgrade from the old one-file-per-toggle layout keeps
 # every setting, instead of silently reverting to defaults on first boot.
 if [ -f "$MODPATH/as_store.sh" ]; then
-  MODPATH="$MODPATH" sh "$MODPATH/as_store.sh" migrate 2>/dev/null
+  sh "$MODPATH/as_store.sh" migrate 2>/dev/null
   ui_print "settings: $CONFIG_DIR/alwaysstrong/"
 fi
 if [ -f "$CONFIG_DIR/keybox.xml" ]; then

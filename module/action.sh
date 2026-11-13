@@ -7,7 +7,7 @@ case "$0" in
     *)   MODPATH="$PWD" ;;
 esac
 [ -z "$MODPATH" ] && MODPATH="$PWD"
-cd "$MODPATH" 2>/dev/null
+cd "$MODPATH" 2>/dev/null || exit 1
 
 # Hop into the manager's busybox ash before doing anything else. Magisk used to
 # run action.sh inside its own ash, but newer Magisk Alpha builds (app 96221b69+)
@@ -348,7 +348,7 @@ fi
 # Status indicator — network again, and it runs right before "done": this is
 # the call that froze the Action for good whenever asfetch hung.
 if [ -x "$MODPATH/status_fetch.sh" ]; then
-    MODPATH="$MODPATH" bounded 150 sh "$MODPATH/status_fetch.sh" manual >/dev/null 2>&1
+    bounded 150 sh "$MODPATH/status_fetch.sh" manual >/dev/null 2>&1
 fi
 
 # --- Done ---

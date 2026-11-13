@@ -1,5 +1,29 @@
 # MatrixModule changelog
 
+## v1.1.2
+
+Upstream component refresh, build pipeline resiliency, shell security hardening, and performance optimizations.
+
+**Core Highlights**
+- **Upstream Engine Updates**:
+  - Upgraded Play Integrity Fork to official **`v19`** stable release (incorporating latest Canary-print fallbacks and platform beta checks).
+  - Upgraded TEESimulator (JingMatrix) to **`canary-76`**, resolving 404 download errors caused by upstream branch pruning.
+  - Pinned TEESimulator-RS (`v6.0.1-307`) and TrickyStoreOSS (`v3.1.0`).
+- **Build Pipeline Resiliency**:
+  - Added dual-engine regex replacement support in `build.sh` (transparent Python 3 / Python fallback alongside Perl).
+  - Updated `update-upstream.sh` to automatically reset CI nightly URLs when bumping to official release tags.
+- **Security & Script Hardening**:
+  - Hardened temporary directory cleanup in `post-fs-data.sh` with defensive syntax (`rm -rf "${AS_TMP:?}"/*`) to protect against wildcard expansion risks.
+  - Sanitized subshell environment assignments in `action.sh` and `customize.sh`.
+  - Added exit guards to directory navigation (`cd ... || exit 1`) in `action.sh` and `service.sh`.
+  - Upgraded `common_func.sh` to strict POSIX-compliant test operators and native `case` pattern matching.
+- **Performance & Efficiency**:
+  - Replaced subprocess-heavy `ls | grep` pipelines in `collect_logs.sh` and `common_func.sh` with native shell glob iterations.
+
+### Support & Donation
+- **Buy Me a Coffee**: [buymeacoffee.com/pratikmengal](https://buymeacoffee.com/pratikmengal)
+- **Author**: Pratik Mengal ([@mengalpratik](https://github.com/mengalpratik))
+
 ## v1.1.1
 
 Fix duplicate module display in root manager, restore 100% Play Integrity spoofing via upstream AlwaysStrong alignment, and update November Canary baseline.
