@@ -170,7 +170,7 @@ If **MatrixModule** saved your banking apps, your daily sanity, or your weekend:
 MatrixModule proudly builds upon the groundbreaking research of the Android open-source root & security community:
 
 <div align="center">
-  <img src="screenshots/built-on.png" alt="MatrixModule Architecture" width="600">
+  <img src="screenshots/built-on.png" alt="MatrixModule Hall of Fame & Credits" width="100%">
 </div>
 
 - **[osm0sis](https://github.com/osm0sis)** — [PlayIntegrityFork](https://github.com/osm0sis/PlayIntegrityFork), the actively maintained PIF engine bundled in MatrixModule.
