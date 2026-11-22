@@ -1,0 +1,1843 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="dark" />
+    <title>MatrixModule</title>
+    <meta name="claude:viewport-fit-sides" content="cover" />
+    <link rel="stylesheet" href="app.css" />
+    
+  </head>
+  <body>
+    <div class="app">
+      <div class="bar" id="bar">
+        <div class="t">MatrixModule</div>
+        <button class="ib" id="langBtn" aria-label="Language">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path
+              d="M3 12h18M12 3c2.6 2.7 2.6 15.3 0 18M12 3c-2.6 2.7-2.6 15.3 0 18"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div class="hero">
+        <h1>MatrixModule</h1>
+        <p class="sub"><span id="heroState">Spoofing Pixel 6a</span></p>
+      </div>
+
+      <div class="scroll">
+        <section id="pgMain">
+          <div class="grp">
+            <div class="card health-card" id="healthCard">
+              <div class="health-header">
+                <span class="health-title" data-i="health_title">System & Hiding Status</span>
+                <button class="health-refresh-btn" id="btnRefreshHealth" title="Re-check status" aria-label="Refresh">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="health-grid">
+                <div class="health-item">
+                  <div class="health-meta">
+                    <span class="health-name" data-i="h_attest">Attestation Daemon</span>
+                    <small id="hAttestSub">Checking...</small>
+                  </div>
+                  <span class="hbadge neutral" id="hAttestBadge">Checking</span>
+                </div>
+                <div class="health-item">
+                  <div class="health-meta">
+                    <span class="health-name" data-i="h_spoof">Play Integrity Spoof</span>
+                    <small id="hSpoofSub">Pixel 6a (bluejay)</small>
+                  </div>
+                  <span class="hbadge good" id="hSpoofBadge">Active</span>
+                </div>
+                <div class="health-item">
+                  <div class="health-meta">
+                    <span class="health-name" data-i="h_mount">Root Mount Protection</span>
+                    <small id="hDenySub">Magisk DenyList / Shamiko</small>
+                  </div>
+                  <span class="hbadge neutral" id="hDenyBadge">Checking</span>
+                </div>
+                <div class="health-item">
+                  <div class="health-meta">
+                    <span class="health-name" data-i="h_hma">App Isolation (HMA)</span>
+                    <small id="hHmaSub">Apps to hide template</small>
+                  </div>
+                  <span class="hbadge neutral" id="hHmaBadge">Checking</span>
+                </div>
+                <div class="health-item">
+                  <div class="health-meta">
+                    <span class="health-name" data-i="h_se">SELinux & Tamper Props</span>
+                    <small id="hSeSub">Enforcing · Bootloader locked</small>
+                  </div>
+                  <span class="hbadge good" id="hSeBadge">Enforcing</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card statusbar">
+              <span class="sk"
+                ><svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="8" cy="15" r="4" />
+                  <path d="M10.8 12.2 20 3" />
+                  <path d="m17 6 2 2" />
+                  <path d="m14.5 8.5 2 2" /></svg
+              ></span>
+              <span class="lab"
+                ><span data-i="status">Keybox status</span
+                ><small>keybox</small></span
+              >
+              <span class="sp"></span>
+              <span class="checks" title="Basic · Device · Strong, all pass"
+                ><svg class="vico pass" viewBox="0 0 48 48" fill="currentColor">
+                  <path
+                    fill-rule="evenodd"
+                    d="M21.05,33.1 L35.2,18.95l-2.3,-2.25 -11.85,11.85 -6,-6 -2.25,2.25ZM24,44q-4.1,0 -7.75,-1.575 -3.65,-1.575 -6.375,-4.3 -2.725,-2.725 -4.3,-6.375Q4,28.1 4,24q0,-4.15 1.575,-7.8 1.575,-3.65 4.3,-6.35 2.725,-2.7 6.375,-4.275Q19.9,4 24,4q4.15,0 7.8,1.575 3.65,1.575 6.35,4.275 2.7,2.7 4.275,6.35Q44,19.85 44,24q0,4.1 -1.575,7.75 -1.575,3.65 -4.275,6.375t-6.35,4.3Q28.15,44 24,44Z"
+                  /></svg
+                ><svg class="vico pass" viewBox="0 0 48 48" fill="currentColor">
+                  <path
+                    fill-rule="evenodd"
+                    d="M21.05,33.1 L35.2,18.95l-2.3,-2.25 -11.85,11.85 -6,-6 -2.25,2.25ZM24,44q-4.1,0 -7.75,-1.575 -3.65,-1.575 -6.375,-4.3 -2.725,-2.725 -4.3,-6.375Q4,28.1 4,24q0,-4.15 1.575,-7.8 1.575,-3.65 4.3,-6.35 2.725,-2.7 6.375,-4.275Q19.9,4 24,4q4.15,0 7.8,1.575 3.65,1.575 6.35,4.275 2.7,2.7 4.275,6.35Q44,19.85 44,24q0,4.1 -1.575,7.75 -1.575,3.65 -4.275,6.375t-6.35,4.3Q28.15,44 24,44Z"
+                  /></svg
+                ><svg class="vico pass" viewBox="0 0 48 48" fill="currentColor">
+                  <path
+                    fill-rule="evenodd"
+                    d="M21.05,33.1 L35.2,18.95l-2.3,-2.25 -11.85,11.85 -6,-6 -2.25,2.25ZM24,44q-4.1,0 -7.75,-1.575 -3.65,-1.575 -6.375,-4.3 -2.725,-2.725 -4.3,-6.375Q4,28.1 4,24q0,-4.15 1.575,-7.8 1.575,-3.65 4.3,-6.35 2.725,-2.7 6.375,-4.275Q19.9,4 24,4q4.15,0 7.8,1.575 3.65,1.575 6.35,4.275 2.7,2.7 4.275,6.35Q44,19.85 44,24q0,4.1 -1.575,7.75 -1.575,3.65 -4.275,6.375t-6.35,4.3Q28.15,44 24,44Z"
+                  /></svg
+              ></span>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="lbl" data-i="pak_keybox">Keybox</div>
+            <div class="card">
+              <div class="row" data-k="keybox auto check">
+                <div class="ic teal">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="8" cy="15" r="4" />
+                    <path d="M10.8 12.2 20 3" />
+                    <path d="m17 6 2 2" />
+                    <path d="m14.5 8.5 2 2" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="kb_t">Keybox</div>
+                  <div class="s">Auto check · keybox.xml</div>
+                </div>
+                <label class="sw"
+                  ><input type="checkbox" checked /><span class="sl"></span
+                ></label>
+              </div>
+              <div class="row" data-k="custom keybox own">
+                <div class="ic orange">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="8" cy="15" r="4" />
+                    <path d="M10.8 12.2 20 3" />
+                    <path d="m17 6 2 2" />
+                    <path d="m14.5 8.5 2 2" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="ck_t">Custom keybox</div>
+                  <div class="s" data-i="ck_s">
+                    Use your own, auto-fetch off
+                  </div>
+                </div>
+                <label class="sw"
+                  ><input type="checkbox" id="ckSw" /><span class="sl"></span
+                ></label>
+              </div>
+              <div
+                class="row tap"
+                id="ckPick"
+                data-k="select keybox file"
+                data-toast="Pick a keybox file"
+              >
+                <div class="ic orange">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"
+                    />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="ck_pick">Select keybox file</div>
+                  <div class="s" data-i="ck_none">No file selected</div>
+                </div>
+                <button
+                  class="rowdel"
+                  id="ckDel"
+                  hidden
+                  aria-label="Remove keybox"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M4 7h16M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"
+                    />
+                  </svg>
+                </button>
+                <span class="chev"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="m9 6 6 6-6 6" /></svg
+                ></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="lbl" data-i="fp_t">Fingerprint</div>
+            <div class="card">
+              <div class="row" data-k="fingerprint pixel refresh">
+                <div class="ic blue">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M2 12a10 10 0 0 1 18-6" />
+                    <path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2" />
+                    <path d="M9 6.8a6 6 0 0 1 9 5.2v2" />
+                    <path d="M14 13.1c0 2.4 0 6.4-1 8.9" />
+                    <path d="M12 10a2 2 0 0 0-2 2c0 1-.1 2.5-.26 4" />
+                    <path d="M21.8 16c.2-2 .13-5.35 0-6" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="fp_t">Fingerprint</div>
+                  <div class="s" data-i="fp_s">Automatic Pixel refresh</div>
+                </div>
+                <label class="sw"
+                  ><input type="checkbox" checked /><span class="sl"></span
+                ></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="lbl" data-i="sec_target">Targeting</div>
+            <div class="card">
+              <div
+                class="row tap"
+                id="targetRow"
+                data-k="target apps mode keybox"
+              >
+                <div class="ic purple">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <rect x="3" y="3" width="7" height="7" rx="1.7" />
+                    <rect x="14" y="3" width="7" height="7" rx="1.7" />
+                    <rect x="3" y="14" width="7" height="7" rx="1.7" />
+                    <path d="M17.5 14v7M14 17.5h7" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="pak_t">Target apps</div>
+                  <div class="s" data-i="tgt_s">
+                    Apps, mode, keybox &amp; security patch
+                  </div>
+                </div>
+                <span class="chev"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="m9 6 6 6-6 6" /></svg
+                ></span>
+              </div>
+              <div
+                class="row tap"
+                id="hideRow"
+                data-k="app to hide blacklist template hide apps"
+              >
+                <div class="ic red">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                    />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="hide_t">App to hide</div>
+                  <div class="s" id="hideSub" data-i="hide_s">
+                    Blacklist template · choose apps to hide
+                  </div>
+                </div>
+                <span class="chev"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="m9 6 6 6-6 6" /></svg
+                ></span>
+              </div>
+              <div
+                class="row tap"
+                id="hmaUpdateRow"
+                data-k="hma engine update hook zygisk"
+              >
+                <div class="ic green">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                    />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h">HMA Hiding Engine</div>
+                  <div class="s" id="hmaEngineSub">
+                    Checking engine status…
+                  </div>
+                </div>
+                <button
+                  class="pill"
+                  id="btnHmaCheck"
+                  type="button"
+                  style="padding: 4px 10px; font-size: 11px; font-weight: 600; border-radius: 12px; background: rgba(76, 175, 80, 0.15); color: #4caf50; border: 1px solid rgba(76, 175, 80, 0.35); cursor: pointer;"
+                >
+                  Update
+                </button>
+              </div>
+              <div class="row" data-k="auto targeting target list">
+                <div class="ic blue">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="8" />
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="at_t">Auto targeting</div>
+                  <div class="s" data-i="at_s">
+                    Add newly installed apps to the target list automatically
+                  </div>
+                </div>
+                <label class="sw"
+                  ><input type="checkbox" checked /><span class="sl"></span
+                ></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="lbl" data-i="sec_set">Settings</div>
+            <div class="card">
+              <div
+                class="row tap"
+                data-k="check every interval"
+                data-toast="Check interval"
+              >
+                <div class="ic indigo">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="int_t">Check every</div>
+                </div>
+                <span class="val">60 min</span>
+                <span class="chev"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="m9 6 6 6-6 6" /></svg
+                ></span>
+              </div>
+              <div class="row" data-k="status indicator prefix">
+                <div class="ic green">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M3 12h4l3 8 4-16 3 8h4" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="ind_t">Status indicator</div>
+                  <div class="s" data-i="ind_s">
+                    Show status prefix in description
+                  </div>
+                </div>
+                <label class="sw"
+                  ><input type="checkbox" checked /><span class="sl"></span
+                ></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="lbl" data-i="logs">Collect logs</div>
+            <div class="card">
+              <div
+                class="row tap"
+                data-k="collect logs diagnostic"
+                data-toast="Collecting logs…"
+              >
+                <div class="ic slate">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M4 4h16v12H5.2L4 17.2z" />
+                    <path d="M8 9h8M8 12h5" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="logs">Collect logs</div>
+                  <div class="s" data-i="logs_s">Save a diagnostic bundle</div>
+                </div>
+                <span class="chev"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="m9 6 6 6-6 6" /></svg
+                ></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="lbl" data-i="sec_comm">Community &amp; support</div>
+            <div class="card">
+              <a
+                class="row tap linkrow"
+                href="https://t.me/NEUR0MATRIX"
+                target="_blank"
+                rel="noopener"
+              >
+                <span class="logo"
+                  ><img
+                    src="data:image/png;base64,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"
+                    alt=""
+                /></span>
+                <div class="txt">
+                  <div class="h">NEUR0MATRIX</div>
+                  <div class="s" data-i="comm_s2">
+                    Telegram · news &amp; support
+                  </div>
+                </div>
+                <span class="ext"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M7 17 17 7M8 7h9v9" /></svg
+                ></span>
+              </a>
+              <a
+                class="row tap linkrow"
+                href="https://buymeacoffee.com/pratikmengal"
+                target="_blank"
+                rel="noopener"
+              >
+                <span class="ic coffee"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M4 8h13v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z" />
+                    <path d="M17 9h2.2a2.5 2.5 0 0 1 0 5H17" />
+                    <path
+                      d="M8 2.5c-.5 1 .5 2 0 3M12 2.5c-.5 1 .5 2 0 3"
+                    /></svg
+                ></span>
+                <div class="txt">
+                  <div class="h" data-i="coffee_t">Buy me a coffee</div>
+                  <div class="s" data-i="coffee_s">buymeacoffee.com/pratikmengal</div>
+                </div>
+                <span class="ext"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M7 17 17 7M8 7h9v9" /></svg
+                ></span>
+              </a>
+            </div>
+          </div>
+
+          <div class="note" style="text-align: center; padding-top: 14px">
+            MatrixModule · © 2026 Pratik Mengal. All rights reserved.
+          </div>
+        </section>
+
+        <section id="pgAdv" hidden>
+          <div class="note" style="padding: 14px 20px 0" data-i="adv_note">
+            For edge cases, the defaults are what pass STRONG. Leave them unless
+            an app needs it.
+          </div>
+
+          <div class="grp">
+            <div class="lbl" data-i="sec_fpsrc">Fingerprint source</div>
+            <div class="card">
+              <div
+                class="row tap"
+                data-k="import fingerprint pif json prop"
+                data-toast="Import pif.json / pif.prop"
+              >
+                <div class="ic teal">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M12 3v12" />
+                    <path d="m8 11 4 4 4-4" />
+                    <path d="M5 21h14" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="imp_t">Import fingerprint</div>
+                  <div class="s" data-i="imp_s">
+                    Load a pif.json or pif.prop file
+                  </div>
+                </div>
+                <button
+                  class="rowdel"
+                  id="impDel"
+                  hidden
+                  aria-label="Remove fingerprint"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M4 7h16M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"
+                    />
+                  </svg>
+                </button>
+                <span class="chev"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="m9 6 6 6-6 6" /></svg
+                ></span>
+              </div>
+              <div
+                class="row tap"
+                id="betaHead"
+                data-k="beta fingerprints pixel"
+              >
+                <div class="ic indigo">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="m12 2 2.6 5.3 5.9.9-4.2 4.1 1 5.9L12 21.5 6.7 18.2l1-5.9L3.5 8.2l5.9-.9z"
+                    />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="beta_t">Beta fingerprints</div>
+                  <div class="s" data-i="beta_s">
+                    Only Pixel 6a (bluejay) passes STRONG
+                  </div>
+                </div>
+                <span class="chev rot"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="m6 9 6 6 6-6" /></svg
+                ></span>
+              </div>
+              <div class="acc" id="betaAcc">
+                <div class="beta sel" data-c="bluejay">
+                  <div class="bn">
+                    <div class="m">Pixel 6a</div>
+                    <div class="c">bluejay · Android 12</div>
+                  </div>
+                  <span class="badge">STRONG</span
+                  ><span class="ck"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+                <div class="beta" data-c="oriole">
+                  <div class="bn">
+                    <div class="m">Pixel 6</div>
+                    <div class="c">oriole · Android 12</div>
+                  </div>
+                  <span class="ck"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+                <div class="beta" data-c="raven">
+                  <div class="bn">
+                    <div class="m">Pixel 6 Pro</div>
+                    <div class="c">raven · Android 12</div>
+                  </div>
+                  <span class="ck"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+                <div class="beta" data-c="husky">
+                  <div class="bn">
+                    <div class="m">Pixel 8 Pro</div>
+                    <div class="c">husky · Android 14</div>
+                  </div>
+                  <span class="ck"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+                <div class="beta" data-c="komodo">
+                  <div class="bn">
+                    <div class="m">Pixel 9 Pro XL</div>
+                    <div class="c">komodo · Android 14</div>
+                  </div>
+                  <span class="ck"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grp" id="spoofGrp">
+            <div class="lbl" data-i="spoofvars">Spoof variables</div>
+            <div class="card" id="spoofCard">
+              <div class="flag" data-k="spoofbuild">
+                <code>spoofBuild</code
+                ><label class="sw"
+                  ><input type="checkbox" checked /><span class="sl"></span
+                ></label>
+              </div>
+              <div class="flag" data-k="spoofprops">
+                <code>spoofProps</code
+                ><label class="sw"
+                  ><input type="checkbox" checked /><span class="sl"></span
+                ></label>
+              </div>
+              <div class="flag" data-k="spoofprovider">
+                <code>spoofProvider</code
+                ><label class="sw"
+                  ><input type="checkbox" /><span class="sl"></span
+                ></label>
+              </div>
+              <div class="flag" data-k="spoofvendingfinger">
+                <code>spoofVendingFinger</code
+                ><label class="sw"
+                  ><input type="checkbox" /><span class="sl"></span
+                ></label>
+              </div>
+              <div class="flag" data-k="spoofsignature">
+                <code>spoofSignature</code
+                ><label class="sw"
+                  ><input type="checkbox" /><span class="sl"></span
+                ></label>
+              </div>
+              <div class="flag" data-k="spoofvendingsdk">
+                <code>spoofVendingSdk</code
+                ><label class="sw"
+                  ><input type="checkbox" /><span class="sl"></span
+                ></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="lbl">ROM</div>
+            <div class="card">
+              <div class="row" data-k="block rom spoof pixelprops pihooks">
+                <div class="ic red">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M12 3 4 6v6c0 4.5 3.5 8.5 8 9 4.5-.5 8-4.5 8-9V6z"
+                    />
+                    <path d="m4 4 16 16" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="rs_t">Block ROM spoof</div>
+                  <div class="s" data-i="rs_s">
+                    Disable PixelProps / pihooks engines
+                  </div>
+                </div>
+                <label class="sw"
+                  ><input type="checkbox" checked /><span class="sl"></span
+                ></label>
+              </div>
+              <div class="row" data-k="hide rom identity version">
+                <div class="ic orange">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"
+                    />
+                    <path d="m4 4 16 16" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="hrm_t">Hide ROM identity</div>
+                  <div class="s" data-i="hrm_s">
+                    Also hides ROM version &amp; fast-charge toggle
+                  </div>
+                </div>
+                <label class="sw"
+                  ><input type="checkbox" /><span class="sl"></span
+                ></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="lbl" data-i="sec_media">Media</div>
+            <div class="card">
+              <div
+                class="row tap"
+                id="wvRow"
+                data-k="widevine l1 drm qualcomm streaming"
+              >
+                <div class="ic indigo">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <rect x="2" y="5" width="20" height="14" rx="3" />
+                    <path d="m10 9 5 3-5 3z" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" data-i="wv_t">Widevine L1 fix</div>
+                  <div class="s" id="wvSub" data-i="wv_s">
+                    Qualcomm only · tap to restore L1
+                  </div>
+                </div>
+                <span class="pill solid" id="wvBtn" data-i="wv_run">Run</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="lbl" data-i="rst">Reset</div>
+            <div class="card">
+              <div
+                class="row tap"
+                data-k="reset defaults"
+                data-toast="Reset to defaults?"
+              >
+                <div class="ic red">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                    <path d="M3 4v4h4" />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h" style="color: var(--danger)" data-i="rst_t">
+                    Reset to defaults
+                  </div>
+                  <div class="s" data-i="rst_s">Put every setting back</div>
+                </div>
+                <span class="chev"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="m9 6 6 6-6 6" /></svg
+                ></span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <nav class="nav">
+        <div class="in">
+          <button class="tab on" data-pg="pgMain" data-sub="Spoofing Pixel 6a">
+            <span class="pic"
+              ><svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="3" width="7.5" height="7.5" rx="2.3" />
+                <rect x="13.5" y="3" width="7.5" height="7.5" rx="2.3" />
+                <rect x="3" y="13.5" width="7.5" height="7.5" rx="2.3" />
+                <rect
+                  x="13.5"
+                  y="13.5"
+                  width="7.5"
+                  height="7.5"
+                  rx="2.3"
+                /></svg
+            ></span>
+            <span class="lb" data-i="tab_main">Configuration</span>
+          </button>
+          <button
+            class="tab"
+            data-pg="pgAdv"
+            data-sub="Edge cases, defaults already pass"
+          >
+            <span class="pic"
+              ><svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+                <circle cx="15" cy="7" r="2.3" />
+                <circle cx="9" cy="17" r="2.3" /></svg
+            ></span>
+            <span class="lb" data-i="tab_adv">Advanced</span>
+          </button>
+        </div>
+      </nav>
+
+      <!-- Language picker -->
+      <div class="modal" id="langModal" hidden>
+        <div class="dialog">
+          <div class="dhead">
+            <div class="dt" data-i="lang_title">Language</div>
+            <button class="ib" id="langClose" aria-label="Close">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 6 18 18M18 6 6 18" />
+              </svg>
+            </button>
+          </div>
+          <div class="dbody"><div class="applist" id="langList"></div></div>
+        </div>
+      </div>
+
+      <!-- Target apps popup -->
+      <div class="modal" id="appsModal" hidden>
+        <div class="dialog">
+          <div class="dhead">
+            <div class="dt" data-i="pak_t">Target apps</div>
+            <button class="ib" id="kebab" aria-label="More">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="12" cy="19" r="2" />
+              </svg>
+            </button>
+            <button class="ib" id="appsClose" aria-label="Close">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 6 18 18M18 6 6 18" />
+              </svg>
+            </button>
+            <div class="menu" id="appsMenu" hidden>
+              <button data-m="patch">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M12 3 4 6v6c0 4.5 3.5 8.5 8 9 4.5-.5 8-4.5 8-9V6z" />
+                  <path d="m9 12 2 2 4-4" /></svg
+                ><span data-i="patch">Security patch</span>
+              </button>
+              <button data-m="all">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="m5 12 5 5L20 7" /></svg
+                ><span data-i="pak_selall">Select all</span>
+              </button>
+              <button data-m="unnec">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M18 6 6 18M6 6l12 12" /></svg
+                ><span data-i="pak_unnec">Deselect unnecessary</span>
+              </button>
+              <button data-m="add">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M12 5v14M5 12h14" /></svg
+                ><span data-i="pak_add">Add package</span>
+              </button>
+            </div>
+          </div>
+          <div class="dbody">
+            <div class="search">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4-4" /></svg
+              ><input
+                id="appq"
+                type="text"
+                placeholder="Search apps"
+                data-iph="pak_search"
+              />
+            </div>
+            <div class="applist" id="appsList">
+              <div class="card">
+                <div class="appitem on">
+                  <span class="appav">G</span
+                  ><span class="an"
+                    ><span class="n">Google Play Services</span
+                    ><span class="p">com.google.android.gms</span></span
+                  ><span class="cb"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+                <div class="appitem on">
+                  <span class="appav">P</span
+                  ><span class="an"
+                    ><span class="n">Play Store</span
+                    ><span class="p">com.android.vending</span></span
+                  ><span class="cb"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+                <div class="appitem on">
+                  <span class="appav">F</span
+                  ><span class="an"
+                    ><span class="n">Services Framework</span
+                    ><span class="p">com.google.android.gsf</span></span
+                  ><span class="cb"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+                <div class="appitem">
+                  <span class="appav">W</span
+                  ><span class="an"
+                    ><span class="n">Wallet</span
+                    ><span class="p"
+                      >com.google.android.apps.walletnfcrel</span
+                    ></span
+                  ><span class="cb"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+                <div class="appitem">
+                  <span class="appav">B</span
+                  ><span class="an"
+                    ><span class="n">Banking</span
+                    ><span class="p">com.bank.mobile</span></span
+                  ><span class="cb"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+                <div class="appitem">
+                  <span class="appav">N</span
+                  ><span class="an"
+                    ><span class="n">Netflix</span
+                    ><span class="p">com.netflix.mediaclient</span></span
+                  ><span class="cb"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security patch popup (centred) -->
+      <div class="modal" id="patchModal" hidden>
+        <div class="dialog">
+          <div class="dhead">
+            <div class="dt" data-i="patch">Security patch</div>
+            <button class="ib" id="patchClose" aria-label="Close">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 6 18 18M18 6 6 18" />
+              </svg>
+            </button>
+          </div>
+          <div class="dbody">
+            <p class="sd" data-i="patch_desc">
+              The attested patch follows the fingerprint. Override a partition
+              only if an app needs it.
+            </p>
+            <div class="srow">
+              <div class="nm">
+                <span data-i="spp_t">Spoof security patch</span
+                ><small data-i="spp_s2"
+                  >Match attestation to the fingerprint</small
+                >
+              </div>
+              <label class="sw"
+                ><input type="checkbox" checked /><span class="sl"></span
+              ></label>
+            </div>
+            <div class="srow">
+              <div class="nm" data-i="psys_t">System</div>
+              <input class="inp" value="2026-09-05" inputmode="numeric" />
+            </div>
+            <div class="srow">
+              <div class="nm" data-i="pven_t">Vendor</div>
+              <input class="inp" value="2026-09-05" inputmode="numeric" />
+            </div>
+            <div class="srow">
+              <div class="nm" data-i="pboot_t">Boot</div>
+              <input class="inp" value="2026-09-05" inputmode="numeric" />
+            </div>
+            <div
+              class="srow"
+              style="
+                justify-content: flex-end;
+                gap: 10px;
+                border-top: 0;
+                padding-top: 16px;
+              "
+            >
+              <button class="pill" id="patchFill" data-i="patch_fill">
+                Fill from fingerprint</button
+              ><button class="pill solid" id="patchDone" data-i="done">
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Per-app config (long-press a target app): attestation mode + keybox -->
+      <div class="modal" id="cfgModal" hidden>
+        <div class="dialog">
+          <div class="dhead">
+            <div class="dt" id="cfgName">App</div>
+            <button class="ib" id="cfgClose" aria-label="Close">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 6 18 18M18 6 6 18" />
+              </svg>
+            </button>
+          </div>
+          <div class="dbody">
+            <p class="sd" id="cfgPkg">com.example</p>
+            <div class="applbl" data-i="cfg_mode">Attestation mode</div>
+            <div class="applist">
+              <div class="card" id="cfgModes">
+                <div class="appitem" data-m="auto">
+                  <span class="appav">A</span
+                  ><span class="an"
+                    ><span class="n" data-i="pak_auto">Automatic</span
+                    ><span class="p" data-i="cfg_auto_s"
+                      >Let the keystore decide</span
+                    ></span
+                  ><span class="cb"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+                <div class="appitem" data-m="gen">
+                  <span class="appav">!</span
+                  ><span class="an"
+                    ><span class="n" data-i="pak_gen">Generate</span
+                    ><span class="p" data-i="cfg_gen_s"
+                      >Build the whole certificate chain</span
+                    ></span
+                  ><span class="cb"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+                <div class="appitem" data-m="hack">
+                  <span class="appav">?</span
+                  ><span class="an"
+                    ><span class="n" data-i="pak_hack">Hack leaf</span
+                    ><span class="p" data-i="cfg_hack_s"
+                      >Patch only the leaf certificate</span
+                    ></span
+                  ><span class="cb"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m5 12 5 5L20 7" /></svg
+                  ></span>
+                </div>
+              </div>
+            </div>
+            <div class="applbl" data-i="pak_keybox">Keybox</div>
+            <div class="applist">
+              <div class="card">
+                <div class="row tap" id="cfgKbRow">
+                  <div class="ic teal">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="8" cy="15" r="4" />
+                      <path d="M10.8 12.2 20 3" />
+                      <path d="m17 6 2 2" />
+                      <path d="m14.5 8.5 2 2" />
+                    </svg>
+                  </div>
+                  <div class="txt">
+                    <div class="h" data-i="kb_t">Keybox</div>
+                  </div>
+                  <span class="val" id="cfgKbName" data-i="cfg_default"
+                    >Default</span
+                  ><span class="chev"
+                    ><svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m9 6 6 6-6 6" /></svg
+                  ></span>
+                </div>
+              </div>
+            </div>
+            <div
+              class="srow"
+              style="
+                justify-content: flex-end;
+                gap: 10px;
+                border-top: 0;
+                padding-top: 16px;
+              "
+            >
+              <button class="pill solid" id="cfgApply" data-i="pak_apply">
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keybox picker -->
+      <div class="modal" id="kbpModal" hidden>
+        <div class="dialog">
+          <div class="dhead">
+            <div class="dt" data-i="pak_keybox">Keybox</div>
+            <button class="ib" id="kbpClose" aria-label="Close">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 6 18 18M18 6 6 18" />
+              </svg>
+            </button>
+          </div>
+          <div class="dbody">
+            <div class="applist" id="kbpList"></div>
+            <div
+              class="srow"
+              style="
+                justify-content: flex-end;
+                gap: 10px;
+                border-top: 0;
+                padding-top: 4px;
+              "
+            >
+              <button class="pill" id="kbpCancel" data-i="fm_cancel">
+                Cancel</button
+              ><button class="pill solid" id="kbpOk" data-i="kbp_sel">
+                Select
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Check interval editor -->
+      <div class="modal" id="ivModal" hidden>
+        <div class="dialog">
+          <div class="dhead">
+            <div class="dt" data-i="iv_title">Check interval</div>
+            <button class="ib" id="ivClose" aria-label="Close">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 6 18 18M18 6 6 18" />
+              </svg>
+            </button>
+          </div>
+          <div class="dbody">
+            <p class="sd" data-i="iv_desc">
+              How often MatrixModule re-checks the keybox and fingerprint.
+            </p>
+            <div
+              id="ivPresets"
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin: 0 2px 14px;
+              "
+            >
+              <button class="pill" data-min="15">15 min</button>
+              <button class="pill" data-min="30">30 min</button>
+              <button class="pill" data-min="60">1 h</button>
+              <button class="pill" data-min="180">3 h</button>
+              <button class="pill" data-min="360">6 h</button>
+              <button class="pill" data-min="720">12 h</button>
+            </div>
+            <div class="srow">
+              <div class="nm" data-i="iv_min">Minutes</div>
+              <input class="inp" id="ivInput" inputmode="numeric" value="60" />
+            </div>
+            <div
+              class="srow"
+              style="
+                justify-content: flex-end;
+                gap: 10px;
+                border-top: 0;
+                padding-top: 16px;
+              "
+            >
+              <button class="pill solid" id="ivDone" data-i="done">Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add custom package -->
+      <div class="modal" id="pkgModal" hidden>
+        <div class="dialog">
+          <div class="dhead">
+            <div class="dt" data-i="pak_add">Add package</div>
+            <button class="ib" id="pkgClose" aria-label="Close">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 6 18 18M18 6 6 18" />
+              </svg>
+            </button>
+          </div>
+          <div class="dbody">
+            <p class="sd" data-i="pkg_desc">
+              Add a package that isn't listed, by its application id.
+            </p>
+            <div class="search">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4-4" /></svg
+              ><input
+                id="pkgInput"
+                type="text"
+                placeholder="com.example.app"
+                autocapitalize="off"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </div>
+            <div
+              class="srow"
+              style="
+                justify-content: flex-end;
+                gap: 10px;
+                border-top: 0;
+                padding-top: 16px;
+              "
+            >
+              <button class="pill" id="pkgCancel" data-i="fm_cancel">
+                Cancel</button
+              ><button class="pill solid" id="pkgOk" data-i="add">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reset confirmation -->
+      <div class="modal" id="rstModal" hidden>
+        <div class="dialog">
+          <div class="dhead">
+            <div class="dt" data-i="rst_t">Reset to defaults</div>
+            <button class="ib" id="rstClose" aria-label="Close">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 6 18 18M18 6 6 18" />
+              </svg>
+            </button>
+          </div>
+          <div class="dbody">
+            <p class="sd" data-i="rst_body">
+              Every toggle, spoof variable, the check interval and custom
+              packages go back to the fresh-install defaults, and the fetched
+              fingerprint replaces an imported one. Your keybox and per-app
+              keybox assignments are kept. Action then runs again.
+            </p>
+            <div
+              class="srow"
+              style="
+                justify-content: flex-end;
+                gap: 10px;
+                border-top: 0;
+                padding-top: 4px;
+              "
+            >
+              <button class="pill" id="rstCancel" data-i="fm_cancel">
+                Cancel</button
+              ><button
+                class="pill"
+                id="rstOk"
+                style="background: var(--danger); color: #fff"
+                data-i="rst_ok"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- File picker (keybox / fingerprint import) -->
+      <div class="modal" id="fmModal" hidden>
+        <div class="dialog">
+          <div class="dhead" style="padding-left: 8px">
+            <button class="ib" id="fmUp" aria-label="Back">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m15 18-6-6 6-6" />
+              </svg>
+            </button>
+            <div
+              class="dt"
+              id="fmTitle"
+              style="font-size: 17px"
+              data-i="fm_title"
+            >
+              Select file
+            </div>
+            <button class="ib" id="fmSortBtn" aria-label="Sort">
+              <svg
+                id="fmSortIco"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></svg>
+            </button>
+            <button class="ib" id="fmFilterBtn" aria-label="Filter">
+              <svg
+                id="fmFilterIco"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 5h18l-7 8v6l-4-2v-4z" />
+              </svg>
+            </button>
+            <button class="ib" id="fmClose" aria-label="Close">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 6 18 18M18 6 6 18" />
+              </svg>
+            </button>
+            <div class="menu" id="fmSortMenu" hidden>
+              <button data-k="name">
+                <span data-i="fm_s_name" style="flex: 1">Name</span
+                ><span class="fmdir"></span>
+              </button>
+              <button data-k="date">
+                <span data-i="fm_s_date" style="flex: 1">Date</span
+                ><span class="fmdir"></span>
+              </button>
+              <button data-k="size">
+                <span data-i="fm_s_size" style="flex: 1">Size</span
+                ><span class="fmdir"></span>
+              </button>
+              <button data-k="type">
+                <span data-i="fm_s_type" style="flex: 1">Type</span
+                ><span class="fmdir"></span>
+              </button>
+            </div>
+            <div class="menu" id="fmFilterMenu" hidden>
+              <button data-f="ext">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 5h18l-7 8v6l-4-2v-4z" /></svg
+                ><span id="fmFLbl" style="flex: 1">.xml</span
+                ><span class="fmck"></span>
+              </button>
+              <button data-f="all">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M4 6h16M4 12h16M4 18h16" /></svg
+                ><span data-i="fm_all" style="flex: 1">All files</span
+                ><span class="fmck"></span>
+              </button>
+            </div>
+          </div>
+          <div class="dbody">
+            <div
+              id="fmPath"
+              style="
+                font-size: 12px;
+                color: var(--sub);
+                font-weight: 600;
+                margin: 2px 2px 10px;
+                white-space: nowrap;
+                overflow-x: auto;
+              "
+            ></div>
+            <div class="applist" id="fmList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- App to hide popup -->
+      <div class="modal" id="hideModal" hidden>
+        <div class="dialog">
+          <div class="dhead">
+            <div class="dt" data-i="hide_t">App to hide</div>
+            <button class="ib" id="hideClose" aria-label="Close">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 6 18 18M18 6 6 18" />
+              </svg>
+            </button>
+          </div>
+          <div class="dbody">
+            <p class="sd" data-i="hide_s">Apps to hide from other apps</p>
+            <div class="search">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4-4" /></svg
+              ><input
+                id="hideq"
+                type="text"
+                placeholder="Search apps"
+                data-iph="pak_search"
+              />
+            </div>
+            <div class="applist" id="hideList"></div>
+            <div
+              class="srow"
+              style="
+                justify-content: flex-end;
+                gap: 10px;
+                border-top: 0;
+                padding-top: 4px;
+              "
+            >
+              <button class="pill solid" id="hideDone" data-i="done">
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toast" id="toast"></div>
+    </div>
+
+    <script>
+      try {
+        var _app = document.querySelector(".app");
+        if (_app)
+          requestAnimationFrame(function () {
+            _app.classList.add("ready");
+          });
+      } catch (e) {}
+    </script>
+    <script defer src="main.js"></script>
+  </body>
+</html>
