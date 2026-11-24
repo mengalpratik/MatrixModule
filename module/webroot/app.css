@@ -241,4 +241,6 @@ section[hidden]{display:none}
   body{background:#000000}
   .app{background:var(--bg);box-shadow:0 0 0 1px var(--line),0 0 40px rgba(0,255,102,.08)}
 }
+@keyframes spin{to{transform:rotate(360deg)}}
+
 

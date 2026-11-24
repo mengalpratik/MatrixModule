@@ -250,7 +250,7 @@
   function paintKeyboxProvider(prov, S, statusOverride){
     if(S) _lastS = S;
     prov=(prov||"auto").toLowerCase();
-    qa("#kbProvPills .pill").forEach(function(b){
+    qa("#kbProvPills .pill[data-prov]").forEach(function(b){
       b.classList.toggle("solid", (b.dataset.prov||"").toLowerCase() === prov);
     });
     var sub=document.getElementById("kbProvSub");
@@ -259,6 +259,8 @@
       if(prov==="evoker") baseText="Source: Evoker (Direct HTTPS)";
       else if(prov==="yurikey") baseText="Source: Yurikey (GitHub Raw)";
       else if(prov==="specter") baseText="Source: Specter Rawbin (Catalog API)";
+      else if(prov==="meowdump") baseText="Source: MeowDump (Integrity-Box Megatron)";
+      else if(prov==="custom_url" || prov==="community repo" || (_lastS && _lastS.kb_source==="Community Repo")) baseText="Source: Community Repo (KOWX712)";
       else baseText="Source: Auto (Smart Failover & Revocation Protection)";
 
       if(statusOverride){
@@ -272,11 +274,11 @@
       sub.textContent = baseText;
     }
   }
-  qa("#kbProvPills .pill").forEach(function(b){
+  qa("#kbProvPills .pill[data-prov]").forEach(function(b){
     b.addEventListener("click",function(){
       if(_kbSwitching) return;
       var p=(b.dataset.prov||"auto").toLowerCase();
-      var label=(p==="evoker"?"Evoker":(p==="yurikey"?"Yurikey":(p==="specter"?"Specter":"Auto")));
+      var label=(p==="evoker"?"Evoker":(p==="yurikey"?"Yurikey":(p==="specter"?"Specter":(p==="meowdump"?"MeowDump":"Auto"))));
       setting("keybox_provider", p);
       flushNow();
       _kbSwitching = true;
@@ -300,6 +302,115 @@
         refreshStatus();
       });
     });
+  });
+
+  // Community Keybox Repo (KOWX712)
+  var btnOpenKowxRepo = document.getElementById("btnOpenKowxRepo");
+  var repoModal = document.getElementById("repoModal");
+  var repoClose = document.getElementById("repoClose");
+  var repoRefresh = document.getElementById("repoRefresh");
+  var repoLoading = document.getElementById("repoLoading");
+  var repoFrame = document.getElementById("repoFrame");
+  var REPO_BASE = "https://keybox.kowx712.cc";
+  var _repoHandshakeTimer = null;
+  var _repoLoaded = false;
+
+  function stopRepoHandshake(){
+    if(_repoHandshakeTimer){ clearInterval(_repoHandshakeTimer); _repoHandshakeTimer = null; }
+  }
+
+  function sendRepoHandshake(){
+    try {
+      if(repoFrame && repoFrame.contentWindow){
+        repoFrame.contentWindow.postMessage({ type: "handshake" }, REPO_BASE);
+      }
+    } catch(e){}
+  }
+
+  function loadRepoFrame(){
+    if(!repoFrame) return;
+    _repoLoaded = false;
+    if(repoLoading) repoLoading.style.display = "flex";
+    stopRepoHandshake();
+    var lang = ((navigator.language||"en").split("-")[0] || "en");
+    repoFrame.src = REPO_BASE + "/" + lang + "?_t=" + Date.now();
+  }
+
+  if(btnOpenKowxRepo){
+    btnOpenKowxRepo.addEventListener("click", function(){
+      openM(repoModal);
+      loadRepoFrame();
+    });
+  }
+
+  if(repoClose){
+    repoClose.addEventListener("click", function(){
+      stopRepoHandshake();
+      closeM(repoModal);
+      if(repoFrame) repoFrame.src = "about:blank";
+    });
+  }
+
+  if(repoRefresh){
+    repoRefresh.addEventListener("click", function(){
+      loadRepoFrame();
+    });
+  }
+
+  if(repoModal){
+    repoModal.addEventListener("click", function(e){
+      if(e.target === repoModal){
+        stopRepoHandshake();
+        closeM(repoModal);
+        if(repoFrame) repoFrame.src = "about:blank";
+      }
+    });
+  }
+
+  if(repoFrame){
+    repoFrame.addEventListener("load", function(){
+      if(repoFrame.src && repoFrame.src.indexOf(REPO_BASE) === 0){
+        sendRepoHandshake();
+        stopRepoHandshake();
+        _repoHandshakeTimer = setInterval(sendRepoHandshake, 500);
+      }
+    });
+  }
+
+  window.addEventListener("message", function(event){
+    if(event.origin !== REPO_BASE || !event.data || typeof event.data !== "object") return;
+    if(event.data.type === "handshake_ack"){
+      _repoLoaded = true;
+      stopRepoHandshake();
+      if(repoLoading) repoLoading.style.display = "none";
+      return;
+    }
+    if(event.data.type === "download" && typeof event.data.url === "string"){
+      var dlUrl = event.data.url;
+      stopRepoHandshake();
+      closeM(repoModal);
+      if(repoFrame) repoFrame.src = "about:blank";
+      _kbSwitching = true;
+      paintKeyboxProvider("custom_url", null, "Google: Checking... ⏳");
+      toast("Importing keybox from Community Repo…", 3500);
+
+      ksuExec('sh "'+MOD+'/keybox_fetch.sh" custom_url "'+dlUrl.replace(/'/g, "'\\''")+'" force').then(function(){
+        _kbSwitching = false;
+        refreshStatus().then(function(newS){
+          var isRev = (newS && newS.kb_revoked !== undefined) ? newS.kb_revoked : _lastS.kb_revoked;
+          if(isRev === "0"){
+            toast("✅ Community Repo keybox applied (Google: Valid 🟢)", 3000);
+          } else if(isRev === "1"){
+            toast("⚠️ Community Repo keybox applied (Google: Revoked 🔴)", 3000);
+          } else {
+            toast("Community Repo keybox active", 2000);
+          }
+        });
+      }).catch(function(){
+        _kbSwitching = false;
+        refreshStatus();
+      });
+    }
   });
   // Advanced toggles
   var rsI=dkInput("block rom spoof pixelprops pihooks");

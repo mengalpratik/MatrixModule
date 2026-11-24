@@ -7,8 +7,9 @@
 # and atomically replaces the target keybox file.
 #
 # Supported providers:
-#   auto      - Smart failover (Specter Catalog -> Evoker -> Specter Fallback -> Yurikey)
+#   auto      - Smart failover (MeowDump -> Specter Catalog -> Evoker -> Specter Fallback -> Yurikey)
 #               prioritizing non-revoked keys.
+#   meowdump  - MeowDump Megatron (https://github.com/MeowDump/Integrity-Box/releases/download/archive/Megatron)
 #   evoker    - Evoker direct key mirror (https://evoker.qzz.io/key)
 #   specter   - Specter Rawbin Catalog (https://rawbin.dpejoh.com/catalog)
 #   yurikey   - Yurikey GitHub raw mirror (https://raw.githubusercontent.com/Yurii0307/yurikey/main/key)
@@ -24,6 +25,7 @@ FALLBACK_URL="https://raw.githubusercontent.com/Yurii0307/yurikey/main/key"
 SPECTER_CATALOG_URL="https://rawbin.dpejoh.com/catalog"
 SPECTER_KEY_BASE="https://rawbin.dpejoh.com/key"
 SPECTER_FALLBACK_URL="https://rawbin.dpejoh.com/key/Yuri/8"
+MEOWDUMP_URL="https://github.com/MeowDump/Integrity-Box/releases/download/archive/Megatron"
 GOOGLE_REVOCATION_URL="https://android.googleapis.com/attestation/status?encrypted=0"
 
 STD_ALPHABET="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -128,7 +130,36 @@ download_url() {
     return 1
 }
 
-# decode_payload IN_FILE OUT_FILE — handles raw XML, standard Base64, and Specter substitution cipher
+# decode_megatron IN_FILE OUT_FILE — decodes MeowDump Megatron (10x Base64 -> Hex -> ROT13)
+decode_megatron() {
+    _m_in="$1"
+    _m_out="$2"
+    [ -s "$_m_in" ] || return 1
+    _m_cur="$_m_in"
+    _m_pfx="$TMP/mgt_$$"
+    for _m_i in 1 2 3 4 5 6 7 8 9 10; do
+        _m_next="${_m_pfx}_${_m_i}"
+        $B64DEC < "$_m_cur" > "$_m_next" 2>/dev/null || { rm -f "${_m_pfx}"_* 2>/dev/null; return 1; }
+        [ -s "$_m_next" ] || { rm -f "${_m_pfx}"_* 2>/dev/null; return 1; }
+        [ "$_m_cur" != "$_m_in" ] && rm -f "$_m_cur" 2>/dev/null
+        _m_cur="$_m_next"
+    done
+    _m_hex="${_m_pfx}_hex"
+    if command -v xxd >/dev/null 2>&1; then
+        xxd -r -p < "$_m_cur" > "$_m_hex" 2>/dev/null || { rm -f "${_m_pfx}"_* 2>/dev/null; return 1; }
+    elif [ -x /system/bin/xxd ]; then
+        /system/bin/xxd -r -p < "$_m_cur" > "$_m_hex" 2>/dev/null || { rm -f "${_m_pfx}"_* 2>/dev/null; return 1; }
+    else
+        rm -f "${_m_pfx}"_* 2>/dev/null
+        return 1
+    fi
+    rm -f "$_m_cur" 2>/dev/null
+    tr 'A-Za-z' 'N-ZA-Mn-za-m' < "$_m_hex" > "$_m_out" 2>/dev/null || { rm -f "${_m_pfx}"_* 2>/dev/null; return 1; }
+    rm -f "$_m_hex" 2>/dev/null
+    head -c 1024 "$_m_out" 2>/dev/null | grep -qi "<Keybox" || head -c 1024 "$_m_out" 2>/dev/null | grep -qi "<AndroidAttestation"
+}
+
+# decode_payload IN_FILE OUT_FILE — handles raw XML, standard Base64, Specter cipher, and MeowDump Megatron
 decode_payload() {
     _in="$1"
     _out="$2"
@@ -152,6 +183,12 @@ decode_payload() {
     if head -c 1024 "$_out" 2>/dev/null | grep -qi "<Keybox" || head -c 1024 "$_out" 2>/dev/null | grep -qi "<AndroidAttestation"; then
         return 0
     fi
+
+    # 4. MeowDump Megatron (10x Base64 -> Hex -> ROT13)
+    if head -c 16 "$_in" 2>/dev/null | grep -q "Vm0w"; then
+        decode_megatron "$_in" "$_out" && return 0
+    fi
+    decode_megatron "$_in" "$_out" 2>/dev/null && return 0
 
     return 1
 }
@@ -225,16 +262,24 @@ validate_keybox() {
 # Parse arguments
 FORCE=0
 CLI_PROV=""
-for arg in "$@"; do
-    case "$arg" in
+CUSTOM_URL=""
+while [ $# -gt 0 ]; do
+    case "$1" in
         force) FORCE=1 ;;
-        auto|evoker|yurikey|specter|rawbin|custom) CLI_PROV="$arg" ;;
+        custom_url|url)
+            CLI_PROV="custom_url"
+            CUSTOM_URL="$2"
+            shift
+            ;;
+        auto|evoker|yurikey|specter|rawbin|meowdump|megatron|custom) CLI_PROV="$1" ;;
     esac
+    shift
 done
 
 KB_PROVIDER="${CLI_PROV:-$(as_get keybox_provider auto)}"
 case "$KB_PROVIDER" in
     rawbin) KB_PROVIDER="specter" ;;
+    megatron) KB_PROVIDER="meowdump" ;;
 esac
 
 # try_candidate CAND_NAME URL OUT_XML REV_FILE
@@ -299,6 +344,38 @@ try_fetch() {
     fi
 
     case "$KB_PROVIDER" in
+        custom_url)
+            log "targeted provider: Community Repo ($CUSTOM_URL)"
+            if [ -z "$CUSTOM_URL" ]; then
+                log "error: no custom url specified"
+                return 1
+            fi
+            if try_candidate "Community Repo" "$CUSTOM_URL" "$_o" "$REV_FILE"; then
+                return 0
+            elif [ -s "$TMP/last_revoked.xml" ]; then
+                cp -f "$TMP/last_revoked.xml" "$_o"
+                st_set kb_source "Community Repo"
+                st_set kb_serial "$(cat "$TMP/last_revoked.ser" 2>/dev/null || echo "")"
+                st_set kb_revoked "1"
+                log "warning: installed Community Repo keybox is marked revoked by Google 🔴"
+                return 0
+            fi
+            return 1
+            ;;
+        meowdump)
+            log "targeted provider: MeowDump Megatron ($MEOWDUMP_URL)"
+            if try_candidate "MeowDump" "$MEOWDUMP_URL" "$_o" "$REV_FILE"; then
+                return 0
+            elif [ -s "$TMP/last_revoked.xml" ]; then
+                cp -f "$TMP/last_revoked.xml" "$_o"
+                st_set kb_source "MeowDump"
+                st_set kb_serial "$(cat "$TMP/last_revoked.ser" 2>/dev/null || echo "")"
+                st_set kb_revoked "1"
+                log "warning: installed MeowDump keybox is marked revoked by Google 🔴"
+                return 0
+            fi
+            return 1
+            ;;
         evoker)
             log "targeted provider: Evoker mirror ($PRIMARY_URL)"
             if try_candidate "Evoker" "$PRIMARY_URL" "$_o" "$REV_FILE"; then
@@ -370,7 +447,12 @@ try_fetch() {
         *) # auto
             log "auto mode: finding working non-revoked keybox..."
 
-            # 1. Try Specter Catalog working entry
+            # 1. Try MeowDump (GitHub release archive)
+            if try_candidate "MeowDump" "$MEOWDUMP_URL" "$_o" "$REV_FILE"; then
+                return 0
+            fi
+
+            # 2. Try Specter Catalog working entry
             if download_url "$TMP/catalog.json" "$SPECTER_CATALOG_URL"; then
                 _w_src=$(grep -o '"working":{[^}]*"source":"[^"]*"' "$TMP/catalog.json" | sed 's/.*"source":"\([^"]*\)".*/\1/')
                 _w_ver=$(grep -o '"working":{[^}]*"version":"[^"]*"' "$TMP/catalog.json" | sed 's/.*"version":"\([^"]*\)".*/\1/')
@@ -381,17 +463,17 @@ try_fetch() {
                 fi
             fi
 
-            # 2. Try Evoker mirror
+            # 3. Try Evoker mirror
             if try_candidate "Evoker" "$PRIMARY_URL" "$_o" "$REV_FILE"; then
                 return 0
             fi
 
-            # 3. Try Specter Yuri/8 fallback
+            # 4. Try Specter Yuri/8 fallback
             if try_candidate "Specter (Yuri/8)" "$SPECTER_FALLBACK_URL" "$_o" "$REV_FILE"; then
                 return 0
             fi
 
-            # 4. Try Yurikey mirror
+            # 5. Try Yurikey mirror
             if try_candidate "Yurikey" "$FALLBACK_URL" "$_o" "$REV_FILE"; then
                 return 0
             fi
