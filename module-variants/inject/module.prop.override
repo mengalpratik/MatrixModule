@@ -3,4 +3,4 @@
 # module/module.prop. The two lines update independently, hence the manifest.
 name=MatrixModule [Inject]
 updateJson=https://raw.githubusercontent.com/mengalpratik/MatrixModule/main/update-inject.json
-description=[Inject build] Strong Play Integrity in one drop-in module. Hardware attestation + an auto-refreshed Pixel fingerprint. Tap Action.
+description=[Inject] Hardware Keystore Attestation & Zero-APK App Isolation Engine.

@@ -27,6 +27,41 @@ MODE="${1:-auto}"
 [ -f "$PROP" ] || exit 1
 [ -f "$BASE_FILE" ] || exit 1
 
+get_key_label() {
+    _label=""
+    if [ -f "$CONFIG_DIR/as_store.sh" ] || [ -f "$MODPATH/as_store.sh" ]; then
+        if as_on custom_keybox 2>/dev/null; then
+            _label="Custom"
+        fi
+    fi
+    if [ -z "$_label" ]; then
+        command -v st_get >/dev/null 2>&1 && _label=$(st_get kb_source 2>/dev/null)
+    fi
+    if [ -z "$_label" ]; then
+        _devid=$(grep -oiE 'DeviceID="[^"]*"' "$CONFIG_DIR/keybox.xml" 2>/dev/null | cut -d'"' -f2)
+        _yk=$(echo "$_devid" | grep -oiE 'yurikey[0-9]*' | head -1)
+        if [ -n "$_yk" ]; then
+            _label="$_yk"
+        elif echo "$_devid" | grep -qi 'evoker'; then
+            _label="Evoker"
+        elif [ -s "$CONFIG_DIR/keybox.xml" ] && grep -qi 'kowx712' "$CONFIG_DIR/keybox.xml"; then
+            _label="TAKR"
+        fi
+    fi
+    [ -z "$_label" ] && _label="Keybox"
+
+    _rev=""
+    if command -v st_get >/dev/null 2>&1; then
+        _is_rev=$(st_get kb_revoked 2>/dev/null)
+        if [ "$_is_rev" = "0" ]; then
+            _rev=" 🟢"
+        elif [ "$_is_rev" = "1" ]; then
+            _rev=" 🔴"
+        fi
+    fi
+    echo "${_label}${_rev}"
+}
+
 # Strip mode: restore description= to the canonical base text from
 # description.txt, removing any status prefix. Used by the WebUI when the
 # user disables the indicator — they expect the emoji prefix to vanish from
@@ -34,7 +69,8 @@ MODE="${1:-auto}"
 if [ "$MODE" = "strip" ]; then
     base=$(head -1 "$BASE_FILE" | tr -d '\r\n')
     [ -z "$base" ] && exit 4
-    want="description=${base}"
+    key_tag="[$(get_key_label)]"
+    want="description=${key_tag} ${base}"
     have=$(grep -m1 '^description=' "$PROP")
     [ "$have" = "$want" ] && exit 0
     tmp="${PROP}.tmp"
@@ -118,7 +154,8 @@ case "$new" in *'<'*|*'>'*|*'{'*) exit 3 ;; esac
 base=$(head -1 "$BASE_FILE" | tr -d '\r\n')
 [ -z "$base" ] && exit 4
 
-want="description=${new} ${base}"
+key_tag="[$(get_key_label)]"
+want="description=${new} ${key_tag} ${base}"
 have=$(grep -m1 '^description=' "$PROP")
 
 [ "$have" = "$want" ] && exit 0

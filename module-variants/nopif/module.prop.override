@@ -3,4 +3,4 @@
 # once, in module/module.prop.
 name=MatrixModule [Lite]
 updateJson=https://raw.githubusercontent.com/mengalpratik/MatrixModule/main/update-nopif.json
-description=[PIF-less / Lite] Hardware attestation + auto keybox updates, no PlayIntegrityFork. For setups where the bundled PIF conflicts with Google Mobile Services.
+description=[Lite] Hardware Keystore Attestation & Zero-APK App Isolation Engine.

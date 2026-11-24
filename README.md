@@ -76,12 +76,16 @@ No more manually searching for apps or typing package names into hiding lists:
 - **Instant Out-of-the-Box Passing:** Passes `MEETS_STRONG_INTEGRITY` on the very first boot without requiring active Wi-Fi, mobile data, or initial internet setup.
 - **Fail-Safe Guard:** The online keybox engine will never replace or overwrite your working keybox unless a downloaded candidate passes full XML and cryptographic validity checks.
 
-### 4. 🌐 Multi-Mirror Keybox Failover Engine
-- **Dual-Mirror Redundancy:**
-  - **Primary Mirror:** Direct HTTPS endpoint (`https://evoker.qzz.io/key`) bypassing Cloudflare 301 HTTP-to-HTTPS redirect hangs.
-  - **Secondary Mirror:** Direct GitHub raw mirror (`https://raw.githubusercontent.com/Yurii0307/yurikey/main/key`) for live Yurikey Base64 XML keybox failover.
+### 4. 🌐 Multi-Provider Keybox Engine & Google Revocation Guard
+- **Universal Multi-Provider Support:**
+  - **Auto (Smart Failover):** Automatically queries working keys across all providers, prioritizing unrevoked certificates.
+  - **Evoker Mirror:** Direct HTTPS mirror (`https://evoker.qzz.io/key`) bypassing Cloudflare 301 redirect hangs.
+  - **Specter Rawbin Catalog:** Live dynamic catalog API (`https://rawbin.dpejoh.com/catalog`) with built-in substitution-cipher de-scrambler.
+  - **Yurikey Mirror:** Direct GitHub raw mirror (`https://raw.githubusercontent.com/Yurii0307/yurikey/main/key`).
+  - **Custom Keybox:** User-defined XML file or custom URL endpoint.
+- **Google Attestation Revocation Checker:** Queries Google's live status API (`https://android.googleapis.com/attestation/status?encrypted=0`) and parses ASN.1 DER certificate serial numbers in pure userspace shell to verify that a key is unrevoked *before* applying it.
 - **Strict 15s Timeouts:** Enforces `-L` redirect-following and 15-second connect timeouts across all engines (`asfetch`, `busybox`, `curl`, `wget`).
-- **Auto-FP Freeze Protection:** Automatically restores `auto_fp=1` if a custom PIF file is missing, preventing silent fingerprint rotation freeze.
+- **Live Health Status:** Instant visual verification in root managers (`[Evoker 🟢]`) and WebUI (`Google: Valid 🟢` / `Revoked 🔴`).
 
 ### 5. 🔒 Mount Namespace Isolation & Strict Prop Locking
 - **Kernel-Level Mount Unmounting:** Uses `nsenter -t $pid -m` to unmount `/data/adb`, `/data/adb/modules`, and debug ramdisk paths directly from target apps' `/proc/$pid/mountinfo`.

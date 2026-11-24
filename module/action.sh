@@ -212,9 +212,15 @@ if as_on custom_keybox; then
 fi
 if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; then
     if [ "$KB_PROV" != "auto" ]; then
-        diag "Keybox Status: Valid (Source: $KB_SRC | Provider: $KB_PROV)"
+        diag "Keybox: Valid (Source: $KB_SRC | Provider: $KB_PROV)"
     else
-        diag "Keybox Status: Valid (Source: $KB_SRC)"
+        diag "Keybox: Valid (Source: $KB_SRC)"
+    fi
+    KB_REV=$(st_get kb_revoked 2>/dev/null)
+    if [ "$KB_REV" = "0" ]; then
+        diag "Attestation Status: Not Revoked by Google 🟢"
+    elif [ "$KB_REV" = "1" ]; then
+        row "⚠️" "Attestation Status: Revoked by Google 🔴"
     fi
 else
     row "❗" "Keybox Status: Invalid / Missing"

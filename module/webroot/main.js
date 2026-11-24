@@ -62,6 +62,10 @@
       'cat "'+AS_CONF+'" 2>/dev/null',
       '[ -s "'+KEYBOX+'" ] && echo "kb=$(wc -c < "'+KEYBOX+'")|$(stat -c %Y "'+KEYBOX+'" 2>/dev/null)" || echo "kb=0|"',
       'echo "keybox_name=$(sed -n \'s/^keybox_name=//p\' "'+AS+'/state" 2>/dev/null | head -1)"',
+      'echo "kb_source=$(sed -n \'s/^kb_source=//p\' "'+AS+'/state" 2>/dev/null | head -1)"',
+      'echo "kb_revoked=$(sed -n \'s/^kb_revoked=//p\' "'+AS+'/state" 2>/dev/null | head -1)"',
+      'echo "kb_serial=$(sed -n \'s/^kb_serial=//p\' "'+AS+'/state" 2>/dev/null | head -1)"',
+      'echo "kb_devid=$(for f in "'+KEYBOX+'"; do [ -s "$f" ] && { d=$(grep -oiE \'DeviceID="[^"]*"\' "$f" 2>/dev/null | cut -d\'"\' -f2); y=$(echo "$d" | grep -oiE \'yurikey[0-9]*\' | head -1); [ -n "$y" ] && { echo "$y"; break; }; echo "$d" | grep -qi \'evoker\' && { echo "Evoker"; break; }; echo "$d" | grep -qi \'kowx712\' && { echo "TAKR"; break; }; }; done)"',
       'echo "pif_name=$(sed -n \'s/^pif_name=//p\' "'+AS+'/state" 2>/dev/null | head -1)"',
       'echo "pif_model=$(sed -n \'s/^pif_model=//p\' "'+AS+'/state" 2>/dev/null | head -1)"',
       'echo "fm_path=$(sed -n \'s/^fm_path=//p\' "'+AS+'/state" 2>/dev/null | head -1)"',
@@ -132,8 +136,9 @@
     setHeroModel((S.pif_model||S.model||"").trim());
     // status
     renderChecks(S.desc||"");
-    var kbn=S.keybox_name||"";
-    var kbEl=q(".statusbar .lab small"); if(kbEl && metaKeyName) kbEl.textContent=metaKeyName; var kbRowS=q('[data-k="keybox auto check"] .s'); if(kbRowS) kbRowS.textContent=tr("kb_auto","Auto check")+" · "+(metaKeyName||kbn||"keybox.xml");
+    var kbn=S.kb_devid || S.kb_source || S.keybox_name || metaKeyName || "keybox.xml";
+    var kbEl=q(".statusbar .lab small"); if(kbEl) kbEl.textContent=kbn;
+    var kbRowS=q('[data-k="keybox auto check"] .s'); if(kbRowS) kbRowS.textContent=tr("kb_auto","Auto check")+" · "+kbn;
     // Automatic
     var pifCustom=conf(S,"custom_pif")==="1";
     setToggle("fingerprint pixel refresh", !pifCustom && conf(S,"auto_fp")==="1");
@@ -145,7 +150,7 @@
     var ckn=q('#ckPick .txt .h'), cks=q('#ckPick .txt .s');
     var bytes=parseInt(String(S.kb||"0|").split("|")[0],10)||0;
     if(ckn && cks){ if(bytes>0){ ckn.textContent=(kbn||"keybox.xml").replace(/\.xml$/i,""); cks.textContent=tr("ck_selk","Selected keybox"); } }
-    paintKeyboxProvider(conf(S,"keybox_provider")||"auto");
+    paintKeyboxProvider(conf(S,"keybox_provider")||"auto", S);
     // custom keybox overwrites the auto-fetched one, so grey out auto-keybox
     setAutoKbDisabled(!!(ckSw && ckSw.checked));
     var ckDelEl=document.getElementById("ckDel"); if(ckDelEl) ckDelEl.hidden=!(ckSw && ckSw.checked && bytes>0);
@@ -239,17 +244,27 @@
     var cd=document.getElementById("ckDel"); if(cd && !e.target.checked) cd.hidden=true;
     if(e.target.checked) ckRefresh(); });
 
+  var _lastS = {};
   // Keybox Provider selector
-  function paintKeyboxProvider(prov){
+  function paintKeyboxProvider(prov, S){
+    if(S) _lastS = S;
     prov=(prov||"auto").toLowerCase();
     qa("#kbProvPills .pill").forEach(function(b){
       b.classList.toggle("solid", (b.dataset.prov||"").toLowerCase() === prov);
     });
     var sub=document.getElementById("kbProvSub");
     if(sub){
-      if(prov==="evoker") sub.textContent="Source: Evoker (Direct HTTPS)";
-      else if(prov==="yurikey") sub.textContent="Source: Yurikey (GitHub Raw)";
-      else sub.textContent="Source: Auto (Evoker / Yurikey Failover)";
+      var baseText="";
+      if(prov==="evoker") baseText="Source: Evoker (Direct HTTPS)";
+      else if(prov==="yurikey") baseText="Source: Yurikey (GitHub Raw)";
+      else if(prov==="specter") baseText="Source: Specter Rawbin (Catalog API)";
+      else baseText="Source: Auto (Smart Failover & Revocation Protection)";
+
+      var rev = _lastS.kb_revoked;
+      if(rev === "0") baseText += " · Google: Valid 🟢";
+      else if(rev === "1") baseText += " · Google: Revoked 🔴";
+
+      sub.textContent = baseText;
     }
   }
   qa("#kbProvPills .pill").forEach(function(b){
@@ -258,7 +273,7 @@
       setting("keybox_provider", p);
       paintKeyboxProvider(p);
       flushNow();
-      var label=(p==="evoker"?"Evoker":(p==="yurikey"?"Yurikey":"Auto"));
+      var label=(p==="evoker"?"Evoker":(p==="yurikey"?"Yurikey":(p==="specter"?"Specter":"Auto")));
       toast("Switching to "+label+"…",2000);
       deferBg('sh "'+MOD+'/keybox_fetch.sh" '+p+' force');
       setTimeout(function(){ refreshStatus(); },2500);
