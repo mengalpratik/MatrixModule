@@ -84,41 +84,21 @@
     });
   }
 
-  // ---- auto keybox name from the server mirror (/meta.json), like v1.0.4 ----
-  // The status card shows WHICH keybox the server currently serves, independent
-  // of any custom keybox the user picked (the custom name shows in its own row).
-  // Fetched once; engines are tried in turn since no one downloader works on all.
-  var metaKeyName="";
-  function fetchMetaName(){
-    var U="http://evoker.qzz.io/meta.json";
-    var cmd='A=$(ls '+shq(MOD)+'/bin/*/asfetch 2>/dev/null | head -1); '
-      +'B=""; for b in /data/adb/magisk/busybox /data/adb/ksu/bin/busybox /data/adb/ap/bin/busybox; do [ -x "$b" ] && { B="$b"; break; }; done; '
-      +'O=""; [ -n "$A" ] && O=$("$A" -T 8 '+shq(U)+' 2>/dev/null); '
-      +'[ -z "$O" ] && [ -n "$B" ] && O=$("$B" wget -q -T 10 -O - '+shq(U)+' 2>/dev/null); '
-      +'[ -z "$O" ] && command -v curl >/dev/null 2>&1 && O=$(curl -fsSL --max-time 12 '+shq(U)+' 2>/dev/null); '
-      +'echo "$O" | grep -o \'"filename"[^,]*\' | head -1';
-    return ksuExec(cmd).then(function(r){ var m=(r.stdout||"").match(/"([^"]+)\.xml"/); return m?m[1]:""; });
-  }
-  function applyMetaName(){
-    if(!metaKeyName) return;
-    var kbEl=q(".statusbar .lab small"); if(kbEl) kbEl.textContent=metaKeyName;
-    var kbRowS=q('[data-k="keybox auto check"] .s'); if(kbRowS) kbRowS.textContent=tr("kb_auto","Auto check")+" · "+metaKeyName;
-  }
-
-  // ---- status card: binary verdict checks + keybox name ----
-  var RING="M24,44q-4.1,0 -7.75,-1.575 -3.65,-1.575 -6.375,-4.3 -2.725,-2.725 -4.3,-6.375Q4,28.1 4,24q0,-4.15 1.575,-7.8 1.575,-3.65 4.3,-6.35 2.725,-2.7 6.375,-4.275Q19.9,4 24,4q4.15,0 7.8,1.575 3.65,1.575 6.35,4.275 2.7,2.7 4.275,6.35Q44,19.85 44,24q0,4.1 -1.575,7.75 -1.575,3.65 -4.275,6.375t-6.35,4.3Q28.15,44 24,44Z";
-  // pass: disk with a check-shaped hole (green). fail: disk with an X-shaped hole (red).
-  var CHK='<path fill-rule="evenodd" d="M21.05,33.1 L35.2,18.95l-2.3,-2.25 -11.85,11.85 -6,-6 -2.25,2.25Z'+RING+'"/>';
-  var CROSS='<path fill-rule="evenodd" d="M28.81,16.08 L31.92,19.19 L27.11,24 L31.92,28.81 L28.81,31.92 L24,27.11 L19.19,31.92 L16.08,28.81 L20.89,24 L16.08,19.19 L19.19,16.08 L24,20.89 Z'+RING+'"/>';
-  function renderChecks(s){
-    var checks=q(".statusbar .checks"); if(!checks) return;
-    var VERD=["🟢","🔴","🟡","⚫","⚪"];
-    // Array.from iterates by code point, so multi-unit emoji match (filter.call
-    // over the string split each emoji into surrogate halves and never matched).
-    var emos=Array.from(String(s||"")).filter(function(ch){ return VERD.indexOf(ch)>=0; });
-    if(!emos.length){ return; } // keep the mock's default 3 greens if nothing fetched yet
-    checks.innerHTML=emos.map(function(ch){ var pass=ch==="🟢";
-      return '<svg class="vico '+(pass?"pass":"fail")+'" viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">'+(pass?CHK:CROSS)+'</svg>'; }).join("");
+  // ---- status card: keybox status badge + active keybox name ----
+  function renderKeyboxBadge(rev){
+    var badge = document.getElementById("kbStatusBadge");
+    if(!badge) return;
+    badge.className = "kb-badge";
+    if(rev === "0"){
+      badge.classList.add("valid");
+      badge.textContent = "[Valid 💚]";
+    } else if(rev === "1"){
+      badge.classList.add("revoked");
+      badge.textContent = "[Revoked ❤️🩹]";
+    } else {
+      badge.classList.add("unknown");
+      badge.textContent = "[Checking ⏳]";
+    }
   }
 
   // ---- paint everything from one state object ----
@@ -134,10 +114,11 @@
   function paint(S){
     // hero: spoofed device
     setHeroModel((S.pif_model||S.model||"").trim());
-    // status
-    renderChecks(S.desc||"");
-    var kbn=S.kb_devid || S.kb_source || S.keybox_name || metaKeyName || "keybox.xml";
-    var kbEl=q(".statusbar .lab small"); if(kbEl) kbEl.textContent=kbn;
+    // status badge & active keybox name
+    renderKeyboxBadge(S.kb_revoked);
+    var kbn=S.kb_source || S.kb_devid || S.keybox_name || "keybox.xml";
+    var kbEl=document.getElementById("kbActiveName") || q(".statusbar .lab small");
+    if(kbEl) kbEl.textContent=kbn;
     var kbRowS=q('[data-k="keybox auto check"] .s'); if(kbRowS) kbRowS.textContent=tr("kb_auto","Auto check")+" · "+kbn;
     // Automatic
     var pifCustom=conf(S,"custom_pif")==="1";
@@ -289,6 +270,7 @@
         _kbSwitching = false;
         refreshStatus().then(function(newS){
           var isRev = (newS && newS.kb_revoked !== undefined) ? newS.kb_revoked : _lastS.kb_revoked;
+          renderKeyboxBadge(isRev);
           if(isRev === "0"){
             toast("✅ "+label+" keybox applied (Google: Valid 🟢)", 2500);
           } else if(isRev === "1"){
@@ -391,13 +373,17 @@
       closeM(repoModal);
       if(repoFrame) repoFrame.src = "about:blank";
       _kbSwitching = true;
+      setting("keybox_provider", "custom_url");
+      flushNow();
       paintKeyboxProvider("custom_url", null, "Google: Checking... ⏳");
+      renderKeyboxBadge(null);
       toast("Importing keybox from Community Repo…", 3500);
 
       ksuExec('sh "'+MOD+'/keybox_fetch.sh" custom_url "'+dlUrl.replace(/'/g, "'\\''")+'" force').then(function(){
         _kbSwitching = false;
         refreshStatus().then(function(newS){
           var isRev = (newS && newS.kb_revoked !== undefined) ? newS.kb_revoked : _lastS.kb_revoked;
+          renderKeyboxBadge(isRev);
           if(isRev === "0"){
             toast("✅ Community Repo keybox applied (Google: Valid 🟢)", 3000);
           } else if(isRev === "1"){
@@ -1203,6 +1189,5 @@
       });
     }
   });
-  fetchMetaName().then(function(n){ if(n){ metaKeyName=n; applyMetaName(); } });
   loadHidden();
 })();

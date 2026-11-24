@@ -106,26 +106,10 @@
               ></span>
               <span class="lab"
                 ><span data-i="status">Keybox status</span
-                ><small>keybox</small></span
+                ><small id="kbActiveName">keybox</small></span
               >
               <span class="sp"></span>
-              <span class="checks" title="Basic · Device · Strong, all pass"
-                ><svg class="vico pass" viewBox="0 0 48 48" fill="currentColor">
-                  <path
-                    fill-rule="evenodd"
-                    d="M21.05,33.1 L35.2,18.95l-2.3,-2.25 -11.85,11.85 -6,-6 -2.25,2.25ZM24,44q-4.1,0 -7.75,-1.575 -3.65,-1.575 -6.375,-4.3 -2.725,-2.725 -4.3,-6.375Q4,28.1 4,24q0,-4.15 1.575,-7.8 1.575,-3.65 4.3,-6.35 2.725,-2.7 6.375,-4.275Q19.9,4 24,4q4.15,0 7.8,1.575 3.65,1.575 6.35,4.275 2.7,2.7 4.275,6.35Q44,19.85 44,24q0,4.1 -1.575,7.75 -1.575,3.65 -4.275,6.375t-6.35,4.3Q28.15,44 24,44Z"
-                  /></svg
-                ><svg class="vico pass" viewBox="0 0 48 48" fill="currentColor">
-                  <path
-                    fill-rule="evenodd"
-                    d="M21.05,33.1 L35.2,18.95l-2.3,-2.25 -11.85,11.85 -6,-6 -2.25,2.25ZM24,44q-4.1,0 -7.75,-1.575 -3.65,-1.575 -6.375,-4.3 -2.725,-2.725 -4.3,-6.375Q4,28.1 4,24q0,-4.15 1.575,-7.8 1.575,-3.65 4.3,-6.35 2.725,-2.7 6.375,-4.275Q19.9,4 24,4q4.15,0 7.8,1.575 3.65,1.575 6.35,4.275 2.7,2.7 4.275,6.35Q44,19.85 44,24q0,4.1 -1.575,7.75 -1.575,3.65 -4.275,6.375t-6.35,4.3Q28.15,44 24,44Z"
-                  /></svg
-                ><svg class="vico pass" viewBox="0 0 48 48" fill="currentColor">
-                  <path
-                    fill-rule="evenodd"
-                    d="M21.05,33.1 L35.2,18.95l-2.3,-2.25 -11.85,11.85 -6,-6 -2.25,2.25ZM24,44q-4.1,0 -7.75,-1.575 -3.65,-1.575 -6.375,-4.3 -2.725,-2.725 -4.3,-6.375Q4,28.1 4,24q0,-4.15 1.575,-7.8 1.575,-3.65 4.3,-6.35 2.725,-2.7 6.375,-4.275Q19.9,4 24,4q4.15,0 7.8,1.575 3.65,1.575 6.35,4.275 2.7,2.7 4.275,6.35Q44,19.85 44,24q0,4.1 -1.575,7.75 -1.575,3.65 -4.275,6.375t-6.35,4.3Q28.15,44 24,44Z"
-                  /></svg
-              ></span>
+              <span class="kb-badge valid" id="kbStatusBadge">[Valid 💚]</span>
             </div>
           </div>
 
@@ -169,7 +153,6 @@
                   <button class="pill" data-prov="specter" type="button">Specter</button>
                   <button class="pill" data-prov="evoker" type="button">Evoker</button>
                   <button class="pill" data-prov="yurikey" type="button">Yurikey</button>
-                  <button class="pill" id="btnOpenKowxRepo" type="button" style="margin-left:auto; background:rgba(0,255,102,0.12); border:1px solid rgba(0,255,102,0.35); color:var(--accent,#00ff66);">Community Repo 🌐</button>
                 </div>
               </div>
               <div class="row" data-k="custom keybox own">
@@ -241,6 +224,42 @@
                     />
                   </svg>
                 </button>
+                <span class="chev"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="m9 6 6 6-6 6" /></svg
+                ></span>
+              </div>
+              <div
+                class="row tap"
+                id="btnOpenKowxRepo"
+                data-k="community repo list"
+              >
+                <div class="ic cyan">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="9" />
+                    <path
+                      d="M3 12h18M12 3c2.6 2.7 2.6 15.3 0 18M12 3c-2.6 2.7-2.6 15.3 0 18"
+                    />
+                  </svg>
+                </div>
+                <div class="txt">
+                  <div class="h">Community Repo <span style="font-size:11.5px; opacity:0.65; font-weight:normal;">(not recommended)</span></div>
+                  <div class="s">Browse community keyboxes · External repository</div>
+                </div>
                 <span class="chev"
                   ><svg
                     viewBox="0 0 24 24"

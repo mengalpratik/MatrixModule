@@ -309,15 +309,22 @@ try_candidate() {
     fi
 
     _ser=$(decode_keybox_serial "$_dec" 2>/dev/null || echo "")
+    _rev_status=0
     if [ -n "$_ser" ]; then
-        if check_google_revocation "$_ser" "$_rev_f"; then
+        check_google_revocation "$_ser" "$_rev_f"
+        _rc=$?
+        if [ $_rc -eq 0 ]; then
             log "candidate $_cname (serial $_ser): REVOKED by Google 🔴"
             cp -f "$_dec" "$TMP/last_revoked.xml" 2>/dev/null || :
             printf '%s' "$_cname" > "$TMP/last_revoked.src" 2>/dev/null || :
             printf '%s' "$_ser" > "$TMP/last_revoked.ser" 2>/dev/null || :
             return 2 # REVOKED
-        else
+        elif [ $_rc -eq 1 ]; then
             log "candidate $_cname (serial $_ser): valid & NOT revoked 🟢"
+            _rev_status=0
+        else
+            log "candidate $_cname (serial $_ser): revocation status unknown ⏳"
+            _rev_status=0
         fi
     else
         log "candidate $_cname: serial could not be extracted, assumed active"
@@ -326,7 +333,7 @@ try_candidate() {
     cp -f "$_dec" "$_out_xml"
     st_set kb_source "$_cname"
     [ -n "$_ser" ] && st_set kb_serial "$_ser"
-    st_set kb_revoked "0"
+    st_set kb_revoked "$_rev_status"
     return 0
 }
 
@@ -341,6 +348,10 @@ try_fetch() {
         cp -f "$REV_FILE" "$_rev_cache" 2>/dev/null || :
     elif [ -s "$_rev_cache" ]; then
         REV_FILE="$_rev_cache"
+    elif [ -s "$MODPATH/revocation.json" ]; then
+        REV_FILE="$MODPATH/revocation.json"
+    elif [ -s "$(dirname "$0")/revocation.json" ]; then
+        REV_FILE="$(dirname "$0")/revocation.json"
     fi
 
     case "$KB_PROVIDER" in

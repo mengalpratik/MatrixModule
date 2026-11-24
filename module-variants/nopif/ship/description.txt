@@ -1,1 +1,1 @@
-Hardware Keystore Attestation & Zero-APK App Isolation Engine.
+Hardware key attestation and App Isolation Engine ⚔️
