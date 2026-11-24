@@ -3,7 +3,7 @@
 # so KSU/APatch/MMRL show the current health at a glance.
 #
 # Format: "description=[Valid 💚] [Provider] <base>"
-# Or:     "description=[Revoked ❤️🩹] [Provider] <base>"
+# Or:     "description=[Revoked ❤️‍🩹] [Provider] <base>"
 # Base text is the canonical line from description.txt.
 #
 # Called from action.sh (every press) and service.sh (hourly + first boot).
@@ -30,7 +30,7 @@ get_status_prefix() {
         if [ "$_is_rev" = "0" ]; then
             _rev="[Valid 💚]"
         elif [ "$_is_rev" = "1" ]; then
-            _rev="[Revoked ❤️🩹]"
+            _rev="[Revoked ❤️‍🩹]"
         fi
     fi
     [ -z "$_rev" ] && _rev="[Valid 💚]"

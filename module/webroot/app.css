@@ -66,9 +66,9 @@ section[hidden]{display:none}
 .statusbar{display:flex;align-items:center;gap:12px;padding:15px 18px;margin-bottom:6px;border:1px solid rgba(0,255,102,.22);background:linear-gradient(180deg,var(--card) 0%,rgba(0,255,102,.08) 180%);box-shadow:0 0 16px rgba(0,255,102,.06)}
 .statusbar .sk{width:36px;height:36px;border-radius:12px;background:var(--good-soft);color:var(--good);display:grid;place-items:center;flex-shrink:0;box-shadow:0 0 10px rgba(0,255,102,.15)}
 .statusbar .sk svg{width:20px;height:20px}
-.statusbar .lab{font-size:15px;font-weight:600}
-.statusbar .lab small{display:block;font-size:12px;color:var(--sub);font-weight:500;margin-top:1px}
-.statusbar .sp{flex:1}
+.statusbar .lab{font-size:15px;font-weight:600;flex:1;min-width:0}
+.statusbar .lab small{display:block;font-size:12px;color:var(--sub);font-weight:500;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.statusbar .sp{display:none}
 .statusbar .sv{font-size:12px;font-weight:700;color:var(--good);background:var(--good-soft);border:1px solid rgba(0,255,102,.25);border-radius:999px;padding:5px 11px;flex-shrink:0}
 .kb-badge{font-size:12.5px;font-weight:750;letter-spacing:-.01em;padding:6px 12px;border-radius:999px;flex-shrink:0;transition:all .2s ease;display:inline-flex;align-items:center;justify-content:center}
 .kb-badge.valid{background:var(--good-soft);color:var(--good);border:1px solid rgba(0,255,102,.3);box-shadow:0 0 12px rgba(0,255,102,.18)}
