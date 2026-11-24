@@ -245,8 +245,9 @@
     if(e.target.checked) ckRefresh(); });
 
   var _lastS = {};
+  var _kbSwitching = false;
   // Keybox Provider selector
-  function paintKeyboxProvider(prov, S){
+  function paintKeyboxProvider(prov, S, statusOverride){
     if(S) _lastS = S;
     prov=(prov||"auto").toLowerCase();
     qa("#kbProvPills .pill").forEach(function(b){
@@ -260,23 +261,44 @@
       else if(prov==="specter") baseText="Source: Specter Rawbin (Catalog API)";
       else baseText="Source: Auto (Smart Failover & Revocation Protection)";
 
-      var rev = _lastS.kb_revoked;
-      if(rev === "0") baseText += " · Google: Valid 🟢";
-      else if(rev === "1") baseText += " · Google: Revoked 🔴";
+      if(statusOverride){
+        baseText += " · " + statusOverride;
+      } else {
+        var rev = (_lastS && _lastS.kb_revoked !== undefined) ? _lastS.kb_revoked : "";
+        if(rev === "0") baseText += " · Google: Valid 🟢";
+        else if(rev === "1") baseText += " · Google: Revoked 🔴";
+      }
 
       sub.textContent = baseText;
     }
   }
   qa("#kbProvPills .pill").forEach(function(b){
     b.addEventListener("click",function(){
+      if(_kbSwitching) return;
       var p=(b.dataset.prov||"auto").toLowerCase();
-      setting("keybox_provider", p);
-      paintKeyboxProvider(p);
-      flushNow();
       var label=(p==="evoker"?"Evoker":(p==="yurikey"?"Yurikey":(p==="specter"?"Specter":"Auto")));
-      toast("Switching to "+label+"…",2000);
-      deferBg('sh "'+MOD+'/keybox_fetch.sh" '+p+' force');
-      setTimeout(function(){ refreshStatus(); },2500);
+      setting("keybox_provider", p);
+      flushNow();
+      _kbSwitching = true;
+      paintKeyboxProvider(p, null, "Google: Checking... ⏳");
+      toast("Switching to "+label+"…", 2500);
+
+      ksuExec('sh "'+MOD+'/keybox_fetch.sh" '+p+' force').then(function(r){
+        _kbSwitching = false;
+        refreshStatus().then(function(newS){
+          var isRev = (newS && newS.kb_revoked !== undefined) ? newS.kb_revoked : _lastS.kb_revoked;
+          if(isRev === "0"){
+            toast("✅ "+label+" keybox applied (Google: Valid 🟢)", 2500);
+          } else if(isRev === "1"){
+            toast("⚠️ "+label+" keybox applied (Google: Revoked 🔴)", 2500);
+          } else {
+            toast(label+" keybox active", 2000);
+          }
+        });
+      }).catch(function(){
+        _kbSwitching = false;
+        refreshStatus();
+      });
     });
   });
   // Advanced toggles
@@ -1044,7 +1066,13 @@
   }
 
   // ---- status refresh helper ----
-  function refreshStatus(){ ksuExec('grep -m1 \'^description=\' "'+MOD+'/module.prop" 2>/dev/null | sed -e \'s/^description=//\' | awk \'{print $1}\'').then(function(r){ renderChecks((r.stdout||"").trim()); }); }
+  function refreshStatus(){
+    return readAll().then(function(S){
+      __lastS=S;
+      try{ paint(S); }catch(e){}
+      return S;
+    });
+  }
 
   // ---- go ----
   readAll().then(function(S){ __lastS=S;
