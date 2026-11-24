@@ -40,6 +40,11 @@ done
 # pins ro.build.version.security_patch to match the spoofed fingerprint.
 [ -f "$MODPATH/sync_patch.sh" ] && sh "$MODPATH/sync_patch.sh" boot 2>/dev/null
 
+# --- Unify product & partition properties with the spoofed fingerprint ---
+if as_on prop_unify && [ -x "$MODPATH/prop_unify.sh" ]; then
+    sh "$MODPATH/prop_unify.sh" 2>/dev/null || true
+fi
+
 # --- Bootloader / verified boot props (required for STRONG, harmless if already correct) ---
 
 # Samsung

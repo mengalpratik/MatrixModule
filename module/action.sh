@@ -329,6 +329,9 @@ engine_enforce_spoof
 
 PATCH=""
 [ -f "$MODPATH/sync_patch.sh" ] && PATCH=$(sh "$MODPATH/sync_patch.sh" boot 2>/dev/null)
+if as_on prop_unify && [ -x "$MODPATH/prop_unify.sh" ]; then
+    sh "$MODPATH/prop_unify.sh" >/dev/null 2>&1 || true
+fi
 
 pick_pif() {
     # Module dir first: it holds the engine's ACTIVE pif for every source (auto,

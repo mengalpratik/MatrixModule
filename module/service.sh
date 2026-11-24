@@ -230,11 +230,10 @@ fi
 {
     sleep 8   # let supervisor/daemon/aswatcher come up first
 
-    # NOTE: prop_unify.sh (global resetprop of ro.product.*) ships but is
-    # deliberately never invoked, on either engine. Both spoof Build/ro.product.*
-    # where Play Integrity looks, so a global resetprop buys no integrity — and it
-    # leaks the spoofed model to every process, so the device shows up as e.g.
-    # "Pixel 10" in scrcpy/ADB. It stays in the tree for manual use only.
+    # Unify product & partition properties with spoofed fingerprint if enabled
+    if as_on prop_unify && [ -x "$MODDIR/prop_unify.sh" ]; then
+        sh "$MODDIR/prop_unify.sh" 2>&1 | log -t "MatrixModule-unify"
+    fi
 
     # Suppress our log tags + scrub ANR/tombstone traces (self-daemonizes).
     if as_on logcat_cleanup && [ -f "$MODDIR/logcat_cleanup.sh" ]; then
@@ -482,6 +481,9 @@ fi
                 engine_autopif 2>&1 | log -t "MatrixModule-hourly"
             fi
             [ -f "$MODDIR/sync_patch.sh" ] && sh "$MODDIR/sync_patch.sh" 2>&1 | log -t "MatrixModule-hourly"
+            if as_on prop_unify && [ -x "$MODDIR/prop_unify.sh" ]; then
+                sh "$MODDIR/prop_unify.sh" 2>&1 | log -t "MatrixModule-hourly"
+            fi
             # upstream's fetcher resets these to a WEAK config (Fork's
             # migrate.sh writes spoofProvider=1 / spoofVendingFinger=0), which
             # would silently drop the verdict an hour after boot.

@@ -64,6 +64,7 @@ while IFS='=' read -r key val; do
     BRAND)           BRAND="$val" ;;
     MODEL)           MODEL="$val" ;;
     SECURITY_PATCH)  SECURITY_PATCH="$val" ;;
+    DEVICE_INITIAL_SDK_INT) DEVICE_INITIAL_SDK_INT="$val" ;;
   esac
 done < "$PIF"
 
@@ -162,6 +163,19 @@ if [ -n "$FINGERPRINT" ]; then
   set_prop ro.secureboot.lockstate locked
   set_prop ro.boot.veritymode enforcing
   set_prop vendor.boot.veritymode enforcing
+
+  # Unify partition fingerprints and base build fingerprint
+  set_prop ro.build.fingerprint "$FINGERPRINT"
+  set_prop ro.bootimage.build.fingerprint "$FINGERPRINT"
+  for part in system vendor product system_ext odm boot vendor_dlkm odm_dlkm; do
+    set_prop "ro.$part.build.fingerprint" "$FINGERPRINT"
+    set_prop "ro.build.$part.fingerprint" "$FINGERPRINT"
+  done
+
+  [ -n "$DEVICE_INITIAL_SDK_INT" ] && {
+    set_prop ro.product.first_api_level "$DEVICE_INITIAL_SDK_INT"
+    set_prop ro.board.first_api_level "$DEVICE_INITIAL_SDK_INT"
+  }
 
   for part in vendor product system_ext odm; do
     set_prop "ro.$part.build.tags" "${FP_TAGS:-release-keys}"

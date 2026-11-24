@@ -1,4 +1,5 @@
 MANUFACTURER=Google
+BRAND=google
 MODEL=Pixel 6a
 FINGERPRINT=google/bluejay_beta/bluejay:CANARY/ZP11.261016.008/16754936:user/release-keys
 PRODUCT=bluejay_beta

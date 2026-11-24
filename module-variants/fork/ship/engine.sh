@@ -92,10 +92,24 @@ engine_install_pif() {
         sh "$MODPATH/migrate.sh" -i -a "$MODPATH/pif.prop" >/dev/null 2>&1
     fi
     [ -s "$MODPATH/custom.pif.prop" ] || return 1
+    # Ensure ro.product.* system properties exist in custom.pif.prop so Fork zygisk hooks them
+    _brand=$(grep -m1 '^BRAND=' "$MODPATH/custom.pif.prop" 2>/dev/null | cut -d= -f2- | tr -d '\r')
+    _model=$(grep -m1 '^MODEL=' "$MODPATH/custom.pif.prop" 2>/dev/null | cut -d= -f2- | tr -d '\r')
+    _man=$(grep -m1 '^MANUFACTURER=' "$MODPATH/custom.pif.prop" 2>/dev/null | cut -d= -f2- | tr -d '\r')
+    _dev=$(grep -m1 '^DEVICE=' "$MODPATH/custom.pif.prop" 2>/dev/null | cut -d= -f2- | tr -d '\r')
+    _prod=$(grep -m1 '^PRODUCT=' "$MODPATH/custom.pif.prop" 2>/dev/null | cut -d= -f2- | tr -d '\r')
+    [ -n "$_brand" ] && ! grep -q '^ro\.product\.brand=' "$MODPATH/custom.pif.prop" 2>/dev/null && echo "ro.product.brand=$_brand" >> "$MODPATH/custom.pif.prop"
+    [ -n "$_model" ] && ! grep -q '^ro\.product\.model=' "$MODPATH/custom.pif.prop" 2>/dev/null && echo "ro.product.model=$_model" >> "$MODPATH/custom.pif.prop"
+    [ -n "$_man" ] && ! grep -q '^ro\.product\.manufacturer=' "$MODPATH/custom.pif.prop" 2>/dev/null && echo "ro.product.manufacturer=$_man" >> "$MODPATH/custom.pif.prop"
+    [ -n "$_dev" ] && ! grep -q '^ro\.product\.device=' "$MODPATH/custom.pif.prop" 2>/dev/null && echo "ro.product.device=$_dev" >> "$MODPATH/custom.pif.prop"
+    [ -n "$_prod" ] && ! grep -q '^ro\.product\.name=' "$MODPATH/custom.pif.prop" 2>/dev/null && echo "ro.product.name=$_prod" >> "$MODPATH/custom.pif.prop"
     # migrate.sh writes spoofProvider=1 / spoofVendingFinger=0, a WEAK config
     # that breaks STRONG. Enforce here so every caller is correct without
     # needing its own enforce step.
     engine_enforce_spoof
+    if [ -f "$MODPATH/prop_unify.sh" ]; then
+        sh "$MODPATH/prop_unify.sh" >/dev/null 2>&1 || true
+    fi
     return 0
 }
 

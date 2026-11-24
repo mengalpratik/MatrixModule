@@ -220,7 +220,7 @@ try_beta() { # $1=codename -> installs it into the engine, 0 on success
     [ "$_got" = 1 ] || return 1
     # Keep only the canonical identity keys; the engine adapter appends the
     # spoof flags its own zygisk reads (the file's own spoof* lines are dropped).
-    grep -E '^(MANUFACTURER|MODEL|FINGERPRINT|PRODUCT|DEVICE|SECURITY_PATCH|DEVICE_INITIAL_SDK_INT)=' \
+    grep -E '^(MANUFACTURER|BRAND|MODEL|FINGERPRINT|PRODUCT|DEVICE|SECURITY_PATCH|DEVICE_INITIAL_SDK_INT)=' \
         "$W/$_c.pif.prop" > "$W/identity.prop" 2>/dev/null
     grep -q '^FINGERPRINT=' "$W/identity.prop" || return 1
     engine_spoof_block >> "$W/identity.prop"
@@ -335,6 +335,7 @@ TMP="$W/pif.prop"
 cat > "$TMP" <<EOF
 FINGERPRINT=$FP
 MANUFACTURER=Google
+BRAND=google
 MODEL=$MODEL
 PRODUCT=$PRODUCT
 DEVICE=$DEVICE
