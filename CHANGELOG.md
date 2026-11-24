@@ -1,5 +1,31 @@
 # MatrixModule changelog
 
+## v1.0.1
+
+Maintenance and stability release introducing keybox provider controls, SELinux enforcement for the headless hiding engine, and packaging reliability improvements.
+
+**What's Changed**
+- **Dynamic Keybox Provider Selector**:
+  - Added WebUI provider pills allowing instant switching between **Auto** (Evoker primary with Yurikey mirror failover), **Evoker** (direct HTTPS), and **Yurikey** (GitHub Raw Base64 XML mirror).
+  - Added CLI provider argument parsing (`auto`, `evoker`, `yurikey`, `custom`) and `force` reload toggle in `keybox_fetch.sh`.
+  - Added persistent configuration keys (`keybox_provider`, `custom_keybox_url`) in `as_store.sh`.
+- **HMA Hiding Engine SELinux Context Safeguard**:
+  - Enforced strict SELinux contexts (`u:object_r:system_file:s0` and `u:object_r:system_lib_file:s0`) for `/data/adb/modules/matrixmodule_hiding_engine` and `/data/adb/modules/hma_oss_zygisk` in `post-fs-data.sh`, `customize.sh`, and `hma_update.sh` before Zygote forks.
+  - Fixes potential bootloops and crashes on aggressive SELinux enforcing ROMs.
+- **Sub-Module Collision Prevention**:
+  - Renamed internal HMA sub-module descriptor `module.prop` to `module.prop.engine` during packaging to avoid Magisk / KernelSU manager collision or double-counting.
+- **Progressive Diagnostics Enhancements**:
+  - Action button (`action.sh`) diagnostics now prominently display the currently active keybox provider source.
+- **Distribution Packages**:
+  - `MatrixModule-v1.0.1.zip` (Default: PlayIntegrityFork v19 + TEESimulator-RS)
+  - `MatrixModule-v1.0.1-inject.zip` (PlayIntegrityFix inject-s fallback)
+  - `MatrixModule-v1.0.1-nopif.zip` (Lite variant for custom PIF setups)
+
+### Support & Donation
+- **Buy Me a Coffee**: [buymeacoffee.com/pratikmengal](https://buymeacoffee.com/pratikmengal)
+- **UPI ID**: `iampratikmengal-2@okaxis`
+- **Author**: Pratik Mengal ([@mengalpratik](https://github.com/mengalpratik))
+
 ## v1.0.0
 
 Initial official release of **MatrixModule** — the all-in-one, zero-hassle Root Cloaking & Hardware Attestation Suite for Android 10–16 (KernelSU, APatch, and Magisk).

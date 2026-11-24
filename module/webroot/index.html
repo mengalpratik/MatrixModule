@@ -156,6 +156,19 @@
                   ><input type="checkbox" checked /><span class="sl"></span
                 ></label>
               </div>
+              <div class="row" id="kbProvRow" style="flex-direction:column; align-items:stretch; gap:10px; padding:12px 18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <div class="txt">
+                    <div class="h" data-i="kb_prov_h">Keybox Provider</div>
+                    <div class="s" id="kbProvSub">Source: Auto (Evoker / Yurikey Failover)</div>
+                  </div>
+                </div>
+                <div class="pills" id="kbProvPills" style="display:flex; flex-wrap:wrap; gap:8px;">
+                  <button class="pill solid" data-prov="auto" type="button">Auto</button>
+                  <button class="pill" data-prov="evoker" type="button">Evoker</button>
+                  <button class="pill" data-prov="yurikey" type="button">Yurikey</button>
+                </div>
+              </div>
               <div class="row" data-k="custom keybox own">
                 <div class="ic orange">
                   <svg

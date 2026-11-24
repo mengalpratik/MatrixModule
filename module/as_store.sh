@@ -102,7 +102,8 @@ as_killpi() {
 # Every setting there is, in the order the config file lists them.
 AS_KEYS="auto_fp auto_keybox status_indicator rom_spoof_block spoof_patch_props
          force_patch_props logcat_cleanup prop_unify denylist_gms auto_target hide_rom_markers
-         custom_keybox custom_pif patch_system patch_vendor patch_boot interval_sec auto_hma_update"
+         custom_keybox custom_pif patch_system patch_vendor patch_boot interval_sec auto_hma_update
+         keybox_provider custom_keybox_url"
 
 # What a setting means when nothing has been written. Everything the module does
 # on its own is on; the opt-ins are off. spoof_patch_props is opt-in: by default
@@ -115,6 +116,7 @@ as_default() {
         auto_fp|auto_keybox|status_indicator|rom_spoof_block|logcat_cleanup|prop_unify|denylist_gms|auto_target|auto_hma_update) echo 1 ;;
         custom_keybox|custom_pif|spoof_patch_props|force_patch_props|hide_rom_markers) echo 0 ;;
         interval_sec) echo 3600 ;;
+        keybox_provider) echo "auto" ;;
         *) echo "" ;;
     esac
 }

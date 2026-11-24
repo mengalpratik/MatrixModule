@@ -5,7 +5,7 @@
 <br><br>
 
 [![License](https://img.shields.io/badge/License-GPL--3.0-orange.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-v1.0.0-00ff66.svg?style=for-the-badge)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-v1.0.1-00ff66.svg?style=for-the-badge)](CHANGELOG.md)
 [![Android](https://img.shields.io/badge/Android-10--16%20Ready-3DDC84.svg?style=for-the-badge&logo=android&logoColor=white)](https://android.com)
 [![Integrity](https://img.shields.io/badge/Play%20Integrity-STRONG%20PASS-brightgreen.svg?style=for-the-badge&logo=googleplay&logoColor=white)](https://developer.android.com/google/play/integrity)
 [![Root](https://img.shields.io/badge/Root-KernelSU%20%7C%20APatch%20%7C%20Magisk-blueviolet.svg?style=for-the-badge)](#-root-manager-compatibility)
@@ -109,7 +109,7 @@ Tap the **[Action]** button in your root manager (or run `/data/adb/modules/tric
 ```
 ┌────────────────────────────────────────────────────────┐
 │  Step 1: Install Zygisk Next or ReZygisk.             │
-│  Step 2: Flash MatrixModule-v1.0.0.zip.                │
+│  Step 2: Flash MatrixModule-v1.0.1.zip.                │
 │  Step 3: Reboot & tap [Action] in your manager.        │
 │                                                        │
 │  Done! Open any Play Integrity Checker and smile. ✅   │
@@ -117,7 +117,7 @@ Tap the **[Action]** button in your root manager (or run `/data/adb/modules/tric
 ```
 
 1. **Prerequisite:** Make sure your root manager has a working Zygisk module installed (**[Zygisk Next](https://github.com/Dr-TSNG/ZygiskNext)** or **[ReZygisk](https://github.com/PerformanC/ReZygisk)** recommended).
-2. **Download:** Grab the latest `MatrixModule-v1.0.0.zip` from **[Releases](https://github.com/mengalpratik/MatrixModule/releases)**.
+2. **Download:** Grab the latest `MatrixModule-v1.0.1.zip` from **[Releases](https://github.com/mengalpratik/MatrixModule/releases)**.
 3. **Flash:** Install the ZIP in **KernelSU**, **APatch**, or **Magisk**, then **Reboot**.
 4. **Activate:** Open your root manager and tap **[Action]** on MatrixModule (or run `su -c "/data/adb/modules/tricky_store/action.sh"` in Termux).
    - *On KernelSU / APatch, open the WebUI to inspect live health and toggles!*
@@ -152,16 +152,16 @@ Every release provides three tailored lines. **If you're not sure, grab the defa
 ```mermaid
 graph TD
     Start["Which build do I need?"] --> Q1{"Does default build work for you?"}
-    Q1 -- "Yes / First time" --> Def["<b>MatrixModule-v1.0.0.zip</b><br>(Default: TEESimulator-RS + PlayIntegrityFork v19)"]
-    Q1 -- "Fails on rare ROMs" --> Inj["<b>MatrixModule-v1.0.0-inject.zip</b><br>(PlayIntegrityFix inject-s fallback)"]
-    Q1 -- "GMS crashes / Bring your own PIF" --> Lite["<b>MatrixModule-v1.0.0-nopif.zip</b><br>(Lite: Attestation + Keybox only, zero Build spoof)"]
+    Q1 -- "Yes / First time" --> Def["<b>MatrixModule-v1.0.1.zip</b><br>(Default: TEESimulator-RS + PlayIntegrityFork v19)"]
+    Q1 -- "Fails on rare ROMs" --> Inj["<b>MatrixModule-v1.0.1-inject.zip</b><br>(PlayIntegrityFix inject-s fallback)"]
+    Q1 -- "GMS crashes / Bring your own PIF" --> Lite["<b>MatrixModule-v1.0.1-nopif.zip</b><br>(Lite: Attestation + Keybox only, zero Build spoof)"]
 ```
 
 | Download Package | Play Integrity Engine | Hardware Keystore Engine | Best For |
 |---|---|---|---|
-| **`MatrixModule-v1.0.0.zip`** | **PlayIntegrityFork v19** (osm0sis) | **TEESimulator-RS** (Enginex0) | **Default — Start here.** 99% of users pass `STRONG` out of the box. |
-| **`MatrixModule-v1.0.0-inject.zip`** | PlayIntegrityFix inject-s (KOWX712) | **TEESimulator-RS** (Enginex0) | Edge-case custom ROMs where Fork doesn't hit `STRONG`. |
-| **`MatrixModule-v1.0.0-nopif.zip`** | *None (Lite)* | **TEESimulator-RS** (Enginex0) | Users wanting to run their own standalone PIF or fixing GMS crashes. |
+| **`MatrixModule-v1.0.1.zip`** | **PlayIntegrityFork v19** (osm0sis) | **TEESimulator-RS** (Enginex0) | **Default — Start here.** 99% of users pass `STRONG` out of the box. |
+| **`MatrixModule-v1.0.1-inject.zip`** | PlayIntegrityFix inject-s (KOWX712) | **TEESimulator-RS** (Enginex0) | Edge-case custom ROMs where Fork doesn't hit `STRONG`. |
+| **`MatrixModule-v1.0.1-nopif.zip`** | *None (Lite)* | **TEESimulator-RS** (Enginex0) | Users wanting to run their own standalone PIF or fixing GMS crashes. |
 
 <details>
 <summary><b>🛠️ Optional Keystore Engines (TrickyStoreOSS & JingMatrix TEESimulator)</b></summary>

@@ -87,34 +87,89 @@ run_engine() {
     [ -s "$2" ]
 }
 
-# try_fetch OUTFILE — try primary endpoint first; failover to secondary mirror if primary fails
+# Parse arguments
+FORCE=0
+CLI_PROV=""
+for arg in "$@"; do
+    case "$arg" in
+        force) FORCE=1 ;;
+        auto|evoker|yurikey|custom) CLI_PROV="$arg" ;;
+    esac
+done
+
+KB_PROVIDER="${CLI_PROV:-$(as_get keybox_provider auto)}"
+
+# try_fetch OUTFILE — fetches keybox based on selected provider (auto, evoker, yurikey, custom)
 try_fetch() {
     _o="$1"
     _first=$(st_get kb_engine)
-    # 1. Try Primary Mirror (Evoker direct HTTPS)
-    for _e in "$_first" asfetch bb curl wget; do
-        [ -z "$_e" ] && continue
-        if run_engine "$_e" "$_o" "$PRIMARY_URL"; then
-            [ "$_e" != "$_first" ] && st_set kb_engine "$_e"
-            st_set kb_source "Evoker"
-            log "downloaded keybox from primary mirror (Evoker) using $_e"
-            return 0
-        fi
-    done
 
-    # 2. Try Secondary Mirror (Yurikey GitHub Base64 XML)
-    log "primary mirror failed; switching to secondary failover mirror (Yurikey)..."
-    for _e in "$_first" asfetch bb curl wget; do
-        [ -z "$_e" ] && continue
-        if run_engine "$_e" "$_o" "$FALLBACK_URL"; then
-            [ "$_e" != "$_first" ] && st_set kb_engine "$_e"
-            st_set kb_source "Yurikey"
-            log "downloaded keybox from secondary failover mirror (Yurikey) using $_e"
-            return 0
-        fi
-    done
+    case "$KB_PROVIDER" in
+        evoker)
+            log "targeted provider: Evoker mirror ($PRIMARY_URL)"
+            for _e in "$_first" asfetch bb curl wget; do
+                [ -z "$_e" ] && continue
+                if run_engine "$_e" "$_o" "$PRIMARY_URL"; then
+                    [ "$_e" != "$_first" ] && st_set kb_engine "$_e"
+                    st_set kb_source "Evoker"
+                    log "downloaded keybox from Evoker using $_e"
+                    return 0
+                fi
+            done
+            return 1
+            ;;
+        yurikey)
+            log "targeted provider: Yurikey mirror ($FALLBACK_URL)"
+            for _e in "$_first" asfetch bb curl wget; do
+                [ -z "$_e" ] && continue
+                if run_engine "$_e" "$_o" "$FALLBACK_URL"; then
+                    [ "$_e" != "$_first" ] && st_set kb_engine "$_e"
+                    st_set kb_source "Yurikey"
+                    log "downloaded keybox from Yurikey using $_e"
+                    return 0
+                fi
+            done
+            return 1
+            ;;
+        custom)
+            _custom_url=$(as_get custom_keybox_url)
+            [ -z "$_custom_url" ] && { log "custom keybox URL empty"; return 1; }
+            log "targeted provider: Custom URL ($_custom_url)"
+            for _e in "$_first" asfetch bb curl wget; do
+                [ -z "$_e" ] && continue
+                if run_engine "$_e" "$_o" "$_custom_url"; then
+                    [ "$_e" != "$_first" ] && st_set kb_engine "$_e"
+                    st_set kb_source "Custom"
+                    log "downloaded keybox from Custom URL using $_e"
+                    return 0
+                fi
+            done
+            return 1
+            ;;
+        *) # auto (default failover: Evoker first, then Yurikey)
+            for _e in "$_first" asfetch bb curl wget; do
+                [ -z "$_e" ] && continue
+                if run_engine "$_e" "$_o" "$PRIMARY_URL"; then
+                    [ "$_e" != "$_first" ] && st_set kb_engine "$_e"
+                    st_set kb_source "Evoker"
+                    log "downloaded keybox from primary mirror (Evoker) using $_e"
+                    return 0
+                fi
+            done
 
-    return 1
+            log "primary mirror failed; switching to secondary failover mirror (Yurikey)..."
+            for _e in "$_first" asfetch bb curl wget; do
+                [ -z "$_e" ] && continue
+                if run_engine "$_e" "$_o" "$FALLBACK_URL"; then
+                    [ "$_e" != "$_first" ] && st_set kb_engine "$_e"
+                    st_set kb_source "Yurikey"
+                    log "downloaded keybox from secondary failover mirror (Yurikey) using $_e"
+                    return 0
+                fi
+            done
+            return 1
+            ;;
+    esac
 }
 
 B64DEC=""
@@ -177,7 +232,7 @@ DISK_HASH=""
 [ -s "$TARGET" ] && DISK_HASH=$($SHA256 < "$TARGET" | awk '{print tolower($1)}')
 
 # ---- Change detection (compare actual on-disk XML, not a side-state) ---
-if [ -n "$DISK_HASH" ] && [ "$DISK_HASH" = "$NEW_XML_HASH" ]; then
+if [ "$FORCE" != "1" ] && [ -n "$DISK_HASH" ] && [ "$DISK_HASH" = "$NEW_XML_HASH" ]; then
     log "already up to date."
     exit 2
 fi

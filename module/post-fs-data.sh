@@ -26,6 +26,15 @@ command -v st_del >/dev/null 2>&1 && { st_del refresh; st_del ts_loop; st_del te
 # `magisk --denylist enable` here, which flipped a toggle users deliberately
 # keep off. Leave the user's DenyList state exactly as they set it.
 
+# --- Sub-Module (HMA Hiding Engine) SELinux Context Safeguard ---
+# Ensure HMA sub-module has correct SELinux context before Zygote forks
+for _hdir in /data/adb/modules/matrixmodule_hiding_engine /data/adb/modules/hma_oss_zygisk; do
+  if [ -d "$_hdir" ]; then
+    chcon -R u:object_r:system_file:s0 "$_hdir" 2>/dev/null || :
+    [ -d "$_hdir/zygisk" ] && chcon -R u:object_r:system_lib_file:s0 "$_hdir/zygisk" 2>/dev/null || :
+  fi
+done
+
 # --- Security patch level (attestation + Build consistency) ---------------
 # Writes /data/adb/tricky_store/security_patch.txt for the TEE attestation and
 # pins ro.build.version.security_patch to match the spoofed fingerprint.

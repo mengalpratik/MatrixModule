@@ -41,7 +41,7 @@
   window.addEventListener("pagehide",flushNow);
 
   var DEFAULTS={auto_fp:"1",auto_keybox:"1",status_indicator:"1",rom_spoof_block:"1",
-    spoof_patch_props:"1",custom_keybox:"0",custom_pif:"0",interval_sec:"3600",hide_rom_markers:"0",auto_target:"1"};
+    spoof_patch_props:"1",custom_keybox:"0",custom_pif:"0",interval_sec:"3600",hide_rom_markers:"0",auto_target:"1",keybox_provider:"auto"};
   function conf(S,k){ return (S[k]!==undefined&&S[k]!=="")?S[k]:DEFAULTS[k]; }
 
   // ---- toast (mock element) ----
@@ -145,6 +145,7 @@
     var ckn=q('#ckPick .txt .h'), cks=q('#ckPick .txt .s');
     var bytes=parseInt(String(S.kb||"0|").split("|")[0],10)||0;
     if(ckn && cks){ if(bytes>0){ ckn.textContent=(kbn||"keybox.xml").replace(/\.xml$/i,""); cks.textContent=tr("ck_selk","Selected keybox"); } }
+    paintKeyboxProvider(conf(S,"keybox_provider")||"auto");
     // custom keybox overwrites the auto-fetched one, so grey out auto-keybox
     setAutoKbDisabled(!!(ckSw && ckSw.checked));
     var ckDelEl=document.getElementById("ckDel"); if(ckDelEl) ckDelEl.hidden=!(ckSw && ckSw.checked && bytes>0);
@@ -237,6 +238,32 @@
     setAutoKbDisabled(e.target.checked);
     var cd=document.getElementById("ckDel"); if(cd && !e.target.checked) cd.hidden=true;
     if(e.target.checked) ckRefresh(); });
+
+  // Keybox Provider selector
+  function paintKeyboxProvider(prov){
+    prov=(prov||"auto").toLowerCase();
+    qa("#kbProvPills .pill").forEach(function(b){
+      b.classList.toggle("solid", (b.dataset.prov||"").toLowerCase() === prov);
+    });
+    var sub=document.getElementById("kbProvSub");
+    if(sub){
+      if(prov==="evoker") sub.textContent="Source: Evoker (Direct HTTPS)";
+      else if(prov==="yurikey") sub.textContent="Source: Yurikey (GitHub Raw)";
+      else sub.textContent="Source: Auto (Evoker / Yurikey Failover)";
+    }
+  }
+  qa("#kbProvPills .pill").forEach(function(b){
+    b.addEventListener("click",function(){
+      var p=(b.dataset.prov||"auto").toLowerCase();
+      setting("keybox_provider", p);
+      paintKeyboxProvider(p);
+      flushNow();
+      var label=(p==="evoker"?"Evoker":(p==="yurikey"?"Yurikey":"Auto"));
+      toast("Switching to "+label+"…",2000);
+      deferBg('sh "'+MOD+'/keybox_fetch.sh" '+p+' force');
+      setTimeout(function(){ refreshStatus(); },2500);
+    });
+  });
   // Advanced toggles
   var rsI=dkInput("block rom spoof pixelprops pihooks");
   if(rsI) rsI.addEventListener("change",function(e){ settingOn("rom_spoof_block",e.target.checked); });
@@ -326,7 +353,7 @@
   function closeM(m){ if(!m) return; m.classList.remove("show"); setTimeout(function(){ m.hidden=true; },220); }
   // custom keybox overwrites the auto-fetched one, so auto-keybox is greyed out
   // (disabled) while a custom keybox is in use.
-  function setAutoKbDisabled(d){ var row=dkRow("keybox auto check"), inp=dkInput("keybox auto check"); if(inp) inp.disabled=!!d; if(row) row.classList.toggle("off",!!d); }
+  function setAutoKbDisabled(d){ var row=dkRow("keybox auto check"), inp=dkInput("keybox auto check"); if(inp) inp.disabled=!!d; if(row) row.classList.toggle("off",!!d); var prow=document.getElementById("kbProvRow"); if(prow) prow.classList.toggle("off",!!d); }
   // Import fingerprint row subtitle: show the active fingerprint (model · name)
   // when one is imported/applied, else the default hint.
   function prettyPif(n){ return String(n||"").replace(/\.(pif\.)?prop$/i,"").replace(/\.json$/i,""); }

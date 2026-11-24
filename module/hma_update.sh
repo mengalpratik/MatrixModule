@@ -122,6 +122,10 @@ perform_update() {
     chmod 644 "$HMA_MODDIR/classes.dex" "$HMA_MODDIR/module.prop" "$HMA_MODDIR/zygisk"/*.so 2>/dev/null || :
     chmod 644 "$HMA_MODDIR/packages/android" 2>/dev/null || :
 
+    # Enforce SELinux contexts for the sub-module directory so Zygote doesn't crash
+    chcon -R u:object_r:system_file:s0 "$HMA_MODDIR" 2>/dev/null || :
+    chcon -R u:object_r:system_lib_file:s0 "$HMA_MODDIR/zygisk" 2>/dev/null || :
+
     # Re-apply MatrixModule branding to module.prop
     sed -i 's/^id=.*/id=matrixmodule_hiding_engine/' "$HMA_MODDIR/module.prop" 2>/dev/null || :
     sed -i 's/^name=.*/name=MatrixModule - Hiding Engine/' "$HMA_MODDIR/module.prop" 2>/dev/null || :

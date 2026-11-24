@@ -204,13 +204,18 @@ else
     row "❗" "keybox fetch not available"
 fi
 
+KB_PROV=$(as_get keybox_provider auto)
 KB_SRC=$(st_get kb_source 2>/dev/null)
 [ -z "$KB_SRC" ] && KB_SRC="Built-in"
 if as_on custom_keybox; then
     KB_SRC="Custom"
 fi
 if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; then
-    diag "Keybox Status: Valid (Source: $KB_SRC)"
+    if [ "$KB_PROV" != "auto" ]; then
+        diag "Keybox Status: Valid (Source: $KB_SRC | Provider: $KB_PROV)"
+    else
+        diag "Keybox Status: Valid (Source: $KB_SRC)"
+    fi
 else
     row "❗" "Keybox Status: Invalid / Missing"
 fi

@@ -275,7 +275,12 @@ if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "hma_backend/"; then
   ui_print "Deploying MatrixModule Hiding Engine..."
   mkdir -p "$HMA_MODDIR/zygisk" "$HMA_MODDIR/packages" 2>/dev/null
   unzip -qqjo "$ZIPFILE" "hma_backend/classes.dex" -d "$HMA_MODDIR" 2>/dev/null || :
-  unzip -qqjo "$ZIPFILE" "hma_backend/module.prop" -d "$HMA_MODDIR" 2>/dev/null || :
+  if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "hma_backend/module.prop.engine"; then
+    unzip -qqjo "$ZIPFILE" "hma_backend/module.prop.engine" -d "$HMA_MODDIR" 2>/dev/null || :
+    [ -f "$HMA_MODDIR/module.prop.engine" ] && mv -f "$HMA_MODDIR/module.prop.engine" "$HMA_MODDIR/module.prop"
+  else
+    unzip -qqjo "$ZIPFILE" "hma_backend/module.prop" -d "$HMA_MODDIR" 2>/dev/null || :
+  fi
   unzip -qqjo "$ZIPFILE" "hma_backend/update_desc.sh" -d "$HMA_MODDIR" 2>/dev/null || :
   unzip -qqjo "$ZIPFILE" "hma_backend/hmaoss.sh" -d "$HMA_MODDIR" 2>/dev/null || :
   unzip -qqjo "$ZIPFILE" "hma_backend/uninstall.sh" -d "$HMA_MODDIR" 2>/dev/null || :
@@ -301,6 +306,11 @@ if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "hma_backend/"; then
   chmod 755 "$HMA_MODDIR"/*.sh 2>/dev/null || :
   chmod 644 "$HMA_MODDIR/classes.dex" "$HMA_MODDIR/module.prop" "$HMA_MODDIR/zygisk"/*.so 2>/dev/null || :
   chmod 644 "$HMA_MODDIR/packages/android" 2>/dev/null || :
+
+  # Enforce SELinux contexts for the sub-module directory so Zygote doesn't crash
+  chcon -R u:object_r:system_file:s0 "$HMA_MODDIR" 2>/dev/null || :
+  chcon -R u:object_r:system_lib_file:s0 "$HMA_MODDIR/zygisk" 2>/dev/null || :
+  rm -f "$HMA_MODDIR/disable" "$HMA_MODDIR/remove" 2>/dev/null || :
 
   # Setup boot-completed hook
   mkdir -p /data/adb/boot-completed.d 2>/dev/null || :

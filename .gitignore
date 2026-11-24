@@ -13,6 +13,12 @@ native/**/target/
 Thumbs.db
 .vscode/
 .idea/
+*.swp
+*~
+*.orig
+*.rej
+.antigravity/
+.gemini/
 
 # scratch / temp
 tmp_*
@@ -22,3 +28,4 @@ tmp_*
 
 # upstream-update change summary (regenerated each run by update-upstream.sh)
 .upstream-changes.txt
+
