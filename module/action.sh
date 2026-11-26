@@ -11,11 +11,11 @@ cd "$MODPATH" 2>/dev/null || exit 1
 
 # Hop into the manager's busybox ash before doing anything else. Magisk used to
 # run action.sh inside its own ash, but newer Magisk Alpha builds (app 96221b69+)
-# start it with /system/bin/sh — mksh — and the `set +o standalone` below is a
+# start it with /system/bin/sh - mksh - and the `set +o standalone` below is a
 # special-builtin error there: mksh exits on it, silently (stderr is discarded),
 # and the Action screen sits black with no output at all. Everything below is
 # written for ash, so re-exec once under the first busybox we find (AS_ASH marks
-# the hop; the exported env — AS_FAST, the "logs" argument — survives exec).
+# the hop; the exported env - AS_FAST, the "logs" argument - survives exec).
 # With no busybox at all we stay put and only flip standalone if this shell
 # knows the option.
 if [ -z "$AS_ASH" ]; then
@@ -45,7 +45,7 @@ else
     sleep() { command sleep 0.2 >/dev/null 2>&1 || :; }
 fi
 
-# `action.sh logs` — dump a diagnostic bundle for a GitHub issue and exit.
+# `action.sh logs` - dump a diagnostic bundle for a GitHub issue and exit.
 if [ "$1" = "logs" ] && [ -x "$MODPATH/collect_logs.sh" ]; then
     p=$(sh "$MODPATH/collect_logs.sh")
     echo "log written to: $p"
@@ -67,7 +67,7 @@ VER=${VER%% (*}
 row() { echo "    $1   $2"; }
 diag() { echo "  [+] $1"; }
 
-# --- ABI + fetchers ---
+# ABI + fetchers
 case "$(uname -m)" in
     aarch64)        ABI=arm64-v8a ;;
     armv7*|armv8l)  ABI=armeabi-v7a ;;
@@ -87,7 +87,7 @@ done
 SED_I="sed -i"
 [ -n "$BB" ] && SED_I="$BB sed -i"
 
-# bounded SECS cmd... — run cmd under a hard wall-clock cap. A fetcher that
+# bounded SECS cmd... - run cmd under a hard wall-clock cap. A fetcher that
 # never returns (asfetch / wget / curl stuck on a dead route, a hung DNS, a
 # TLS stall) used to freeze the whole Action: status_fetch and the first-tap
 # keybox fetch called it with no bound at all, so the screen sat after the last
@@ -107,101 +107,88 @@ bounded() { _bs="$1"; shift; if [ -n "$TO" ]; then $TO "$_bs" "$@"; else "$@"; f
 # floor (curl), so a slow link that keeps delivering bytes is never cut off; the
 # outer cap only backstops a process that is stuck entirely.
 
-# --- Play Integrity engine adapter ---
+# Play Integrity engine adapter
 # Which prop file the zygisk reads, and what its spoof flags are called, is all
 # that differs between the two builds. engine.sh owns it; everything below is
 # identical in both.
 if [ -f "$MODPATH/engine.sh" ]; then
     . "$MODPATH/engine.sh"
 else
-    echo "  engine.sh missing — broken install, reflash the module"; exit 1
+    echo "  engine.sh missing - broken install, reflash the module"; exit 1
 fi
 
-# asfetch first (connects IPv4-first, works on IPv6-only-DNS networks); fall
-# through to busybox wget / curl if it ever fails on a host.
-dl_out() {
-    if [ -n "$ASFETCH" ]; then bounded 120 $ASFETCH -T 20 "$1" 2>/dev/null && return 0; fi
-    if [ -n "$BB" ]; then bounded 120 $BB wget -q -T 20 -O - "$1" 2>/dev/null && return 0; fi
-    if command -v curl >/dev/null 2>&1; then bounded 120 curl -fsSL --connect-timeout 15 --speed-limit 1 --speed-time 20 --max-time 110 "$1" 2>/dev/null && return 0; fi
-    if command -v wget >/dev/null 2>&1; then bounded 120 wget -q -T 20 -O - "$1" 2>/dev/null && return 0; fi
-    return 1
-}
-dl_to() {
-    if [ -n "$ASFETCH" ]; then bounded 600 $ASFETCH -T 60 -o "$1" "$2" 2>/dev/null; [ -s "$1" ] && return 0; fi
-    if [ -n "$BB" ]; then bounded 600 $BB wget -q -T 60 -O "$1" "$2" 2>/dev/null; [ -s "$1" ] && return 0; fi
-    if command -v curl >/dev/null 2>&1; then bounded 600 curl -fsSL --connect-timeout 15 --speed-limit 1 --speed-time 60 --max-time 590 -o "$1" "$2" 2>/dev/null; [ -s "$1" ] && return 0; fi
-    if command -v wget >/dev/null 2>&1; then bounded 600 wget -q -T 60 -O "$1" "$2" 2>/dev/null; [ -s "$1" ] && return 0; fi
-    return 1
-}
-
-# --- Header ---
-echo ""
+# Headerecho ""
 echo "  $LINE"
-row "🔒" "MatrixModule  ${VER}"
+row "" "MatrixModule  ${VER}"
 echo "  $LINE"
 echo ""
 
-row "⏳" "initializing..."
+row "[*]" "initializing..."
 sleep 3
 
-# --- Step 1: Target list ---
-# `pm list packages` can stall while PackageManager is busy — cap it (an old
+# Step 1: Target list
+# `pm list packages` can stall while PackageManager is busy - cap it (an old
 # phone with hundreds of apps legitimately takes ~30 s here).
 [ -x "$MODPATH/build_target_txt.sh" ] && \
     bounded 180 sh "$MODPATH/build_target_txt.sh" "$CONFIG_DIR/target.txt" >/dev/null 2>&1
 TGT_N=$(grep -cvE '^[[:space:]]*$' "$CONFIG_DIR/target.txt" 2>/dev/null)
-row "🎯" "${TGT_N:-0} apps > target"
+row "" "${TGT_N:-0} apps > target"
 sleep 1
 
-# --- Step 2: Keybox ---
+# Step 2: Keybox
 # Custom-keybox mode (WebUI toggle): user supplied their own keybox, so we do
 # NOT fetch/overwrite it. Keep the note short.
 if as_on custom_keybox; then
     if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; then
-        row "🔑" "custom keybox — skip fetch"
-        row "💡" "disable in webui for auto"
+        row "" "custom keybox - skip fetch"
+        row "" "disable in webui for auto"
     else
-        row "❗" "custom keybox not set"
+        row "[!]" "custom keybox not set"
     fi
 elif [ -x "$MODPATH/keybox_fetch.sh" ]; then
-    # "keybox ok" used to mean "a keybox-looking file exists" — but a fresh
+    # "keybox ok" used to mean "a keybox-looking file exists" - but a fresh
     # install seeds the upstream demo keybox (public, never STRONG) just so the
     # engine has a file, so with no internet the very first tap said "ok" over a
     # keybox that cannot work. Now the mirror is the judge: ask it every tap.
     #
     # 1. Quick reachability probe (ICMP, then DNS for networks that drop ping):
-    #    offline is reported as offline, with no fetch attempt — keybox_fetch's
+    #    offline is reported as offline, with no fetch attempt - keybox_fetch's
     #    four downloaders would otherwise spend up to ~80 s of idle timeouts.
-    # 2. Online: run the fetch synchronously (bounded — an unbounded fetch here
+    # 2. Online: run the fetch synchronously (bounded - an unbounded fetch here
     #    is what left the Action on a blank screen). Its exit code is the verdict:
     #    0 = new keybox written, 2 = the file on disk IS what the mirror serves,
     #    1 = the mirror could not be reached / rejected the payload.
-    row "🔑" "checking keybox..."
+    row "" "checking keybox..."
     net_ok() {
         bounded 4 ping -c1 -W2 1.1.1.1 >/dev/null 2>&1 && return 0
         bounded 4 ping -c1 -W2 8.8.8.8 >/dev/null 2>&1 && return 0
         _h=$(echo "${KEYBOX_BASE_URL:-http://evoker.qzz.io}" | sed -e 's#^[a-z]*://##' -e 's#/.*##' -e 's#:.*##')
-        [ -n "$BB" ] && bounded 5 "$BB" nslookup "$_h" >/dev/null 2>&1 && return 0
-        return 1
+        if [ -n "$BB" ]; then
+            bounded 5 "$BB" nslookup "$_h" >/dev/null 2>&1 && return 0
+            bounded 5 "$BB" nslookup github.com >/dev/null 2>&1 && return 0
+            return 1
+        fi
+        # Without nslookup, ICMP may be blocked while HTTPS still works; let keybox_fetch try
+        return 0
     }
     if ! net_ok; then
-        row "❗" "no internet — keybox not fetched"
-        row "🌐" "connect and tap again (or hourly)"
+        row "[!]" "no internet - keybox not fetched"
+        row "" "connect and tap again (or hourly)"
     else
         bounded 400 sh "$MODPATH/keybox_fetch.sh" >/dev/null 2>&1
         case "$?" in
-            0) row "🔑" "keybox updated" ;;
-            2) row "🔑" "keybox ok" ;;
-            *) row "❗" "keybox fetch failed"
+            0) row "" "keybox updated" ;;
+            2) row "" "keybox ok" ;;
+            *) row "[!]" "keybox fetch failed"
                if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; then
-                   row "🌐" "server unreachable — kept current, retried hourly"
+                   row "" "server unreachable - kept current, retried hourly"
                else
-                   row "🌐" "server unreachable — no keybox yet"
+                   row "" "server unreachable - no keybox yet"
                fi ;;
         esac
     fi
 else
-    row "❗" "keybox fetch not available"
+    row "[!]" "keybox fetch not available"
 fi
 
 KB_PROV=$(as_get keybox_provider auto)
@@ -218,12 +205,12 @@ if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | gr
     fi
     KB_REV=$(st_get kb_revoked 2>/dev/null)
     if [ "$KB_REV" = "0" ]; then
-        diag "Attestation Status: Not Revoked by Google 🟢"
+        diag "Attestation Status: Not Revoked by Google"
     elif [ "$KB_REV" = "1" ]; then
-        row "⚠️" "Attestation Status: Revoked by Google 🔴"
+        row "[!]" "Attestation Status: Revoked by Google"
     fi
 else
-    row "❗" "Keybox Status: Invalid / Missing"
+    row "[!]" "Keybox Status: Invalid / Missing"
 fi
 sleep 1
 
@@ -232,52 +219,52 @@ if [ "$ENGINE" = "none" ]; then
 # standalone PlayIntegrityFork, sync its fingerprint into the attested identity and
 # re-assert the STRONG spoof flags it resets; otherwise it's attestation + keybox only.
 # lite_pif_sync identifies the standalone module (only real PlayIntegrityFork /
-# PlayIntegrityFix inject-s qualify — an id-squatting keystore toolkit is left
+# PlayIntegrityFix inject-s qualify - an id-squatting keystore toolkit is left
 # alone) and prints the kind. Report exactly what it synced, or fall back to the
 # plain PIF-less message.
 # On Lite the standalone PIF owns the fingerprint (AlwaysStrong only mirrors it into
 # the attested identity), so point the user at that module's own WebUI to change it.
 _synced=$(bounded 180 sh "$MODPATH/lite_pif_sync.sh" 2>/dev/null)
 case "$_synced" in
-    "OK fork")   row "🔗" "synced with PlayIntegrityFork"
-                 row "🔧" "set fingerprint in Fork's WebUI" ;;
-    "OK inject") row "🔗" "synced with PlayIntegrityFix (inject)"
-                 row "🔧" "set fingerprint in inject's WebUI" ;;
-    *)           row "🚫" "PIF-less build"
-                 row "🔒" "attestation + keybox only" ;;
+    "OK fork")   row "" "synced with PlayIntegrityFork"
+                 row "" "set fingerprint in Fork's WebUI" ;;
+    "OK inject") row "" "synced with PlayIntegrityFix (inject)"
+                 row "" "set fingerprint in inject's WebUI" ;;
+    *)           row "" "PIF-less build"
+                 row "" "attestation + keybox only" ;;
 esac
 sleep 1
 else
-# --- Step 3: Fingerprint ---
+# Step 3: Fingerprint
 # Three sources, tried in order: our native crawl, upstream's own fetcher, then
 # the two shipped static props. Each hands its result to the engine adapter, so
 # whichever lands ends up in the file this build's zygisk reads, with that
 # engine's STRONG flags applied. A failed primary shows once as "trying with
 # fallback".
 if as_on custom_pif; then
-# User imported their own fingerprint (Advanced > Import) — the pif counterpart
+# User imported their own fingerprint (Advanced > Import) - the pif counterpart
 # of a custom keybox. Do NOT fetch/overwrite it; just report which pif is loaded.
 # The patch (Step 4) and model (Step 5) rows below still read it via pick_pif.
 _pn=$(st_get pif_name 2>/dev/null)
 _pm=$(st_get pif_model 2>/dev/null)
-row "🧬" "custom pif — skip fetch"
-[ -n "$_pm" ] && row "📱" "$_pm"
-[ -n "$_pn" ] && row "📄" "$_pn"
-row "💡" "enable fingerprint in webui for auto"
+row "" "custom pif - skip fetch"
+[ -n "$_pm" ] && row "" "$_pm"
+[ -n "$_pn" ] && row "" "$_pn"
+row "" "enable fingerprint in webui for auto"
 else
 FP_OK=0
 FP_SRC=""
 
-# apply_pif SRC.prop — hand a fingerprint prop to the engine adapter, which
+# apply_pif SRC.prop - hand a fingerprint prop to the engine adapter, which
 # knows where its own zygisk reads from and which spoof-flag names it wants.
 apply_pif() { engine_install_pif "$1"; }
 
-# 1. native crawl (PRIMARY) — the same Google servers upstream uses, driven
+# 1. native crawl (PRIMARY) - the same Google servers upstream uses, driven
 #    through asfetch. The multi-page crawl runs ~20-25s on a cold network, so a
 #    tight bound just forces the fallback on every tap. Gate on the EXIT CODE:
-#    it is 0 only when the engine accepted a fresh fingerprint — a stale file
+#    it is 0 only when the engine accepted a fresh fingerprint - a stale file
 #    must not count as success.
-row "🌐" "fetching fingerprint..."
+row "" "fetching fingerprint..."
 if [ -x "$MODPATH/pif_native_fetch.sh" ]; then
     bounded "$ENGINE_NATIVE_TIMEOUT" sh "$MODPATH/pif_native_fetch.sh" \
         >"$AS_LOGS/autopif.log" 2>&1 && FP_OK=1
@@ -285,12 +272,12 @@ if [ -x "$MODPATH/pif_native_fetch.sh" ]; then
 fi
 
 if [ "$FP_OK" = 0 ]; then
-    row "🔄" "trying with fallback"
+    row "[*]" "trying with fallback"
     sleep 1
 
     # 2. upstream's own fetcher (FALLBACK), whichever engine is installed.
     #    Bounded so its crawl can't freeze the Action. `timeout` takes a command,
-    #    not a shell function, so this re-enters a subshell — and the engine
+    #    not a shell function, so this re-enters a subshell - and the engine
     #    functions read $MODPATH / $CONFIG_DIR / $SED_I, which are plain shell
     #    variables here. They have to go through the environment; without the
     #    prefix the subshell sees them empty and the fallback never runs.
@@ -300,7 +287,7 @@ if [ "$FP_OK" = 0 ]; then
         >>"$AS_LOGS/autopif.log" 2>&1 && FP_OK=1
     [ "$FP_OK" = 1 ] && FP_SRC="pif"
 
-    # 3. shipped static props (alternate 2 each tap) — installed through the
+    # 3. shipped static props (alternate 2 each tap) - installed through the
     #    engine adapter like the fetched ones, so they land in the right file.
     if [ "$FP_OK" = 0 ]; then
         IDX=$(st_get fp_idx)
@@ -315,14 +302,14 @@ if [ "$FP_OK" = 0 ]; then
 fi
 
 case "$FP_SRC" in
-    pif|native) row "🌐" "fingerprint ok" ;;
-    local)      row "🌐" "fingerprint ok (local)" ;;
-    *)          row "❗" "fingerprint failed" ;;
+    pif|native) row "" "fingerprint ok" ;;
+    local)      row "" "fingerprint ok (local)" ;;
+    *)          row "[!]" "fingerprint failed" ;;
 esac
 fi
 sleep 1
 
-# --- Step 4: Spoof settings + security patch ---
+# Step 4: Spoof settings + security patch
 # Re-enforced even when the fetch above already did it: a user or an upstream
 # script can edit the prop between taps.
 engine_enforce_spoof
@@ -351,15 +338,15 @@ MAN=$(grep -m1 '^MANUFACTURER=' "$PIF" 2>/dev/null | cut -d= -f2-)
 case "$MD" in "$MAN "*|"$MAN"|'') ;; *) [ -n "$MAN" ] && MD="$MAN $MD" ;; esac
 [ -z "$PATCH" ] && PATCH=$(grep -m1 '^SECURITY_PATCH=' "$PIF" 2>/dev/null | cut -d= -f2-)
 
-row "📅" "${PATCH:-unknown}"
+row "" "${PATCH:-unknown}"
 sleep 1
 
-# --- Step 5: Device ---
+# Step 5: Device
 # custom-pif already printed the device in Step 3, so don't repeat it here.
-as_on custom_pif || row "📱" "${MD:-unknown}"
+as_on custom_pif || row "" "${MD:-unknown}"
 fi
 
-# --- Diagnostic Report: Fingerprint, Zygisk, HMA Hiding & Verdict ---
+# Diagnostic Report: Fingerprint, Zygisk, HMA Hiding & Verdict
 if [ "$ENGINE" = "none" ]; then
     [ -z "$PATCH" ] && PATCH=$(grep -m1 '^SECURITY_PATCH=' "$CONFIG_DIR/custom.pif.prop" "$CONFIG_DIR/pif.prop" 2>/dev/null | head -1 | cut -d= -f2-)
     [ -z "$PATCH" ] && PATCH="Synced"
@@ -371,15 +358,18 @@ else
 fi
 
 # Zygisk Host check
-ZYGISK_HOST="Active"
-if [ "$KSU" = "true" ]; then
-    ZYGISK_HOST="Inactive"
-    for _z in zygisksu rezygisk neozygisk; do
-        if [ -d "/data/adb/modules/$_z" ] && [ ! -f "/data/adb/modules/$_z/disable" ]; then
-            ZYGISK_HOST="Active"
-            break
-        fi
-    done
+ZYGISK_HOST="Inactive"
+for _z in zygisksu rezygisk neozygisk; do
+    if [ -d "/data/adb/modules/$_z" ] && [ ! -f "/data/adb/modules/$_z/disable" ]; then
+        ZYGISK_HOST="Active"
+        break
+    fi
+done
+if [ "$ZYGISK_HOST" = "Inactive" ] && [ "$KSU" != "true" ] && [ "$APATCH" != "true" ]; then
+    if command -v magisk >/dev/null 2>&1; then
+        _mz=$(magisk --sqlite "select value from settings where key='zygisk'" 2>/dev/null | sed 's/.*value=//')
+        [ "$_mz" = "1" ] && ZYGISK_HOST="Active"
+    fi
 fi
 diag "Zygisk Host: $ZYGISK_HOST"
 sleep 1
@@ -388,11 +378,16 @@ sleep 1
 if [ -f "$MODPATH/hma_sync.sh" ]; then
     sh "$MODPATH/hma_sync.sh" sync >/dev/null 2>&1
 fi
-HIDDEN_N=$(cat "$CONFIG_DIR/alwaysstrong/hidden_apps" 2>/dev/null | grep -vE '^($|#)' | wc -l | tr -d ' ')
-[ -z "$HIDDEN_N" ] || [ "$HIDDEN_N" = "0" ] && HIDDEN_N="20"
-GRANTED_N=$(cat "$CONFIG_DIR/alwaysstrong/granted_apps" 2>/dev/null | grep -vE '^($|#)' | wc -l | tr -d ' ')
+HIDDEN_N=$(grep -cvE '^[[:space:]]*(#|$)' "$CONFIG_DIR/alwaysstrong/hidden_apps" 2>/dev/null || echo 0)
+[ -z "$HIDDEN_N" ] && HIDDEN_N=0
+GRANTED_N=$(grep -cvE '^[[:space:]]*(#|$)' "$CONFIG_DIR/alwaysstrong/granted_apps" 2>/dev/null || echo 0)
 [ -z "$GRANTED_N" ] && GRANTED_N=0
-diag "Root Hiding: HMA Engine Active ($HIDDEN_N apps hidden, $GRANTED_N granted root auto-detected)"
+_hma_dir=/data/adb/modules/matrixmodule_hiding_engine
+if [ -d "$_hma_dir" ] && [ ! -f "$_hma_dir/disable" ] && [ -f "$_hma_dir/zygisk/$ABI.so" ]; then
+    diag "Root Hiding: HMA Engine Active ($HIDDEN_N apps hidden, $GRANTED_N granted root auto-detected)"
+else
+    diag "Root Hiding: HMA Engine Inactive ($HIDDEN_N apps configured)"
+fi
 sleep 1
 
 # Integrity Verdict check
@@ -403,7 +398,7 @@ else
 fi
 sleep 1
 
-# --- Restart PI + status ---
+# Restart PI + status
 # Recycle Play Store + the GMS DroidGuard via as_killpi (am, then killall as a
 # second path for ROMs where the am binder call fails, see as_store.sh).
 if command -v as_killpi >/dev/null 2>&1; then
@@ -414,19 +409,18 @@ else
     killall -9 com.google.android.gms.unstable com.android.vending com.android.vending:background com.android.vending:quick_launch >/dev/null 2>&1
 fi
 
-# Status indicator — network again, and it runs right before "done": this is
+# Status indicator - network again, and it runs right before "done": this is
 # the call that froze the Action for good whenever asfetch hung.
 if [ -x "$MODPATH/status_fetch.sh" ]; then
     bounded 150 sh "$MODPATH/status_fetch.sh" manual >/dev/null 2>&1
 fi
 
-# --- Done ---
+# Doneecho "  $LINE"
+row "[+]" "done"
 echo "  $LINE"
-row "✅" "done"
-echo "  $LINE"
-row "👤" "Pratik Mengal"
-row "☕" "buymeacoffee.com/pratikmengal"
-row "©️" "Copyright (c) 2026 Pratik Mengal"
+row "" "Pratik Mengal"
+row "" "buymeacoffee.com/pratikmengal"
+row "(c)" "Copyright (c) 2026 Pratik Mengal"
 echo "  $LINE"
 echo ""
 

@@ -16,7 +16,7 @@ unset ASH_STANDALONE
 : "${AS_LOGS:=/data/adb/tricky_store/alwaysstrong/logs}"
 mkdir -p "$AS_LOGS" 2>/dev/null
 
-# --- Play Integrity engine adapter ---
+# Play Integrity engine adapter
 # Which prop file the zygisk reads, and what its spoof flags are called, is all
 # that differs between the two builds. engine.sh owns it; everything below is
 # identical in both.
@@ -24,14 +24,14 @@ CONFIG_DIR=/data/adb/tricky_store
 if [ -f "$MODDIR/engine.sh" ]; then
     . "$MODDIR/engine.sh"
 else
-    log -t "MatrixModule" "engine.sh missing — no fingerprint handling this boot"
+    log -t "MatrixModule" "engine.sh missing - no fingerprint handling this boot"
     engine_autopif()       { return 1; }
     engine_install_pif()   { return 1; }
     engine_enforce_spoof() { return 0; }
     ENGINE=none
 fi
 
-# --- Attestation engine adapter (TEESimulator-RS | TrickyStoreOSS) -----------
+# Attestation engine adapter (TEESimulator-RS | TrickyStoreOSS)
 # build.sh overlays exactly one attest.sh; the daemon start/liveness below go
 # through it. Fall back to the TEESimulator pattern if it is somehow missing.
 if [ -f "$MODDIR/attest.sh" ]; then
@@ -43,7 +43,7 @@ else
 fi
 
 # Engines that hijack keystore2 (TrickyStoreOSS) must start at the service stage,
-# before sys.boot_completed — a late start misses the injection window and the
+# before sys.boot_completed - a late start misses the injection window and the
 # daemon crash-loops with EBADF. Engines that don't (TEESimulator) return false
 # here and are started after the boot-completed wait below.
 #
@@ -76,15 +76,13 @@ if attest_early 2>/dev/null; then
     attest_start
 fi
 
-# --- Recovery mode guard ---
-resetprop_if_match ro.boot.mode recovery unknown
+# Recovery mode guardresetprop_if_match ro.boot.mode recovery unknown
 resetprop_if_match ro.bootmode recovery unknown
 resetprop_if_match ro.boot.bootmode recovery unknown
 resetprop_if_match vendor.boot.mode recovery unknown
 resetprop_if_match vendor.boot.bootmode recovery unknown
 
-# --- SELinux enforcement ---
-resetprop_if_diff ro.boot.selinux enforcing
+# SELinux enforcementresetprop_if_diff ro.boot.selinux enforcing
 if ! ${SKIPDELPROP:-false}; then
     delprop_if_exist ro.build.selinux 2>/dev/null || true
 fi
@@ -93,7 +91,7 @@ if [ "$(toybox cat /sys/fs/selinux/enforce 2>/dev/null)" = "0" ]; then
     chmod 440 /sys/fs/selinux/policy
 fi
 
-# --- Late properties (after boot_completed) — required for some OEMs ---
+# Late properties (after boot_completed) - required for some OEMs
 {
 until [ "$(getprop sys.boot_completed)" = "1" ]; do sleep 1; done
 
@@ -123,9 +121,9 @@ done
 resetprop_if_diff service.adb.root 0
 resetprop_if_diff ro.boot.vbmeta.invalidate_on_error yes
 
-# --- LineageOS prop scrub (hide derivative-ROM markers from PI checks) ---
+# LineageOS prop scrub (hide derivative-ROM markers from PI checks)
 # Low-risk cosmetic strips (vendor name prefix, Aperture camera package list)
-# run always — they don't affect any Settings UI. The riskier deletes that can
+# run always - they don't affect any Settings UI. The riskier deletes that can
 # break ROM features are gated behind the opt-in hide_rom_markers flag.
 LV=$(getprop ro.product.vendor.name 2>/dev/null)
 case "$LV" in
@@ -145,22 +143,23 @@ done
 # Lineage Health HAL: LineageOS Settings shows the "Fast charging" / charging
 # control toggles only when init.svc.vendor.lineage_health reports "running";
 # deleting the prop makes Settings believe the HAL is down and HIDES the whole
-# toggle (reported on LineageOS — the fast-charging switch disappears). The
+# toggle (reported on LineageOS - the fast-charging switch disappears). The
 # "lineage" in the prop name is a PI tell, but PI doesn't read init.svc.*, so
 # dropping it costs the user a real feature for no integrity gain. Preserve by
 # default; only delete when the user opts into aggressive marker hiding. See
-# issue #7.
+# issue 
+#7.
 #   Opt-in:  hide_rom_markers=1 in alwaysstrong/config
 as_on hide_rom_markers && \
     resetprop --delete init.svc.vendor.lineage_health 2>/dev/null
 
-# --- DenyList: add the Google Play stack (entries only; never enforcement) ---
+# DenyList: add the Google Play stack (entries only; never enforcement)
 # Runs after boot_completed so the packages are registered. denylist.sh is a
 # no-op unless denylist_gms is on, the manager is Magisk, and enforcement is off.
 [ -f "$MODDIR/denylist.sh" ] && sh "$MODDIR/denylist.sh" 2>/dev/null
 }&
 
-# --- Conflict re-scan on every boot ---
+# Conflict re-scan on every boot
 # A user can install a conflicting module AFTER they've installed AlwaysStrong
 # (the install-time scan in customize.sh only fires once). Re-run the same
 # disable-known-conflicts pass at every boot so a fresh install of e.g.
@@ -171,7 +170,7 @@ if [ -x "$MODDIR/conflict_scan.sh" ]; then
     [ "$n" -gt 0 ] && log -t "MatrixModule" "disabled $n conflicting module(s) at boot"
 fi
 
-# --- Wait for boot, then start TEE simulator ---
+# Wait for boot, then start TEE simulator
 while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 2; done
 
 # Kill stale TEE / aswatcher processes from a previous service run. Two engines
@@ -193,7 +192,7 @@ if [ "${ATTEST:-}" != teesim ]; then
   pkill -9 -f TEESimulator 2>/dev/null || true
 fi
 
-# (Re)start the active engine's daemon whenever it isn't alive — keyed on liveness,
+# (Re)start the active engine's daemon whenever it isn't alive - keyed on liveness,
 # not on attest_early. A late engine (TEESimulator-RS) starts here for the first
 # time; an early engine (teesim / TSOSS) that the sweep or a crash took down is
 # revived immediately instead of waiting on the ~2 min watchdog.
@@ -201,7 +200,7 @@ if ! attest_alive 2>/dev/null; then
     attest_start
 fi
 
-# --- aswatcher native daemon (inotify target.txt + Xposed + conflict) ---
+# aswatcher native daemon (inotify target.txt + Xposed + conflict)
 case "$(uname -m)" in
     aarch64)       AS_ABI=arm64-v8a ;;
     armv7*|armv8l) AS_ABI=armeabi-v7a ;;
@@ -224,7 +223,7 @@ if [ -f "$MODDIR/hma_sync.sh" ]; then
 fi
 
 
-# --- Anti-detection hardening (each opt-out via a no_* flag) --------------
+# Anti-detection hardening (each opt-out via a no_* flag)
 # Runs after the TEE/aswatcher daemons are up. All three degrade quietly if
 # their prerequisites are missing (no pif yet, SELinux blocks /proc writes).
 {
@@ -241,10 +240,10 @@ fi
     fi
 } &
 
-# --- VBMeta digest (deferred, bounded) ---
-# After a bootloader unlock ro.boot.vbmeta.digest reads 0000…, which boot-hash
+# VBMeta digest (deferred, bounded)
+# After a bootloader unlock ro.boot.vbmeta.digest reads 0000..., which boot-hash
 # detectors flag. Resolve a valid 64-hex digest with a priority chain (the idea
-# borrowed from Specter's boot-hash resolver — minus its random fallback, which
+# borrowed from Specter's boot-hash resolver - minus its random fallback, which
 # fails any baseline check and can't be reproduced):
 #   1. a valid non-zero value the bootloader already reports -> keep it (real).
 #   2. our cached value (state key 'boot_hash') -> stable across boots, and skips
@@ -288,13 +287,13 @@ fi
 
 
 
-# --- TEESimulator + aswatcher watchdog (with IPC & socket responsiveness check) ---
+# TEESimulator + aswatcher watchdog (with IPC & socket responsiveness check)
 attest_responsive() {
     if ! attest_alive 2>/dev/null; then
         return 1
     fi
     # Check if daemon process is a zombie (Z) or stuck in uninterruptible disk sleep (D)
-    for p in $(pidof TEESimulator daemon supervisor 2>/dev/null); do
+    for p in $(pidof TEESimulator TrickyStoreOSS daemon supervisor 2>/dev/null); do
         if [ -d "/proc/$p" ]; then
             _state=$(awk '{print $3}' "/proc/$p/stat" 2>/dev/null)
             if [ "$_state" = "Z" ] || [ "$_state" = "D" ]; then
@@ -320,7 +319,7 @@ attest_responsive() {
         sleep 120
         if ! attest_responsive; then
             log -t "MatrixModule" "attestation daemon died or hung (IPC unresponsive), restarting..."
-            for proc in TEESimulator daemon supervisor; do
+            for proc in TEESimulator TrickyStoreOSS daemon supervisor; do
                 for pid in $(pidof "$proc" 2>/dev/null); do kill -9 "$pid" 2>/dev/null; done
             done
             attest_start
@@ -334,7 +333,7 @@ attest_responsive() {
     done
 }&
 
-# --- First-boot auto-action (once per install) with Fast Retry Loop ---
+# First-boot auto-action (once per install) with Fast Retry Loop
 # One automatic press of [Action] on the FIRST boot after install, so a fresh
 # install lands STRONG without the user ever opening the WebUI.
 # If network delay prevents online keybox/fingerprint sync, a fast retry loop
@@ -361,6 +360,7 @@ if [ ! -f "$MODDIR/.bootstrapped" ]; then
         [ -s "$CONFIG_DIR/keybox.xml" ] || return 1
         _src=$(st_get kb_source 2>/dev/null)
         [ -n "$_src" ] || return 1
+        [ "${ENGINE:-none}" = "none" ] && return 0
         for pf in "$MODDIR/custom.pif.prop" "$MODDIR/pif.prop" "$CONFIG_DIR/pif.prop"; do
             [ -s "$pf" ] && grep -q '^FINGERPRINT=' "$pf" && return 0
         done
@@ -388,7 +388,7 @@ if [ ! -f "$MODDIR/.bootstrapped" ]; then
 }&
 fi
 
-# --- Lite + standalone PIF: re-sync shortly after every boot -------------
+# Lite + standalone PIF: re-sync shortly after every boot
 # Separate from the first-boot Action above and NOT one-shot: a standalone
 # PlayIntegrityFork/Fix re-runs its own autopif on every boot and resets the
 # spoof flags to weak defaults (Fork: spoofVendingFinger 1 -> 0), which would
@@ -400,7 +400,7 @@ if grep -q '^ENGINE=none' "$MODDIR/engine.sh" 2>/dev/null; then
     { sleep 90; sh "$MODDIR/lite_pif_sync.sh" 2>&1 | log -t "MatrixModule-boot"; } &
 fi
 
-# --- Hourly refresh (fingerprint + keybox, each toggle-able from WebUI) --
+# Hourly refresh (fingerprint + keybox, each toggle-able from WebUI)
 # The WebUI writes the switches into alwaysstrong/config:
 #   auto_fp=0      -> skip the fingerprint refresh
 #   custom_pif=1   -> user imported a pif; never fetch over it
@@ -416,8 +416,8 @@ fi
     # The wait is counted in slices rather than slept in one go: `sleep "$(as_int
     # interval_sec)"` read the setting once, at the START of the wait, so turning
     # 60 minutes into 1 still sat out the rest of the hour and the new interval
-    # looked like it had been ignored. A slice is at most 60s — the shortest
-    # interval that can be set — so a change is picked up within a minute, and
+    # looked like it had been ignored. A slice is at most 60s - the shortest
+    # interval that can be set - so a change is picked up within a minute, and
     # the time already waited counts towards the new interval, which makes a
     # shortened one fire at once.
     #
@@ -462,12 +462,11 @@ fi
             continue
         fi
 
-        # Auto-FP Freeze Protection:
-        # If custom_pif=0 or custom.pif.prop is missing/empty, restore auto_fp=1
-        if ! as_on custom_pif || [ ! -s "$CONFIG_DIR/custom.pif.prop" ]; then
-            [ ! -s "$CONFIG_DIR/custom.pif.prop" ] && as_on custom_pif && as_set custom_pif 0
+        # If custom_pif=1 was left set without a custom.pif.prop file, clear it and restore auto_fp=1
+        if as_on custom_pif && [ ! -s "$CONFIG_DIR/custom.pif.prop" ]; then
+            as_set custom_pif 0
             if ! as_on auto_fp; then
-                log -t "MatrixModule-hourly" "Auto-FP freeze protection: restoring auto_fp=1"
+                log -t "MatrixModule-hourly" "custom.pif.prop missing: restoring auto_fp=1"
                 as_set auto_fp 1
             fi
         fi
@@ -504,7 +503,7 @@ fi
                 as_killpi
             fi
         fi
-        # Status — independent of toggles; cheap GET, idempotent module.prop write
+        # Status - independent of toggles; cheap GET, idempotent module.prop write
         if [ -x "$MODDIR/status_fetch.sh" ]; then
             sh "$MODDIR/status_fetch.sh" 2>&1 | log -t "MatrixModule-hourly"
         fi

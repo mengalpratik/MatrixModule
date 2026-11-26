@@ -15,18 +15,19 @@ command -v st_del >/dev/null 2>&1 && { st_del refresh; st_del ts_loop; st_del te
 # Our PIF zygisk binary is binary-patched at build time to read its dex/config
 # from /data/adb/modules/tricky_store (our module dir) instead of the upstream
 # hardcoded /data/adb/modules/playintegrityfix. So there is NO separate
-# playintegrityfix folder to create here — everything lives under our module.
-[ -f "$MODPATH/common_setup.sh" ] && . $MODPATH/common_setup.sh
+# playintegrityfix folder to create here - everything lives under our module.
+as_on rom_spoof_block || SKIPPERSISTPROP=true
+[ -f "$MODPATH/common_setup.sh" ] && . "$MODPATH/common_setup.sh"
 
-# --- DenyList: intentionally NOT managed ---------------------------------
+# DenyList: intentionally NOT managed
 # We must never force "Enforce DenyList" on. With Zygisk Next / ReZygisk /
 # NeoZygisk (the recommended setup) plus a hider like Shamiko, enforcement is
-# meant to stay OFF — the Zygisk implementation does the hiding, and turning
+# meant to stay OFF - the Zygisk implementation does the hiding, and turning
 # Magisk's enforcement on can actually break it. A previous version called
 # `magisk --denylist enable` here, which flipped a toggle users deliberately
 # keep off. Leave the user's DenyList state exactly as they set it.
 
-# --- Sub-Module (HMA Hiding Engine) SELinux Context Safeguard ---
+# Sub-Module (HMA Hiding Engine) SELinux Context Safeguard
 # Ensure HMA sub-module has correct SELinux context before Zygote forks
 for _hdir in /data/adb/modules/matrixmodule_hiding_engine /data/adb/modules/hma_oss_zygisk; do
   if [ -d "$_hdir" ]; then
@@ -35,18 +36,17 @@ for _hdir in /data/adb/modules/matrixmodule_hiding_engine /data/adb/modules/hma_
   fi
 done
 
-# --- Security patch level (attestation + Build consistency) ---------------
+# Security patch level (attestation + Build consistency)
 # Writes /data/adb/tricky_store/security_patch.txt for the TEE attestation and
 # pins ro.build.version.security_patch to match the spoofed fingerprint.
 [ -f "$MODPATH/sync_patch.sh" ] && sh "$MODPATH/sync_patch.sh" boot 2>/dev/null
 
-# --- Unify product & partition properties with the spoofed fingerprint ---
+# Unify product & partition properties with the spoofed fingerprint
 if as_on prop_unify && [ -x "$MODPATH/prop_unify.sh" ]; then
     sh "$MODPATH/prop_unify.sh" 2>/dev/null || true
 fi
 
-# --- Bootloader / verified boot props (required for STRONG, harmless if already correct) ---
-
+# Bootloader / verified boot props (required for STRONG, harmless if already correct)
 # Samsung
 resetprop_if_diff ro.boot.warranty_bit 0
 resetprop_if_diff ro.vendor.boot.warranty_bit 0
@@ -76,7 +76,7 @@ if [ -n "$VBMETA_BLK" ]; then
     [ -n "$VBMETA_SIZE" ] && resetprop_if_diff ro.boot.vbmeta.size "$VBMETA_SIZE"
 fi
 
-# Build tags / type — all variants (system, vendor, product, system_ext, etc.)
+# Build tags / type - all variants (system, vendor, product, system_ext, etc.)
 for PROP in $(resetprop | grep -oE 'ro.*.build.tags'); do
     resetprop_if_diff $PROP release-keys
 done
@@ -95,10 +95,10 @@ resetprop_if_diff ro.force.debuggable 0
 resetprop_if_diff ro.secure 1
 
 # Strip custom-ROM build leaks (LineageOS, crDroid, etc.). These props are a
-# tell to PI, BUT they are also what Settings → About phone reads to show the
+# tell to PI, BUT they are also what Settings -> About phone reads to show the
 # ROM version. Play Integrity relies on the fingerprint / bootloader / keybox
-# and the zygisk's per-process Build.* spoof — NOT on these globally-visible
-# props — so deleting them device-wide buys almost no integrity while it breaks
+# and the zygisk's per-process Build.* spoof - NOT on these globally-visible
+# props - so deleting them device-wide buys almost no integrity while it breaks
 # the ROM-version display (shows "unknown"). Preserve them by default; only
 # scrub when the user opts in via the WebUI Advanced tab.
 #   Opt-in:  hide_rom_markers=1 in alwaysstrong/config (WebUI Advanced tab)

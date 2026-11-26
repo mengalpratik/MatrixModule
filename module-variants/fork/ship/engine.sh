@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# Play Integrity engine adapter — PlayIntegrityFork.
+# Play Integrity engine adapter - PlayIntegrityFork.
 #
 # The shared module scripts never touch a pif file directly; they go through the
 # functions here. build.sh overlays exactly one adapter per build, so action.sh,
@@ -21,19 +21,19 @@ engine_pif_targets() {
 }
 
 # STRONG spoof defaults, in this engine's naming (Fork uses numeric 1/0).
-#   spoofProvider=0        leave the keystore provider alone — TEESimulator
+#   spoofProvider=0        leave the keystore provider alone - TEESimulator
 #                          supplies the hardware-attested one STRONG needs.
 #   spoofVendingFinger=1   Play Store build spoof.
 # Any of these can be overridden per-key from the WebUI Advanced tab, which
 # writes `key=value` lines into /data/adb/tricky_store/alwaysstrong/spoof.conf. Some wallet /
 # banking apps only pass with a flag flipped (e.g. spoofProps=0 on a Poco F8
 # Pro). engine_enforce_spoof re-applies these on every boot/hourly pass, so an
-# override in spoof.conf survives — without it a flipped flag would silently
+# override in spoof.conf survives - without it a flipped flag would silently
 # revert an hour after boot.
 engine_spoof_defaults() {
     # spoofVendingFinger spoofs the Play Store (Vending) fingerprint. On Android
-    # 10–12L (device's REAL sdk ≤ 32) it breaks Play Integrity / GMS instead of
-    # helping — AlwaysStrong wouldn't pass there — so it defaults OFF on those
+    # 10-12L (device's REAL sdk <= 32) it breaks Play Integrity / GMS instead of
+    # helping - AlwaysStrong wouldn't pass there - so it defaults OFF on those
     # releases; on Android 13+ (sdk 33+) it stays ON, it's part of reaching STRONG.
     # Keyed on the real android version, never the spoofed one. spoof.conf can still
     # override it per device (WebUI Advanced tab).
@@ -60,12 +60,12 @@ engine_spoof_kv() {
     echo $_out
 }
 
-# Same list, one per line — appended to a freshly fetched fingerprint.
+# Same list, one per line - appended to a freshly fetched fingerprint.
 engine_spoof_block() {
     for _kv in $(engine_spoof_kv); do echo "$_kv"; done
 }
 
-# engine_install_pif SRC — put a fingerprint where the zygisk reads it.
+# engine_install_pif SRC - put a fingerprint where the zygisk reads it.
 # Non-zero when this engine can't consume SRC, so callers fall through to the
 # next fingerprint source instead of reporting a success that never landed.
 engine_install_pif() {
@@ -76,10 +76,10 @@ engine_install_pif() {
     rm -f "$MODPATH/custom.pif.prop" "$MODPATH/custom.pif.json" 2>/dev/null
     # A file that is already a finished custom.pif.prop comes in two shapes,
     # and upstream migrate.sh refuses BOTH with "No migration required" (exit 1,
-    # writes nothing) — which surfaced as "engine rejected the fingerprint":
+    # writes nothing) - which surfaced as "engine rejected the fingerprint":
     #   1. the advanced style, with *api_level / *.build.id System-Property lines
     #   2. the plain style that already carries populated ro.* System Properties
-    #      (ro.build.fingerprint=google/… etc.) — the layout of example.pif.prop
+    #      (ro.build.fingerprint=google/... etc.) - the layout of example.pif.prop
     #      and of the canary-miner / Pixel-beta pif.prop files the WebUI imports.
     # Either way the Fork zygisk reads it verbatim, so use it as-is. Only run
     # migrate.sh for a raw pif.prop/json that still lacks the ro.* lines (what
@@ -107,13 +107,14 @@ engine_install_pif() {
     # that breaks STRONG. Enforce here so every caller is correct without
     # needing its own enforce step.
     engine_enforce_spoof
+    chmod 644 "$MODPATH/custom.pif.prop" "$MODPATH/pif.prop" 2>/dev/null || true
     if [ -f "$MODPATH/prop_unify.sh" ]; then
         sh "$MODPATH/prop_unify.sh" >/dev/null 2>&1 || true
     fi
     return 0
 }
 
-# engine_autopif — upstream's own fetcher; the fallback when our native crawl
+# engine_autopif - upstream's own fetcher; the fallback when our native crawl
 # fails. Leaves the engine's prop file in place. 0 on success.
 engine_autopif() {
     [ -f "$MODPATH/autopif4.sh" ] || return 1
@@ -124,7 +125,7 @@ engine_autopif() {
 }
 
 # Resolve the native asfetch binary for this device's ABI (empty if there is
-# none — e.g. the build shipped no prebuilt for it, or the exec bit isn't set
+# none - e.g. the build shipped no prebuilt for it, or the exec bit isn't set
 # yet during install). Its `enforce-spoof` subcommand does the whole rewrite in
 # ONE process; pure local file I/O, so it needs no watchdog/timeout.
 _engine_asfetch() {
@@ -150,6 +151,7 @@ engine_enforce_spoof() {
     # newline it is actually safer (sed's append would glue onto the last line).
     _af=$(_engine_asfetch 2>/dev/null)
     if [ -n "$_af" ] && "$_af" enforce-spoof --kv "$_kvs" $(engine_pif_targets) 2>/dev/null; then
+        for _f in $(engine_pif_targets); do [ -f "$_f" ] && chmod 644 "$_f" 2>/dev/null; done
         return 0
     fi
     # Shell fallback (no prebuilt for this ABI, or the native call failed): ONE sed
@@ -168,12 +170,13 @@ engine_enforce_spoof() {
         for _kv in $_kvs; do
             case "$_have" in *"${_kv%=*}="*) ;; *) echo "$_kv" >> "$_f" ;; esac
         done
+        chmod 644 "$_f" 2>/dev/null
     done
 }
 
 # Seconds before the native crawl / upstream fetcher are killed. Generous on
 # purpose: both fetchers time out on their own when nothing arrives (idle
-# timeouts / a no-progress watchdog), so these only backstop a stuck process —
+# timeouts / a no-progress watchdog), so these only backstop a stuck process -
 # a slow 2G link that is still delivering bytes must not be cut off here.
 ENGINE_NATIVE_TIMEOUT=240
 ENGINE_AUTOPIF_TIMEOUT=180

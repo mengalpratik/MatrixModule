@@ -1,7 +1,7 @@
 #!/system/bin/sh
-# AlwaysStrong — reset the WebUI-tunable settings to a fresh-install state.
+# AlwaysStrong - reset the WebUI-tunable settings to a fresh-install state.
 #
-# Called from the WebUI (Advanced → Reset to defaults) and usable from a root
+# Called from the WebUI (Advanced -> Reset to defaults) and usable from a root
 # shell:  sh /data/adb/modules/tricky_store/reset_defaults.sh
 #
 # Every setting the WebUI can change defaults to "file absent", so a reset is
@@ -9,7 +9,7 @@
 # same path a fresh install takes (target list, fingerprint fetch with all its
 # fallbacks, STRONG spoof flags, security patch, Play Integrity restart). The
 # fetched fingerprint overwrites an imported one, so nothing needs deleting for
-# that either — and deleting it would leave no fingerprint if the network is
+# that either - and deleting it would leave no fingerprint if the network is
 # down.
 #
 # Deliberately kept:
@@ -32,7 +32,7 @@ esac
 [ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh"
 : "${AS_LOGS:=/data/adb/tricky_store/alwaysstrong/logs}"
 mkdir -p "$AS_LOGS" 2>/dev/null
-rm -f "$AS_CONF" "$AS_SPOOF" "$AS_PKGS" 2>/dev/null
+rm -f "$AS_CONF" "$AS_SPOOF" "$AS_PKGS" "${AS_CFG_ROOT:-/data/adb/tricky_store}/custom.pif.prop" 2>/dev/null
 as_seed
 # custom_pif is back at its default (off), so the Action below fetches a fresh
 # fingerprint over any imported one, dropping the now-stale imported-pif name too.

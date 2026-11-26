@@ -25,9 +25,10 @@ use inotify::{Inotify, WatchMask};
 
 const BUILDER:     &str = "build_target_txt.sh";
 const TARGET_TXT:  &str = "/data/adb/tricky_store/target.txt";
+const TARGET_TMP:  &str = "/data/adb/tricky_store/target.txt.watcher.tmp";
 const PKG_DIR:     &str = "/data/system";
 const PKG_FILE:    &str = "packages.list";
-const LOG_TAG:     &str = "AlwaysStrong";
+const LOG_TAG:     &str = "MatrixModule";
 
 const XPOSED_PKGS: &[&str] = &[
     "de.robv.android.xposed.installer",
@@ -40,11 +41,11 @@ const XPOSED_PKGS: &[&str] = &[
 ];
 
 const CONFLICT_MODS: &[&str] = &[
-    "playintegrityfix", "playintegrityfork", "play_integrity_fix",
-    "playcurl", "playcurlNEXT", "tricky_store_v2", "TrickyStore",
-    "tee_simulator", "TEESimulator", "TEESimulator-RS",
+    "tricky_store_v2", "TrickyStore",
+    "tee_simulator", "TEESimulator", "TEESimulator-RS", "teesim",
     "safetynet-fix", "Universal_SafetyNet_Fix", "MagiskHidePropsConf",
-    "pif_strong", "pif_force",
+    "TA_utl", "tricky_addon", "TA_enhanced", "tsupport-advance",
+    "Yurikey", "specter",
 ];
 
 fn log_msg(msg: &str) {
@@ -101,7 +102,9 @@ fn xposed_scan() -> i32 {
     if kept.len() != before {
         let mut new = kept.join("\n");
         new.push('\n');
-        let _ = fs::write(TARGET_TXT, new);
+        if fs::write(TARGET_TMP, new).is_ok() {
+            let _ = fs::rename(TARGET_TMP, TARGET_TXT);
+        }
     }
     0
 }

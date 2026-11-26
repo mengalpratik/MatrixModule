@@ -2,7 +2,7 @@
 # Add the Google Play stack (and a few known integrity / root-checker apps) to
 # Magisk's DenyList so a hider (Shamiko, or the Zygisk-Next / ReZygisk denylist)
 # scrubs the module's mounts out of them. This adds LIST ENTRIES ONLY and never
-# touches the "Enforce DenyList" toggle — the two are independent: Shamiko reads
+# touches the "Enforce DenyList" toggle - the two are independent: Shamiko reads
 # the list while enforcement stays OFF, which is the recommended setup (see the
 # note in post-fs-data.sh about never forcing enforcement on). Entries are added
 # per process, so the specific GMS processes that run the integrity check
@@ -10,7 +10,7 @@
 #
 # Why the enforcement guard below: with enforcement OFF the entries are exactly
 # what the hider wants. But with Magisk's *built-in* Zygisk and enforcement ON,
-# a denylisted process gets no Zygisk modules at all — so denylisting GMS there
+# a denylisted process gets no Zygisk modules at all - so denylisting GMS there
 # would strip PlayIntegrityFork's own injection into com.google.android.gms and
 # drop STRONG. A Shamiko/Zygisk-Next setup keeps enforcement OFF by design, so
 # "enforcement is ON" means the classic path where adding GMS is harmful. In
@@ -18,16 +18,16 @@
 MODDIR="${0%/*}"
 [ -f "$MODDIR/as_store.sh" ] && . "$MODDIR/as_store.sh"
 
-# Opt-out: denylist_gms=0 in alwaysstrong/config (default on). No WebUI toggle —
+# Opt-out: denylist_gms=0 in alwaysstrong/config (default on). No WebUI toggle -
 # this runs automatically; edit the config file to turn it off.
 command -v as_on >/dev/null 2>&1 && { as_on denylist_gms || exit 0; }
 
-# Magisk only — KernelSU / APatch keep their hide list in the manager, with no
+# Magisk only - KernelSU / APatch keep their hide list in the manager, with no
 # equivalent CLI, so there is nothing to drive there. Fail quietly.
 command -v magisk >/dev/null 2>&1 || exit 0
 
 # `ls` prints the list regardless of the enforcement toggle; it fails only when
-# the DenyList is unavailable (Zygisk off entirely) — bail quietly there.
+# the DenyList is unavailable (Zygisk off entirely) - bail quietly there.
 have=$(magisk --denylist ls 2>/dev/null) || exit 0
 
 # Enforcement ON -> classic built-in Zygisk path where denylisting GMS removes

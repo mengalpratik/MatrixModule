@@ -9,6 +9,21 @@ AS_DIR="${AS_DIR:-/data/adb/tricky_store/alwaysstrong}"
 CHECK_URL="https://furkank.net/hma_oss_update_checker.json"
 TMP_DIR="/data/local/tmp"
 
+MODPATH="${MODPATH:-/data/adb/modules/tricky_store}"
+case "$(uname -m)" in
+    aarch64)        _ABI=arm64-v8a ;;
+    armv7*|armv8l)  _ABI=armeabi-v7a ;;
+    x86_64)         _ABI=x86_64 ;;
+    i?86)           _ABI=x86 ;;
+    *)              _ABI="" ;;
+esac
+ASFETCH="$MODPATH/bin/$_ABI/asfetch"
+BB=""
+for _bb in /data/adb/ksu/bin/busybox /data/adb/magisk/busybox /data/adb/ap/bin/busybox \
+           /data/adb/modules/busybox-ndk/system/*/busybox "$(command -v busybox 2>/dev/null)"; do
+    [ -n "$_bb" ] && [ -x "$_bb" ] && BB="$_bb" && break
+done
+
 get_local_ver() {
     [ -f "$HMA_MODDIR/module.prop" ] || { echo "unknown"; return; }
     grep '^version=' "$HMA_MODDIR/module.prop" 2>/dev/null | cut -d= -f2
@@ -20,6 +35,12 @@ get_local_vcode() {
 }
 
 fetch_remote_info() {
+    if [ -n "$_ABI" ] && [ -x "$ASFETCH" ]; then
+        "$ASFETCH" -T 12 "$CHECK_URL" 2>/dev/null && return 0
+    fi
+    if [ -n "$BB" ]; then
+        "$BB" wget -q -T 12 -O - "$CHECK_URL" 2>/dev/null && return 0
+    fi
     _curl=""
     if [ -x "/system/bin/curl" ]; then
         _curl="/system/bin/curl"
@@ -89,7 +110,11 @@ perform_update() {
     [ -z "$_curl" ] && command -v curl >/dev/null 2>&1 && _curl="curl"
 
     _dl_ok=0
-    if [ -n "$_curl" ]; then
+    if [ -n "$_ABI" ] && [ -x "$ASFETCH" ] && "$ASFETCH" -T 30 -o "$_tmp_zip" "$_remote_url" 2>/dev/null && [ -s "$_tmp_zip" ]; then
+        _dl_ok=1
+    elif [ -n "$BB" ] && "$BB" wget -q -T 30 -O "$_tmp_zip" "$_remote_url" 2>/dev/null && [ -s "$_tmp_zip" ]; then
+        _dl_ok=1
+    elif [ -n "$_curl" ]; then
         "$_curl" -sL --connect-timeout 8 -m 60 "$_remote_url" -o "$_tmp_zip" 2>/dev/null && _dl_ok=1
     elif command -v wget >/dev/null 2>&1; then
         wget -q -T 15 -O "$_tmp_zip" "$_remote_url" 2>/dev/null && _dl_ok=1

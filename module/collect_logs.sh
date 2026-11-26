@@ -1,9 +1,9 @@
 #!/system/bin/sh
-# MatrixModule — log collector.
+# MatrixModule - log collector.
 #
 # Dumps a diagnostic bundle to /sdcard so a user can attach it to a GitHub
 # issue. Deliberately does NOT include the keybox contents (it holds private
-# keys) — only its name, size, hash and shape. The spoofed Pixel fingerprint IS
+# keys) - only its name, size, hash and shape. The spoofed Pixel fingerprint IS
 # included: it is fake by design and is exactly what a support request needs.
 # Nothing here reads the serial, IMEI, Android ID or accounts; the teesim
 # config.json identity fields are redacted. What the bundle does reveal is the
@@ -29,7 +29,7 @@ KEY_HOST="${KEYBOX_BASE_URL:-http://evoker.qzz.io}"
 
 # Timestamped filename so repeated collections don't overwrite each other. If
 # date is somehow unavailable, fall back to a fixed name. /sdcard can be
-# unavailable (FBE still locked, work profile, unmounted) — fall back to the
+# unavailable (FBE still locked, work profile, unmounted) - fall back to the
 # config dir rather than reporting a path that does not exist.
 STAMP=$(date +%Y%m%d-%H%M%S 2>/dev/null)
 NAME="MatrixModule-log${STAMP:+-$STAMP}.txt"
@@ -44,7 +44,7 @@ for bb in /data/adb/magisk/busybox /data/adb/ksu/bin/busybox /data/adb/ap/bin/bu
 done
 sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; elif [ -n "$BB" ]; then "$BB" sha256sum; else echo "n/a"; fi; }
 
-# bounded SECS cmd... — hard wall-clock cap (same helper as keybox_fetch.sh).
+# bounded SECS cmd... - hard wall-clock cap (same helper as keybox_fetch.sh).
 # toybox timeout (Android 10+) and busybox timeout both take -k; -k SIGKILLs a
 # command that ignores the SIGTERM, which a `sh` waiting on a child would defer.
 TO=""
@@ -55,7 +55,7 @@ elif [ -n "$BB" ] && "$BB" timeout 5 true >/dev/null 2>&1; then TO="$BB timeout"
 fi
 bounded() { _bs="$1"; shift; if [ -n "$TO" ]; then $TO "$_bs" "$@"; else "$@"; fi; }
 
-# asfetch, the same native fetcher the module uses — the one that fails on some
+# asfetch, the same native fetcher the module uses - the one that fails on some
 # ROMs, so it's exactly what we want to test here.
 case "$(uname -m)" in
     aarch64) ABI=arm64-v8a ;; armv7*|armv8l) ABI=armeabi-v7a ;;
@@ -65,7 +65,7 @@ ASFETCH="$MODDIR/bin/$ABI/asfetch"
 
 sec() { echo ""; echo "===== $* ====="; }
 props() { for p in "$@"; do echo "$p=$(getprop "$p" 2>/dev/null)"; done; }
-# tail_or NAME FILE N — tail a file, or say it is missing/empty (a bare
+# tail_or NAME FILE N - tail a file, or say it is missing/empty (a bare
 # `cmd | tail || echo none` never fires: tail exits 0 on empty input).
 tail_or() { if [ -s "$2" ]; then tail -n "$3" "$2"; else echo "$1: none"; fi; }
 
@@ -94,7 +94,7 @@ echo "engine (attestation): ${ATTEST:-?}${ATTEST_NAME:+ ($ATTEST_NAME)}"
 for f in disable remove update skip_mount .bootstrapped skipdelprop skippersistprop; do
     [ -e "$MODDIR/$f" ] && echo "module flag: $f"
 done
-[ -d /data/adb/modules_update/tricky_store ] && echo "UPDATE PENDING in modules_update — reboot required"
+[ -d /data/adb/modules_update/tricky_store ] && echo "UPDATE PENDING in modules_update - reboot required"
 echo "--- module dir (names only)"
 ls -A "$MODDIR" 2>/dev/null | tr '\n' ' '; echo
 for d in zygisk lib teesim bin; do
@@ -125,7 +125,7 @@ echo "kernel: $(uname -r -m 2>/dev/null)"
 #
 # NOTE: service.sh / post-fs-data.sh resetprop the ro.boot.* lock-state props to
 # green/locked device-wide, so getprop shows the SPOOFED value. The kernel
-# command line (androidboot.*) is the unspoofed truth — read both.
+# command line (androidboot.*) is the unspoofed truth - read both.
 sec "Integrity blockers (BASIC fails on any of these)"
 SE=$(getenforce 2>/dev/null)
 [ -z "$SE" ] && { case "$(cat /sys/fs/selinux/enforce 2>/dev/null)" in 1) SE=Enforcing ;; 0) SE=Permissive ;; *) SE=unknown ;; esac; }
@@ -219,7 +219,7 @@ esac
 sec "Spoofed fingerprint (safe to share)"
 # The engine adapter knows which prop file the zygisk really reads (Fork:
 # custom.pif.prop in the module dir, inject-s: pif.prop). The copy in
-# /data/adb/tricky_store is only for display — showing that one hid every
+# /data/adb/tricky_store is only for display - showing that one hid every
 # "fetched but never landed" case. Hash every copy so a mismatch is visible.
 echo "effective spoof flags (defaults + spoof.conf): $(engine_spoof_kv 2>/dev/null || echo n/a)"
 ZP=""
@@ -237,7 +237,7 @@ echo "fingerprint SECURITY_PATCH: $([ -n "$ZP" ] && sed -n 's/^SECURITY_PATCH=//
 props ro.build.version.security_patch ro.vendor.build.security_patch ro.system.build.version.security_patch
 echo "spoof patch props: $(as_on spoof_patch_props && echo on || echo 'OFF (user opt-out)')"
 
-sec "Keybox (metadata only — contents withheld)"
+sec "Keybox (metadata only - contents withheld)"
 KB="$CFG/keybox.xml"
 if [ -s "$KB" ]; then
     echo "path: $KB"
@@ -249,12 +249,13 @@ if [ -s "$KB" ]; then
     echo "custom-keybox mode: $(as_on custom_keybox && echo on || echo off)"
     # The hash above is what tells a support reader whether this is the demo
     # keybox customize.sh seeds on a fresh install (compare with the one in the
-    # module zip) or the fetched one — the Network section below shows whether
+    # module zip) or the fetched one - the Network section below shows whether
     pkbs=""
     for x in "$CFG"/*.xml; do
         [ -f "$x" ] && [ "${x##*/}" != "keybox.xml" ] && pkbs="${pkbs}${pkbs:+ }${x##*/}"
     done
     echo "per-app keyboxes (names only): ${pkbs:-none}"
+else
     echo "no keybox.xml present"
 fi
 
@@ -282,7 +283,7 @@ echo "custom packages: $(grep -cvE '^[[:space:]]*$' "$AS_PKGS" 2>/dev/null || ec
 echo "per-app map entries: $(grep -cvE '^[[:space:]]*$' "$AS_APPS" 2>/dev/null || echo 0)"
 
 sec "Network (most keybox/fingerprint failures are here)"
-# raw IP reachability — no DNS involved
+# raw IP reachability - no DNS involved
 for ip in 1.1.1.1 8.8.8.8; do
     if bounded 4 ping -c1 -W2 "$ip" >/dev/null 2>&1; then echo "ping $ip: ok"; else echo "ping $ip: FAIL"; fi
 done
@@ -295,9 +296,9 @@ if [ -n "$BB" ] && bounded 6 "$BB" nslookup "$HOST" >/dev/null 2>&1; then
 elif bounded 6 ping -c1 -W2 "$HOST" >/dev/null 2>&1; then
     echo "dns $HOST: ok (via ping)"
 else
-    echo "dns $HOST: FAIL — cannot resolve (resolver not up / blocked)"
+    echo "dns $HOST: FAIL - cannot resolve (resolver not up / blocked)"
 fi
-# actual keybox fetch, one attempt per engine, with timing — shows which
+# actual keybox fetch, one attempt per engine, with timing - shows which
 # downloader works on this ROM and how long it takes. Each downloader's -T is
 # an IDLE timeout, so the outer cap is what keeps a dead route from hanging us.
 NT="/data/adb/modules/tricky_store/temp/netcheck"
@@ -314,7 +315,10 @@ test_engine() {
         echo "$_name: FAIL (~$((_t1 - _t0))s)"
     fi
 }
-KURL="$KEY_HOST/key"
+case "$KEY_HOST" in
+    */key) KURL="$KEY_HOST" ;;
+    *)     KURL="${KEY_HOST%/}/key" ;;
+esac
 [ -n "$ABI" ] && [ -x "$ASFETCH" ] && test_engine "asfetch    $KURL" "$ASFETCH" -T 5 -o "$NT/out" "$KURL" || echo "asfetch: not available for $ABI"
 [ -n "$BB" ] && test_engine "busybox-wget" "$BB" wget -q -T 5 -O "$NT/out" "$KURL"
 command -v curl >/dev/null 2>&1 && test_engine "curl       " curl -fsSL --connect-timeout 5 --max-time 8 -o "$NT/out" "$KURL"
@@ -325,7 +329,7 @@ rm -rf /data/adb/modules/tricky_store/temp/netcheck; trap - EXIT INT TERM
 sec "Module logs on disk"
 # logcat_cleanup.sh silences our own logcat tags at the source
 # (persist.log.tag.MatrixModule*=S) unless logcat_cleanup=0 is set, so the
-# logcat section below normally has NO MatrixModule lines by design — the
+# logcat section below normally has NO MatrixModule lines by design - the
 # on-disk copies are where the boot / hourly / watchdog messages live.
 for t in MatrixModule AlwaysStrong MatrixModule-boot AlwaysStrong-boot MatrixModule-hourly AlwaysStrong-hourly; do echo "persist.log.tag.$t=$(getprop "persist.log.tag.$t")"; done
 echo "--- autopif.log (fingerprint fetch)"; tail_or autopif.log "$AS_LOGS/autopif.log" 40

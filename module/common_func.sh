@@ -92,7 +92,7 @@ if [ "$(getprop sys.boot_completed)" != "1" ]; then
     ui_print() { return; }
 fi
 
-# --- Download helpers (needed by inject-s autopif.sh) --------------------
+# Download helpers (needed by inject-s autopif.sh)
 # Merged from PlayIntegrityFix v4.7-inject-s common_func.sh. inject-s's
 # autopif.sh sources OUR common_func.sh (path-patched), so these must exist.
 sleep_pause() {

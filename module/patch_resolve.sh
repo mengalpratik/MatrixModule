@@ -1,7 +1,7 @@
 #!/system/bin/sh
-# AlwaysStrong — patch_resolve.sh
+# AlwaysStrong - patch_resolve.sh
 # Helpers for the security-patch date. The attested patch is the ACTIVE
-# FINGERPRINT's own SECURITY_PATCH (what the pif.prop claims) — it is NOT bumped
+# FINGERPRINT's own SECURITY_PATCH (what the pif.prop claims) - it is NOT bumped
 # to the current month: a Pixel fingerprint attests a specific patch, and pushing
 # the props/attestation past that date makes the two disagree and drops STRONG.
 # sync_patch.sh / teesim read SECURITY_PATCH from the pif and apply it as-is; the

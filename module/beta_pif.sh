@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# AlwaysStrong — beta_pif.sh
+# AlwaysStrong - beta_pif.sh
 # Browse and fetch the public Pixel beta fingerprints (the canary-miner repo),
 # and hand a chosen one to import_pif.sh. All networking stays in shell
 # (asfetch -> busybox wget -> curl -> wget), like keybox_fetch / status_fetch.
@@ -18,9 +18,9 @@ esac
 [ -z "$MODPATH" ] && MODPATH="$PWD"
 [ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh"
 
-# The `devices` folder holds the real Android *Canary* builds (`:CANARY/ZP11.…`),
+# The `devices` folder holds the real Android *Canary* builds (`:CANARY/ZP11....`),
 # which are the identities that actually hold STRONG. The `betas/<track>` folder
-# is the QPR beta track (`:17/DP11.…`) — a different, weaker build — so the
+# is the QPR beta track (`:17/DP11....`) - a different, weaker build - so the
 # picker points here, matching the auto-fetch in pif_native_fetch.sh.
 API="https://api.github.com/repos/Vagelis1608/get_the_canary_miner/contents/devices"
 RAW="https://raw.githubusercontent.com/Vagelis1608/get_the_canary_miner/main/devices"
@@ -75,18 +75,20 @@ case "${1:-}" in
     get)
         _code=$(printf '%s' "$2" | tr -cd 'A-Za-z0-9_')
         [ -n "$_code" ] || { echo "ERR: bad name"; exit 1; }
-        mkdir -p /data/adb/modules/tricky_store/temp 2>/dev/null
-        if ! dl_to "/data/adb/modules/tricky_store/temp/beta.pif.prop" "$RAW/$_code.pif.prop"; then
-            echo "ERR: download failed"; rm -f /data/adb/modules/tricky_store/temp/beta.pif.prop 2>/dev/null; exit 1
+        _tmpd=$(as_tmp "beta.$$")
+        mkdir -p "$_tmpd" 2>/dev/null
+        _tmpf="$_tmpd/$_code.pif.prop"
+        if ! dl_to "$_tmpf" "$RAW/$_code.pif.prop"; then
+            echo "ERR: download failed"; rm -rf "$_tmpd" 2>/dev/null; exit 1
         fi
-        if ! grep -q '^FINGERPRINT=' /data/adb/modules/tricky_store/temp/beta.pif.prop 2>/dev/null; then
-            echo "ERR: not a fingerprint file"; rm -f /data/adb/modules/tricky_store/temp/beta.pif.prop 2>/dev/null; exit 1
+        if ! grep -q '^FINGERPRINT=' "$_tmpf" 2>/dev/null; then
+            echo "ERR: not a fingerprint file"; rm -rf "$_tmpd" 2>/dev/null; exit 1
         fi
         # import_pif.sh applies the STRONG flags, sets custom_pif / pif_name /
         # pif_model and prints OK / ERR. pif_name becomes "<code>.pif.prop".
-        sh "$MODPATH/import_pif.sh" /data/adb/modules/tricky_store/temp/beta.pif.prop
+        sh "$MODPATH/import_pif.sh" "$_tmpf"
         _rc=$?
-        rm -f /data/adb/modules/tricky_store/temp/beta.pif.prop 2>/dev/null
+        rm -rf "$_tmpd" 2>/dev/null
         exit $_rc
         ;;
     *)

@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# MatrixModule uninstall — clean every artifact we created.
+# MatrixModule uninstall - clean every artifact we created.
 
 MODDIR=${0%/*}
 CONFIG_DIR=/data/adb/tricky_store
@@ -58,7 +58,7 @@ rm -f /data/adb/pif.prop
 
 # Restore ROM-level spoof engines that rom_spoof_block.sh disabled, so removing
 # AlwaysStrong frees the ROM's own PixelProps / pihooks / entryhooks again.
-# Only clear a prop if it STILL holds the exact "disabled" value we wrote — that
+# Only clear a prop if it STILL holds the exact "disabled" value we wrote - that
 # way we never clobber a value the ROM set for itself. Takes effect next boot.
 revert_spoof() {
     [ "$(resetprop "$1" 2>/dev/null)" = "$2" ] && resetprop -p --delete "$1" 2>/dev/null
@@ -76,4 +76,10 @@ revert_spoof persist.sys.pp.finsky                                 false
 revert_spoof persist.sys.pihooks.first_api_level                   ""
 revert_spoof persist.sys.pihooks.security_patch                    ""
 
-# Keep keybox.xml and security_patch.txt — user may want them for reinstall.
+for t in MatrixModule MatrixModule-boot MatrixModule-hourly MatrixModule-unify \
+         AlwaysStrong AlwaysStrong-boot AlwaysStrong-hourly AlwaysStrong-unify \
+         AlwaysStrong-proc AlwaysStrong-keybox; do
+    resetprop -p --delete "persist.log.tag.$t" 2>/dev/null || :
+done
+
+# Keep keybox.xml and security_patch.txt - user may want them for reinstall.

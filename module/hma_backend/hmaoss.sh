@@ -18,8 +18,11 @@ if [ ! -f "$DISABLE" ]; then
 
         try=1
         while [ "$try" -le 10 ]; do
-            STATUS_FILE=$(printf '%s' /data/misc/hide_my_applist_*/status.json)
-            [ -n "$STATUS_FILE" ] && [ -s "$STATUS_FILE" ] && break
+            STATUS_FILE=""
+            for _sf in /data/misc/hide_my_applist_*/status.json; do
+                [ -s "$_sf" ] && { STATUS_FILE="$_sf"; break; }
+            done
+            [ -n "$STATUS_FILE" ] && break
             sleep 1
             try=$((try + 1))
         done

@@ -1,17 +1,19 @@
 #!/system/bin/sh
-# AlwaysStrong — keep the security patch level consistent across:
-#   1. /data/adb/tricky_store/security_patch.txt  — the patch level TEESimulator
+# AlwaysStrong - keep the security patch level consistent across:
+#   1. /data/adb/tricky_store/security_patch.txt  - the patch level TEESimulator
 #      stamps into the keystore hardware attestation. If this is missing or
 #      stale the verdict drops to DEVICE even with a good keybox.
-#   2. ro.build.version.security_patch system props — what Build.VERSION and
+#   2. ro.build.version.security_patch system props - what Build.VERSION and
 #      most app-side patch checks read.
 #
 # Source of truth: the SECURITY_PATCH=YYYY-MM-DD line from the active pif file
 # (produced by autopif4). Falls back to the live system prop if no pif yet.
 #
 # Usage:
-#   sh sync_patch.sh         # write security_patch.txt only (install / action)
-#   sh sync_patch.sh boot    # also resetprop the system props (post-fs-data)
+#   sh sync_patch.sh         
+# write security_patch.txt only (install / action)
+#   sh sync_patch.sh boot    
+# also resetprop the system props (post-fs-data)
 
 case "$0" in
     */*) MODPATH=$(cd "${0%/*}" 2>/dev/null && pwd) ;;
@@ -22,9 +24,9 @@ CONFIG_DIR=/data/adb/tricky_store
 [ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh"
 MODE="${1:-}"
 
-# --- find the dotted patch (YYYY-MM-DD) from a pif file -------------------
+# find the dotted patch (YYYY-MM-DD) from a pif file
 # The engine's ACTIVE pif lives in the module dir ($MODPATH): engine_install_pif
-# writes custom.pif.prop (Fork) / pif.prop (inject-s) there for every source —
+# writes custom.pif.prop (Fork) / pif.prop (inject-s) there for every source -
 # auto-fetch, beta pick and Import alike. The $CONFIG_DIR copies are secondary:
 # $CONFIG_DIR/pif.prop is only the last *auto-fetch* written by pif_native_fetch,
 # so after an Import / beta pick it is STALE (a different device + patch) and must
@@ -46,7 +48,7 @@ done
 # spoofs. (The module-folder path it also checks no longer exists by design.)
 # Only TEESimulator-RS's PatchLevelManager reads this global path. On the
 # TrickyStoreOSS / TEESimulator(JingMatrix) engines it would just be a stray,
-# world-readable copy of the spoofed pif, so write it only when RS is active —
+# world-readable copy of the spoofed pif, so write it only when RS is active -
 # and clear any stale copy left from a previous engine.
 if grep -q '^ATTEST=tee$' "$MODPATH/attest.sh" 2>/dev/null; then
     if [ -n "$SRC" ] && [ "$SRC" != "/data/adb/pif.prop" ]; then
@@ -66,7 +68,7 @@ PACKED="$RAW"
 DOT="$(echo "$RAW" | cut -c1-4)-$(echo "$RAW" | cut -c5-6)-$(echo "$RAW" | cut -c7-8)"
 
 # The attested patch is the ACTIVE FINGERPRINT's own SECURITY_PATCH (DOT, read
-# from the pif above). It is NOT bumped to the current month — a Pixel
+# from the pif above). It is NOT bumped to the current month - a Pixel
 # fingerprint claims a specific patch, and pushing past it makes the props and
 # the attestation disagree and drops STRONG. Per-partition manual overrides from
 # the WebUI (System / Vendor / Boot, empty = the fingerprint date) sit on top.
@@ -84,13 +86,13 @@ fi
 
 mkdir -p "$CONFIG_DIR"
 
-# --- 1. TEE attestation patch level (TrickyStore / TEESimulator-RS) --------
+# 1. TEE attestation patch level (TrickyStore / TEESimulator-RS)
 # TrickyStore's security_patch.txt accepts per-partition keys (system/boot/vendor,
 # dotted). Written per-partition so a manual override for one lands exactly; with
 # no override all three carry the single auto date.
 printf 'system=%s\nvendor=%s\nboot=%s\n' "$SYS" "$VEN" "$BOOT" > "$CONFIG_DIR/security_patch.txt"
 
-# --- 2. PIF wildcard prop: spoof ro.build/ro.vendor/ro.system .security_patch
+# 2. PIF wildcard prop: spoof ro.build/ro.vendor/ro.system .security_patch
 # A single `*.security_patch=<date>` line makes PIF's zygisk hook report the
 # patch to every app (this is what GMS / Play Integrity reads). It is one value,
 # so use the system date.
@@ -103,7 +105,7 @@ for pf in "$MODPATH/custom.pif.prop" "$CONFIG_DIR/custom.pif.prop"; do
     fi
 done
 
-# --- 3. real system props (boot only, needs resetprop) --------------------
+# 3. real system props (boot only, needs resetprop)
 # What every app that PIF does NOT hook reads: Build.VERSION.SECURITY_PATCH,
 # getprop. Writing these device-wide freezes the date Settings shows (it stops
 # following an OTA) and can diverge from the device's real patch, which on custom
@@ -114,7 +116,7 @@ done
 # spoof_patch_props=1 in alwaysstrong/config (Advanced -> Spoof security patch)
 # rewrites the props to the attested date for the few third-party key-attestation
 # checkers that compare the two; off keeps the device's real date.
-_wp() {   # _wp PROP VALUE — set the prop to VALUE exactly (the attested date)
+_wp() {   # _wp PROP VALUE - set the prop to VALUE exactly (the attested date)
     _p="$1"; _v="$2"
     cur=$(resetprop "$_p" 2>/dev/null)
     [ -n "$cur" ] || return 0

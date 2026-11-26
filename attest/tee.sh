@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# Attestation-engine adapter — TEESimulator-RS (default, --engine tee).
+# Attestation-engine adapter - TEESimulator-RS (default, --engine tee).
 #
 # build.sh copies the selected attest/<engine>.sh into the module as attest.sh.
 # customize.sh sources it and calls attest_install (with $ABI_DIR / $ARCH /

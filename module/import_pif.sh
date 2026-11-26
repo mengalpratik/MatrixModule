@@ -21,7 +21,7 @@ export MODPATH CONFIG_DIR
 
 SRC="$1"
 [ -s "$SRC" ] || { echo "ERR: file missing or empty"; exit 1; }
-[ -f "$MODPATH/engine.sh" ] || { echo "ERR: engine.sh missing — reflash module"; exit 1; }
+[ -f "$MODPATH/engine.sh" ] || { echo "ERR: engine.sh missing - reflash module"; exit 1; }
 . "$MODPATH/engine.sh"
 
 mkdir -p "$CONFIG_DIR"
@@ -63,7 +63,7 @@ if engine_install_pif "$TMP"; then
     # the WebUI and the Action screen can show which pif is loaded.
     if command -v as_set >/dev/null 2>&1; then
         # The pif's own device identity (brand + model), shown next to the file
-        # name in the WebUI and the Action — e.g. "Google Pixel 6a". MODEL keeps
+        # name in the WebUI and the Action - e.g. "Google Pixel 6a". MODEL keeps
         # its spaces, so grep/cut rather than word-splitting.
         _man=$(grep -m1 '^MANUFACTURER=' "$TMP" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
         _mdl=$(grep -m1 '^MODEL=' "$TMP" 2>/dev/null | cut -d= -f2- | tr -d '"\r')
@@ -98,9 +98,10 @@ if engine_install_pif "$TMP"; then
     # already-proven engine_install_pif path and can't hit migrate.sh's "No
     # migration required" refusal on an already-finished file.
     cp -f "$TMP" "$CONFIG_DIR/custom.pif.prop" 2>/dev/null
+    chmod 644 "$CONFIG_DIR/custom.pif.prop" 2>/dev/null || true
     [ -f "$MODPATH/sync_patch.sh" ] && sh "$MODPATH/sync_patch.sh" >/dev/null 2>&1
     # On the teesim keystore engine the attested identity is baked into
-    # /data/adb/teesim/config.json — regenerate it from the just-imported
+    # /data/adb/teesim/config.json - regenerate it from the just-imported
     # fingerprint, or TEESimulator keeps attesting the OLD brand/model/patch and
     # Build(new) != attest(old) drops the verdict below STRONG. No-op on the other
     # engines (teesim_gen_config is undefined there). Mirrors lite_pif_sync.sh.

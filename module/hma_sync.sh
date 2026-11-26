@@ -14,6 +14,9 @@ AS_HIDDEN="$AS_DIR/hidden_apps"
 AS_GRANTED="$AS_DIR/granted_apps"
 AS_HMA_CONF="$AS_DIR/config.json"
 TGT="${2:-$AS_CFG_ROOT/target.txt}"
+_HMA_MODPATH="${0%/*}"
+[ "$_HMA_MODPATH" = "$0" ] && _HMA_MODPATH="$PWD"
+[ -f "$_HMA_MODPATH/as_store.sh" ] && . "$_HMA_MODPATH/as_store.sh"
 
 # Default recommended apps to hide (root managers, su binaries, detectors)
 DEFAULT_HIDDEN="
@@ -106,8 +109,6 @@ get_granted_root_apps() {
                 _py_bin="python3"
                 command -v python3 >/dev/null 2>&1 || _py_bin="python"
                 "$_py_bin" -c "import sqlite3; con=sqlite3.connect('$db'); print('\n'.join(r[0] for r in con.execute('SELECT package_name FROM policies WHERE policy=2')))" 2>/dev/null
-            else
-                strings "$db" 2>/dev/null
             fi
         done
 
@@ -125,7 +126,7 @@ init_defaults() {
     mkdir -p "$AS_DIR" 2>/dev/null || :
     _granted=$(get_granted_root_apps 2>/dev/null)
     if [ -n "$_granted" ]; then
-        echo "$_granted" > "$AS_GRANTED.tmp" 2>/dev/null && mv -f "$AS_GRANTED.tmp" "$AS_GRANTED" 2>/dev/null || :
+        echo "$_granted" > "$AS_GRANTED.$$.tmp" 2>/dev/null && mv -f "$AS_GRANTED.$$.tmp" "$AS_GRANTED" 2>/dev/null || :
     fi
 
     # Merge DEFAULT_HIDDEN + _granted + existing AS_HIDDEN
@@ -135,7 +136,7 @@ init_defaults() {
         done
         [ -n "$_granted" ] && echo "$_granted"
         [ -f "$AS_HIDDEN" ] && cat "$AS_HIDDEN" 2>/dev/null
-    } | sed 's/[[:space:]]//g' | grep -vE '^(#|$)' | sort -u > "$AS_HIDDEN.tmp" 2>/dev/null && mv -f "$AS_HIDDEN.tmp" "$AS_HIDDEN" 2>/dev/null || :
+    } | sed 's/[[:space:]]//g' | grep -vE '^(#|$)' | sort -u > "$AS_HIDDEN.$$.tmp" 2>/dev/null && mv -f "$AS_HIDDEN.$$.tmp" "$AS_HIDDEN" 2>/dev/null || :
     chmod 600 "$AS_HIDDEN" 2>/dev/null || :
 }
 
@@ -148,21 +149,27 @@ sync_config() {
     mkdir -p "$AS_DIR" 2>/dev/null || :
     [ -f "$AS_HIDDEN" ] || init_defaults
 
-    # Dynamic Root Database Scan & Merge
-    _granted=$(get_granted_root_apps 2>/dev/null)
-    if [ -n "$_granted" ]; then
-        echo "$_granted" > "$AS_GRANTED.tmp" 2>/dev/null && mv -f "$AS_GRANTED.tmp" "$AS_GRANTED" 2>/dev/null || :
-    fi
+    # Dynamic Root Database Scan: add only NEWLY granted apps when auto_hide=1
+    if ! command -v as_on >/dev/null 2>&1 || as_on auto_hide; then
+        _granted=$(get_granted_root_apps 2>/dev/null)
+        _new_granted=""
+        if [ -n "$_granted" ]; then
+            if [ -f "$AS_GRANTED" ]; then
+                _new_granted=$(printf '%s\n' "$_granted" | grep -Fxvf "$AS_GRANTED" 2>/dev/null || true)
+            else
+                _new_granted="$_granted"
+            fi
+            echo "$_granted" > "$AS_GRANTED.$$.tmp" 2>/dev/null && mv -f "$AS_GRANTED.$$.tmp" "$AS_GRANTED" 2>/dev/null || :
+        fi
 
-    # Auto-merge DEFAULT_HIDDEN + _granted into AS_HIDDEN
-    {
-        for p in $DEFAULT_HIDDEN; do
-            [ -n "$p" ] && echo "$p"
-        done
-        [ -n "$_granted" ] && echo "$_granted"
-        [ -f "$AS_HIDDEN" ] && cat "$AS_HIDDEN" 2>/dev/null
-    } | sed 's/[[:space:]]//g' | grep -vE '^(#|$)' | sort -u > "$AS_HIDDEN.tmp" 2>/dev/null && mv -f "$AS_HIDDEN.tmp" "$AS_HIDDEN" 2>/dev/null || :
-    chmod 600 "$AS_HIDDEN" 2>/dev/null || :
+        if [ -n "$_new_granted" ]; then
+            {
+                printf '%s\n' "$_new_granted"
+                [ -f "$AS_HIDDEN" ] && cat "$AS_HIDDEN" 2>/dev/null
+            } | sed 's/[[:space:]]//g' | grep -vE '^(#|$)' | sort -u > "$AS_HIDDEN.$$.tmp" 2>/dev/null && mv -f "$AS_HIDDEN.$$.tmp" "$AS_HIDDEN" 2>/dev/null || :
+            chmod 600 "$AS_HIDDEN" 2>/dev/null || :
+        fi
+    fi
 
     # Temporary files for awk input
     _tmp_hidden="$AS_DIR/.hma_hidden.$$.tmp"

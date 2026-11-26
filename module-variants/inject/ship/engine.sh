@@ -1,11 +1,11 @@
 #!/system/bin/sh
-# Play Integrity engine adapter — PlayIntegrityFix (inject-s).
+# Play Integrity engine adapter - PlayIntegrityFix (inject-s).
 #
 # The shared module scripts never touch a pif file directly; they go through the
 # functions here. build.sh overlays exactly one adapter per build, so action.sh,
 # service.sh, pif_native_fetch.sh and customize.sh are identical in both.
 #
-# inject-s reads pif.prop straight from the module dir — no migrate.sh, no
+# inject-s reads pif.prop straight from the module dir - no migrate.sh, no
 # custom.pif.prop. Its spoof flags are true/false.
 
 ENGINE=inject
@@ -20,7 +20,7 @@ engine_pif_targets() {
 }
 
 # STRONG spoof defaults, in this engine's naming (inject-s uses true/false).
-#   spoofProvider=false      leave the keystore provider alone — TEESimulator
+#   spoofProvider=false      leave the keystore provider alone - TEESimulator
 #                            supplies the hardware-attested one STRONG needs.
 #   spoofVendingBuild=true   Play Store build spoof (Fork calls this
 #                            spoofVendingFinger).
@@ -28,12 +28,12 @@ engine_pif_targets() {
 # writes `key=value` lines into /data/adb/tricky_store/alwaysstrong/spoof.conf. Some wallet /
 # banking apps only pass with a flag flipped (e.g. spoofProps=false on a Poco F8
 # Pro). engine_enforce_spoof re-applies these on every boot/hourly pass, so an
-# override in spoof.conf survives — without it a flipped flag would silently
+# override in spoof.conf survives - without it a flipped flag would silently
 # revert an hour after boot.
 engine_spoof_defaults() {
-    # spoofVendingBuild spoofs the Play Store (Vending) build/fingerprint — the
-    # inject-s equivalent of Fork's spoofVendingFinger. On Android 10–12L (device's
-    # REAL sdk ≤ 32) it breaks Play Integrity / GMS, so it defaults OFF there; on
+    # spoofVendingBuild spoofs the Play Store (Vending) build/fingerprint - the
+    # inject-s equivalent of Fork's spoofVendingFinger. On Android 10-12L (device's
+    # REAL sdk <= 32) it breaks Play Integrity / GMS, so it defaults OFF there; on
     # Android 13+ (sdk 33+) it stays ON. Keyed on the real android version, not the
     # spoofed one. spoof.conf can still override it per device (WebUI Advanced tab).
     _svb=true
@@ -59,12 +59,12 @@ engine_spoof_kv() {
     echo $_out
 }
 
-# Same list, one per line — appended to a freshly fetched fingerprint.
+# Same list, one per line - appended to a freshly fetched fingerprint.
 engine_spoof_block() {
     for _kv in $(engine_spoof_kv); do echo "$_kv"; done
 }
 
-# engine_install_pif SRC — put a fingerprint where the zygisk reads it. The
+# engine_install_pif SRC - put a fingerprint where the zygisk reads it. The
 # config-dir copy is what the WebUI, sync_patch and the status row read.
 # Non-zero when this engine can't consume SRC, so callers fall through to the
 # next fingerprint source instead of reporting a success that never landed.
@@ -79,33 +79,45 @@ engine_install_pif() {
     [ -s "$MODPATH/pif.prop" ] || return 1
     # An imported file can be a complete Fork-format custom.pif.prop (e.g. a beta
     # from the WebUI picker). inject-s reads this same field format straight from
-    # pif.prop — there is no migrate.sh step, so unlike Fork it is never rejected
-    # — but the file carries Fork's flag dialect (numeric 1/0, spoofVendingFinger,
+    # pif.prop - there is no migrate.sh step, so unlike Fork it is never rejected
+    # - but the file carries Fork's flag dialect (numeric 1/0, spoofVendingFinger,
     # verboseLogs). Drop those Fork-only keys; engine_enforce_spoof below writes
-    # inject's own true/false flags (spoofVendingBuild, DEBUG, …) so the effective
+    # inject's own true/false flags (spoofVendingBuild, DEBUG, ...) so the effective
     # config is correct regardless of what the imported file shipped.
     for _pf in "$MODPATH/pif.prop" "$CONFIG_DIR/pif.prop"; do
         [ -f "$_pf" ] && sed -i '/^spoofVendingFinger=/d;/^verboseLogs=/d' "$_pf" 2>/dev/null
     done
     engine_enforce_spoof
+    chmod 644 "$MODPATH/pif.prop" "$CONFIG_DIR/pif.prop" 2>/dev/null || true
+    if [ -f "$MODPATH/prop_unify.sh" ]; then
+        sh "$MODPATH/prop_unify.sh" >/dev/null 2>&1 || true
+    fi
     return 0
 }
 
-# engine_autopif — upstream's own fetcher; the fallback when our native crawl
-# fails. It writes $MODPATH/pif.prop itself and does not report failure through
-# its exit code, so check the file it left behind. 0 on success.
+# engine_autopif - upstream's own fetcher; the fallback when our native crawl
+# fails. Upstream v4.9-inject-s autopif.sh writes to /data/adb/pif.prop rather
+# than $MODPATH/pif.prop, so sync it back into $MODPATH and $CONFIG_DIR.
 engine_autopif() {
     [ -f "$MODPATH/autopif.sh" ] || return 1
+    _ap_before=""
+    [ -f /data/adb/pif.prop ] && _ap_before=$(grep -m1 '^FINGERPRINT=' /data/adb/pif.prop 2>/dev/null)
     sh "$MODPATH/autopif.sh"
+    if [ -s /data/adb/pif.prop ] && grep -q 'FINGERPRINT=google/' /data/adb/pif.prop 2>/dev/null; then
+        cp -f /data/adb/pif.prop "$MODPATH/pif.prop" 2>/dev/null
+    fi
     grep -q 'FINGERPRINT=google/' "$MODPATH/pif.prop" 2>/dev/null || return 1
     mkdir -p "$CONFIG_DIR"
     cp -f "$MODPATH/pif.prop" "$CONFIG_DIR/pif.prop" 2>/dev/null
     engine_enforce_spoof
+    if [ -f "$MODPATH/prop_unify.sh" ]; then
+        sh "$MODPATH/prop_unify.sh" >/dev/null 2>&1 || true
+    fi
     return 0
 }
 
 # Resolve the native asfetch binary for this device's ABI (empty if there is
-# none — e.g. the build shipped no prebuilt for it, or the exec bit isn't set
+# none - e.g. the build shipped no prebuilt for it, or the exec bit isn't set
 # yet during install). Its `enforce-spoof` subcommand does the whole rewrite in
 # ONE process; pure local file I/O, so it needs no watchdog/timeout.
 _engine_asfetch() {
@@ -131,6 +143,7 @@ engine_enforce_spoof() {
     # newline it is actually safer (sed's append would glue onto the last line).
     _af=$(_engine_asfetch 2>/dev/null)
     if [ -n "$_af" ] && "$_af" enforce-spoof --kv "$_kvs" $(engine_pif_targets) 2>/dev/null; then
+        for _f in $(engine_pif_targets); do [ -f "$_f" ] && chmod 644 "$_f" 2>/dev/null; done
         return 0
     fi
     # Shell fallback (no prebuilt for this ABI, or the native call failed): ONE sed
@@ -149,12 +162,13 @@ engine_enforce_spoof() {
         for _kv in $_kvs; do
             case "$_have" in *"${_kv%=*}="*) ;; *) echo "$_kv" >> "$_f" ;; esac
         done
+        chmod 644 "$_f" 2>/dev/null
     done
 }
 
 # Seconds before the native crawl / upstream fetcher are killed. Generous on
 # purpose: both fetchers time out on their own when nothing arrives (idle
-# timeouts / a no-progress watchdog), so these only backstop a stuck process —
+# timeouts / a no-progress watchdog), so these only backstop a stuck process -
 # a slow 2G link that is still delivering bytes must not be cut off here.
 ENGINE_NATIVE_TIMEOUT=240
 ENGINE_AUTOPIF_TIMEOUT=180

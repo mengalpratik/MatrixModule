@@ -1,8 +1,8 @@
 #!/system/bin/sh
-# AlwaysStrong — native fingerprint fallback.
+# AlwaysStrong - native fingerprint fallback.
 #
 # PlayIntegrityFork's autopif4.sh crawls Google's Pixel build servers with
-# busybox `wget`, whose built-in TLS stalls mid-stream on some devices/CDNs —
+# busybox `wget`, whose built-in TLS stalls mid-stream on some devices/CDNs -
 # so on those devices autopif4 silently fails and no fresh fingerprint lands.
 # We drive the fetch with our statically-linked rustls fetcher (asfetch), which
 # speaks TLS 1.2/1.3 correctly everywhere (curl / busybox wget only if absent),
@@ -10,7 +10,7 @@
 # embedded fallback) + content-flashstation-pa.googleapis.com (the canary build
 # per product). The old device-list crawl (developer.android.com versions + the
 # factory-image/OTA tables) and the source.android.com patch-bulletin crawl are
-# GONE — they were ~6 page fetches and two brittle HTML-table parses that made a
+# GONE - they were ~6 page fetches and two brittle HTML-table parses that made a
 # refresh take ~24s and graze the action timeout. Every current Pixel shares one
 # canary build, so a static device list + build query is equivalent and ~8x
 # faster with far fewer failure points.
@@ -30,18 +30,18 @@ CAP_EXTRA=60
 
 log() { echo "pif_native_fetch: $*"; }
 
-# ---- Resolve the module dir + asfetch binary ----
+# Resolve the module dir + asfetch binary
 SELF_DIR=$(cd "${0%/*}" 2>/dev/null && pwd)
 [ -z "$SELF_DIR" ] && SELF_DIR=/data/adb/modules/tricky_store
 
 # This fetches the Pixel identity. Where it lands, and under which spoof-flag
-# names, belongs to engine.sh — writing the engine's prop file directly from
+# names, belongs to engine.sh - writing the engine's prop file directly from
 # here would give one build flags the other's zygisk cannot read.
 MODPATH="$SELF_DIR"
 if [ -f "$SELF_DIR/engine.sh" ]; then
     . "$SELF_DIR/engine.sh"
 else
-    log "engine.sh missing — cannot install a fingerprint."; exit 1
+    log "engine.sh missing - cannot install a fingerprint."; exit 1
 fi
 case "$(uname -m)" in
     aarch64)        ABI=arm64-v8a ;;
@@ -63,7 +63,7 @@ if [ -z "$BB" ] && { [ -z "$ABI" ] || [ ! -x "$ASFETCH" ]; } \
     log "no fetcher available (asfetch/curl/wget)."; exit 1
 fi
 
-# bounded SECS cmd... — run cmd under a hard wall-clock cap. A fetcher that
+# bounded SECS cmd... - run cmd under a hard wall-clock cap. A fetcher that
 # never returns (asfetch / wget / curl stuck on a dead route, a hung DNS, a
 # TLS stall) used to freeze the whole Action: status_fetch and the first-tap
 # keybox fetch called it with no bound at all, so the screen sat after the last
@@ -83,7 +83,7 @@ bounded() { _bs="$1"; shift; if [ -n "$TO" ]; then $TO "$_bs" "$@"; else "$@"; f
 # floor (curl), so a slow link that keeps delivering bytes is never cut off; the
 # outer cap only backstops a process that is stuck entirely.
 
-# ---- Fast path: asfetch's in-process fetcher --------------------------------
+# Fast path: asfetch's in-process fetcher
 # `asfetch autopif` does the whole crawl inside its bounded rustls client (real
 # JSON parsing, no busybox grep/tac, no shell subshells), writing pif.prop itself
 # in ~2-5s. This is the primary path; the shell crawl below is the fallback for
@@ -92,11 +92,11 @@ bounded() { _bs="$1"; shift; if [ -n "$TO" ]; then $TO "$_bs" "$@"; else "$@"; f
 # so this stays safe on a stale binary.
 #
 # It writes the identity with inject-s's spoof-flag names baked in, so it is
-# aimed at a scratch dir and those lines are stripped — the engine adapter
+# aimed at a scratch dir and those lines are stripped - the engine adapter
 # appends the set its own zygisk reads. Seeding the scratch copy from the
 # current pif.prop keeps asfetch's security-patch reuse working.
 # DISABLED: `asfetch autopif` installs the NEWEST Pixel Canary (Pixel 9 / 10),
-# which Google no longer grants STRONG — it cross-checks the claimed first-API
+# which Google no longer grants STRONG - it cross-checks the claimed first-API
 # level against the device's real launch OS, so only a device that actually
 # shipped on Android <=12 (the Pixel 6 series) stays consistent. The Pixel 6
 # beta fetch added below is the primary path now; this block is kept (behind a
@@ -116,10 +116,10 @@ if false && [ -n "$ABI" ] && [ -x "$ASFETCH" ]; then
     bounded 150 "$ASFETCH" autopif --out "$NW/pif.prop" --module "$NW" 2>&1
     _rc=$?
     # 124 = the cap tripped: asfetch is not answering on this device/network.
-    # Don't hand the shell crawl the same stuck binary — it would burn its cap
+    # Don't hand the shell crawl the same stuck binary - it would burn its cap
     # on every page; go straight to busybox wget / curl for the fallback.
     if [ "$_rc" = 124 ] || [ "$_rc" = 137 ]; then
-        log "native autopif timed out — skipping asfetch for the shell crawl"
+        log "native autopif timed out - skipping asfetch for the shell crawl"
         ASFETCH=""
     fi
     if [ "$_rc" = 0 ] \
@@ -135,10 +135,10 @@ if false && [ -n "$ABI" ] && [ -x "$ASFETCH" ]; then
     fi
     rm -rf "$NW"
     trap - EXIT TERM INT   # hand the traps over to the shell crawl's own $W
-    log "native autopif unavailable/failed — trying shell crawl"
+    log "native autopif unavailable/failed - trying shell crawl"
 fi
 
-# fetch OUTFILE URL [REFERER]  — REFERER is required by the flashstation API,
+# fetch OUTFILE URL [REFERER]  - REFERER is required by the flashstation API,
 # which is guarded by a referrer-restricted browser key. asfetch goes first (it
 # connects IPv4-first, so it works on every device incl. IPv6-only-DNS networks);
 # busybox wget / curl are fallbacks in case asfetch ever fails on a host.
@@ -192,22 +192,22 @@ trap 'rm -rf "$W"' EXIT
 trap 'rm -rf "$W"; exit 143' TERM
 trap 'rm -rf "$W"; exit 130' INT
 
-# ---- 0. PRIMARY: a STRONG-capable Pixel 6 identity from the canary repo ------
+# 0. PRIMARY: a STRONG-capable Pixel 6 identity from the canary repo
 # Only a device that genuinely launched on Android <=12 still earns STRONG, so
 # the auto-fetch targets the Pixel 6 series. These are pulled from the `devices`
-# folder of the public canary-miner repo (kept fresh by its maintainer) — the
-# real Android *Canary* builds (`:CANARY/ZP11.…`), NOT the `betas/` QPR track
-# (`:17/DP11.…`), because the Canary identity is the one that holds STRONG.
+# folder of the public canary-miner repo (kept fresh by its maintainer) - the
+# real Android *Canary* builds (`:CANARY/ZP11....`), NOT the `betas/` QPR track
+# (`:17/DP11....`), because the Canary identity is the one that holds STRONG.
 # bluejay (Pixel 6a) is the one confirmed to still hold STRONG.
 # Two hosts for the SAME repo file, tried in order. raw.githubusercontent.com is
 # the origin; cdn.jsdelivr.net mirrors it over a CDN that stays reachable where
 # raw.github is throttled/blocked (common on TR / some mobile carriers). Without
-# the mirror a device on such a network can never fetch — the flashstation crawl
+# the mirror a device on such a network can never fetch - the flashstation crawl
 # below has no bluejay canary of its own, so the refresh silently fails and the
 # phone stays frozen on whatever identity it last managed to pull (e.g. an older
 # month's security patch). jsDelivr's branch cache can lag the origin by a few
 # hours, which only ever matters for a device that cannot reach the origin at all
-# — for it a slightly-stale-but-reachable mirror beats never updating.
+# - for it a slightly-stale-but-reachable mirror beats never updating.
 BETA_HOSTS="https://raw.githubusercontent.com/Vagelis1608/get_the_canary_miner/main/devices
 https://cdn.jsdelivr.net/gh/Vagelis1608/get_the_canary_miner@main/devices"
 try_beta() { # $1=codename -> installs it into the engine, 0 on success
@@ -225,24 +225,25 @@ try_beta() { # $1=codename -> installs it into the engine, 0 on success
     grep -q '^FINGERPRINT=' "$W/identity.prop" || return 1
     engine_spoof_block >> "$W/identity.prop"
     engine_install_pif "$W/identity.prop" || return 1
+    rm -f "$CONFIG_DIR/custom.pif.prop" 2>/dev/null
     cp -f "$W/identity.prop" "$TARGET" 2>/dev/null
     log "installed STRONG Pixel 6 fingerprint ($ENGINE): $(grep '^FINGERPRINT=' "$W/identity.prop" | cut -d= -f2-)"
     return 0
 }
-# Only bluejay (Pixel 6a) actually holds STRONG right now — oriole (Pixel 6) and
+# Only bluejay (Pixel 6a) actually holds STRONG right now - oriole (Pixel 6) and
 # raven (Pixel 6 Pro) are demoted in practice even though they launched on the
 # same Android 12, so the auto-fetch uses bluejay alone (the WebUI beta picker
 # still lists the others for manual experimentation).
 try_beta bluejay && exit 0
-log "beta-repo bluejay fetch failed — falling back to the flashstation crawl"
+log "beta-repo bluejay fetch failed - falling back to the flashstation crawl"
 
-# ---- 1. flashstation browser key (the only page we still scrape) ----
+# 1. flashstation browser key (the only page we still scrape)
 # flash.android.com guards the builds API with a referrer-scoped key embedded in
 # its landing HTML. Scrape it; if the page is reshaped/blocked, fall back to the
 # embedded last-known key so a bad landing page can't sink the whole fetch. That
 # key is a PUBLIC value from that page's HTML, locked to the flash.android.com
-# referrer — not a secret; it's assembled from parts only so it isn't a literal
-# "AIza…" string that trips repo secret scanners.
+# referrer - not a secret; it's assembled from parts only so it isn't a literal
+# "AIza..." string that trips repo secret scanners.
 KEY=""
 if fetch "$W/flash.html" "https://flash.android.com/"; then
     KEY=$($GREP -o '<body data-client-config=.*' "$W/flash.html" \
@@ -251,8 +252,8 @@ fi
 [ -z "$KEY" ] && { KEY="AIzaSyD-bwHpMvFCN3""PfRN4Txsw""_ECg_iptNfMQ"; log "using embedded flashstation key"; }
 [ -z "$KEY" ] && { log "no flashstation key."; exit 1; }
 
-# ---- 2. STRONG-capable identities: "<device>|<model>" per line ----
-# Only the Pixel 6 series (launched on Android 12) still earns STRONG — Google
+# 2. STRONG-capable identities: "<device>|<model>" per line
+# Only the Pixel 6 series (launched on Android 12) still earns STRONG - Google
 # cross-checks the claimed first-API level against the real launch OS, so newer
 # Pixels (9/10) are demoted even with a valid keybox. This crawl is a last
 # resort behind the beta-repo fetch above (Pixel 6 has no flashstation canary of
@@ -260,8 +261,7 @@ fi
 PIXEL_DEVICES="bluejay|Pixel 6a"
 NDEV=$(printf '%s\n' "$PIXEL_DEVICES" | $GREP -c .)
 
-# ---- 3. query builds per product until one yields a canary; bounded tries ----
-THISDEV=$(getprop ro.product.device 2>/dev/null)
+# 3. query builds per product until one yields a canary; bounded triesTHISDEV=$(getprop ro.product.device 2>/dev/null)
 MODEL=""; PRODUCT=""; DEVICE=""; ID=""; INCREMENTAL=""
 
 parse_canary() { # reads $W/builds.json -> sets ID/INCREMENTAL, 0 on a canary hit
@@ -269,7 +269,7 @@ parse_canary() { # reads $W/builds.json -> sets ID/INCREMENTAL, 0 on a canary hi
     # treat that as a miss so we roll to the next product.
     case "$(head -c1 "$W/builds.json" 2>/dev/null)" in '{'|'[') ;; *) return 1 ;; esac
     # `"canary": true` sits in a previewMetadata sub-object AFTER buildId /
-    # releaseCandidateName in each entry, so reverse the lines first — then a
+    # releaseCandidateName in each entry, so reverse the lines first - then a
     # forward -A window captures the ids of that same (newest) canary block.
     reverse < "$W/builds.json" | $GREP -m1 -A25 '"canary": *true' > "$W/canary.json" 2>/dev/null
     ID=$($GREP 'releaseCandidateName' "$W/canary.json" | cut -d'"' -f4 | head -n1)
@@ -309,23 +309,19 @@ fi
 { [ -z "$PRODUCT" ] || [ -z "$ID" ] || [ -z "$INCREMENTAL" ]; } && { log "no canary build found."; exit 1; }
 log "device: ${MODEL:-?} ($PRODUCT) build $ID"
 
-# ---- 4. security patch: reuse the shared canary patch, else derive from ID ----
-# All current Pixels share the same canary patch, so an existing good pif.prop is
-# the most reliable source. Else derive YYYY-MM-05 from the 6-digit YYMMDD
-# segment in the build ID (ZP11.260618.005 -> 2026-06-05). No source.android.com.
-SECURITY_PATCH=""
-for _pf in "$SELF_DIR/pif.prop" "$TARGET"; do
-    [ -f "$_pf" ] || continue
-    SECURITY_PATCH=$($GREP '^SECURITY_PATCH=' "$_pf" 2>/dev/null | cut -d= -f2 | head -n1)
-    [ -n "$SECURITY_PATCH" ] && break
-done
+# 4. security patch: derive from ID first, else reuse existing/currentSECURITY_PATCH=""
+_seg=$(printf '%s' "$ID" | tr '.' '\n' | $GREP -E '^[0-9]{6}$' | head -n1)
+[ -n "$_seg" ] && SECURITY_PATCH="20$(echo "$_seg" | cut -c1-2)-$(echo "$_seg" | cut -c3-4)-05"
 if [ -z "$SECURITY_PATCH" ]; then
-    _seg=$(printf '%s' "$ID" | tr '.' '\n' | $GREP -E '^[0-9]{6}$' | head -n1)
-    [ -n "$_seg" ] && SECURITY_PATCH="20$(echo "$_seg" | cut -c1-2)-$(echo "$_seg" | cut -c3-4)-05"
+    for _pf in "$SELF_DIR/pif.prop" "$TARGET"; do
+        [ -f "$_pf" ] || continue
+        SECURITY_PATCH=$($GREP '^SECURITY_PATCH=' "$_pf" 2>/dev/null | cut -d= -f2 | head -n1)
+        [ -n "$SECURITY_PATCH" ] && break
+    done
 fi
 [ -z "$SECURITY_PATCH" ] && SECURITY_PATCH="$(date '+%Y-%m')-05"
 
-# ---- 5. emit the identity, then let the engine install it -------------------
+# 5. emit the identity, then let the engine install it
 # The build fields are engine-neutral; the spoof flags are not. Fork wants
 # spoofProvider=0 / spoofVendingFinger=1 in custom.pif.prop, inject-s wants
 # spoofProvider=false / spoofVendingBuild=true in pif.prop. engine.sh supplies
@@ -350,6 +346,7 @@ mkdir -p "$CONFIG_DIR"
 # the config-dir copy is for display + sync_patch, written only once the engine
 # has accepted the fingerprint.
 engine_install_pif "$TMP" || { log "$ENGINE could not install the fingerprint."; exit 1; }
+rm -f "$CONFIG_DIR/custom.pif.prop" 2>/dev/null
 cp -f "$TMP" "$TARGET" 2>/dev/null
 
 log "installed fingerprint ($ENGINE): $FP"

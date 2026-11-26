@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# Lite line + a standalone Play Integrity Fix/Fork — keep the two in lock-step. The
+# Lite line + a standalone Play Integrity Fix/Fork - keep the two in lock-step. The
 # Lite build ships no PIF of its own; the user's separate module does the Build
 # spoof, and this keystore module does the attestation. Three things drift apart on
 # their own and this pulls them back together:
@@ -31,8 +31,7 @@ PIF_DIR=/data/adb/modules/playintegrityfix
 grep -q '^ENGINE=none' "$MODDIR/engine.sh" 2>/dev/null || exit 0
 [ -d "$PIF_DIR" ] && [ ! -f "$PIF_DIR/disable" ] && [ ! -f "$PIF_DIR/remove" ] || exit 0
 
-# --- identify the module: only real PlayIntegrityFork / Fix inject-s qualify ---
-_mp="$PIF_DIR/module.prop"
+# identify the module: only real PlayIntegrityFork / Fix inject-s qualify_mp="$PIF_DIR/module.prop"
 _id="$(grep -m1 '^name=' "$_mp" 2>/dev/null)$(grep -m1 '^updateJson=' "$_mp" 2>/dev/null)$(grep -m1 '^author=' "$_mp" 2>/dev/null)"
 PIF_KIND=""
 # Id-squatting keystore toolkits (MeowDump) & co. squat the shared `playintegrityfix`
@@ -50,7 +49,7 @@ else
 fi
 # Must also actually be a Build-spoof PIF: a zygisk dir + a fingerprint to mirror.
 [ -n "$PIF_KIND" ] && [ -d "$PIF_DIR/zygisk" ] || exit 0
-# The active prop is whichever one actually carries the FINGERPRINT — Fork keeps it
+# The active prop is whichever one actually carries the FINGERPRINT - Fork keeps it
 # in custom.pif.prop, inject-s in pif.prop (custom.pif.prop is only an override).
 SRC=""
 for _c in "$PIF_DIR/custom.pif.prop" "$PIF_DIR/pif.prop"; do
@@ -71,7 +70,7 @@ for bb in /data/adb/ksu/bin/busybox /data/adb/magisk/busybox /data/adb/ap/bin/bu
 done
 SED_I="sed -i"; [ -n "$BB" ] && SED_I="$BB sed -i"
 
-# --- 1. spoof flags: FORK ONLY --------------------------------------------
+# 1. spoof flags: FORK ONLY
 # PlayIntegrityFork's autopif keeps resetting spoofVendingFinger 1 -> 0, so we
 # re-assert the STRONG Fork flags (version-aware, honouring spoof.conf overrides
 # set in our WebUI). PlayIntegrityFix inject-s is left untouched: it ships its own
@@ -88,7 +87,7 @@ if [ "$PIF_KIND" = fork ]; then
         if grep -q "^$_k=" "$SRC"; then $SED_I "s|^$_k=.*|$_k=$_v|" "$SRC"; else echo "$_k=$_v" >> "$SRC"; fi
     done
 else
-    # inject-s owns its own flags via its own WebUI. Don't enforce a default set —
+    # inject-s owns its own flags via its own WebUI. Don't enforce a default set -
     # only push the flags the user explicitly changed in OUR Advanced tab (each lands
     # in spoof.conf) onto its prop, leaving everything else exactly as inject-s set it.
     if [ -s "$AS_SPOOF" ]; then
@@ -101,18 +100,16 @@ else
     fi
 fi
 
-# --- 2. mirror the PIF fingerprint into the engine's identity source --------
-cp -f "$SRC" "$CONFIG_DIR/pif.prop" 2>/dev/null
+# 2. mirror the PIF fingerprint into the engine's identity sourcecp -f "$SRC" "$CONFIG_DIR/pif.prop" 2>/dev/null
 chmod 600 "$CONFIG_DIR/pif.prop" 2>/dev/null
 
-# --- 3. patch level + teesim config from the fresh fingerprint --------------
-[ -f "$MODDIR/sync_patch.sh" ] && sh "$MODDIR/sync_patch.sh" >/dev/null 2>&1
+# 3. patch level + teesim config from the fresh fingerprint[ -f "$MODDIR/sync_patch.sh" ] && sh "$MODDIR/sync_patch.sh" >/dev/null 2>&1
 if [ -f "$MODDIR/attest.sh" ]; then
     . "$MODDIR/attest.sh"
     command -v teesim_gen_config >/dev/null 2>&1 && teesim_gen_config
 fi
 
-# --- 4. restart the PIF so Build reflects the re-asserted flags -------------
+# 4. restart the PIF so Build reflects the re-asserted flags
 if [ -f "$PIF_DIR/killpi.sh" ]; then
     sh "$PIF_DIR/killpi.sh" >/dev/null 2>&1
 else

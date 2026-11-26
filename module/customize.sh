@@ -32,13 +32,13 @@ ui_print "Copyright (c) 2026 Pratik Mengal. All rights reserved."
 ui_print ""
 
 # stop anything that might be holding our lib files (upgrade-in-place). The
-# list is a superset across both engines — killing an absent process is a no-op.
+# list is a superset across both engines - killing an absent process is a no-op.
 for proc in TEESimulator supervisor daemon ta-enhanced TrickyStoreOSS cleverestricky aswatcher; do
   for pid in $(pidof "$proc" 2>/dev/null); do kill -9 "$pid" 2>/dev/null; done
 done
 pkill -9 -f TEESimulator 2>/dev/null || true
 
-# --- deep legacy directories & IPC wipe ---
+# deep legacy directories & IPC wipe
 for legacy_dir in /data/adb/cleverestricky /data/adb/matrix_module; do
   [ -d "$legacy_dir" ] && rm -rf "$legacy_dir" 2>/dev/null || :
 done
@@ -57,10 +57,10 @@ for pidfile in /data/adb/*.pid /data/adb/*/*.pid /data/adb/tricky_store/*.pid /d
   [ -f "$pidfile" ] && rm -f "$pidfile" 2>/dev/null || :
 done
 
-# --- conflict cleanup ----------------------------------------------------
+# conflict cleanup
 # Keystore / TEE / target-list / prop modules always conflict with the
 # attestation engine. The PIF-family (Build spoof) only conflicts with a line
-# that bundles its own PlayIntegrityFork — the PIF-less "Lite" line ships none and
+# that bundles its own PlayIntegrityFork - the PIF-less "Lite" line ships none and
 # is meant to run alongside the user's own PIF, so Lite does NOT remove them.
 CONFLICT_LIST="tricky_store_v2 TrickyStore \
   tee_simulator TEESimulator TEESimulator-RS \
@@ -69,7 +69,7 @@ CONFLICT_LIST="tricky_store_v2 TrickyStore \
   TA_utl tricky_addon TA_enhanced tsupport-advance \
   Yurikey specter"
 case "$NAME" in
-  *"[Lite]"*) ui_print "- Lite build — keeping any standalone PlayIntegrityFork" ;;
+  *"[Lite]"*) ui_print "- Lite build - keeping any standalone PlayIntegrityFork" ;;
   *) CONFLICT_LIST="$CONFLICT_LIST playintegrityfix playintegrityfork play_integrity_fix playcurl playcurlNEXT pif_strong pif_force" ;;
 esac
 CONFLICTS=0
@@ -99,7 +99,7 @@ else
   ui_print "removed $CONFLICTS conflicting module(s)"
 fi
 
-# --- extract our scripts + configs ---------------------------------------
+# extract our scripts + configs
 # engine.sh first: it names the upstream files this build's Play Integrity
 # engine needs ($ENGINE_FILES). Everything else here is engine-neutral.
 install_file "engine.sh" "$MODPATH"
@@ -110,9 +110,10 @@ for f in module.prop service.sh post-fs-data.sh action.sh \
          uninstall.sh common_func.sh as_store.sh sepolicy.rule \
          keybox_fetch.sh build_target_txt.sh status_fetch.sh description.txt \
          rom_spoof_block.sh conflict_scan.sh sync_patch.sh patch_resolve.sh beta_pif.sh \
-         denylist.sh hma_sync.sh \
+         denylist.sh hma_sync.sh hma_update.sh \
          pif_native_fetch.sh prop_unify.sh logcat_cleanup.sh collect_logs.sh \
          import_pif.sh reapply_spoof.sh reset_defaults.sh \
+         revocation.json widevine_l1.sh widevine_l1_attestation.xml \
          pif_fallback_1.prop pif_fallback_2.prop \
          target.txt daemon \
          $ENGINE_FILES ; do
@@ -130,7 +131,7 @@ if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "^.*banner\.png"; then
   chmod 644 "$MODPATH/banner.png" 2>/dev/null
 fi
 
-# --- attestation engine (TEESimulator-RS | TrickyStoreOSS) ----------------
+# attestation engine (TEESimulator-RS | TrickyStoreOSS)
 # The per-engine install steps live in attest.sh, which build.sh generates from
 # attest/<engine>.sh. It runs with $ABI_DIR / $ARCH / $ZIPFILE / $MODPATH and
 # install_file() + ui_print() in scope, and installs that engine's binaries.
@@ -139,17 +140,17 @@ install_file "attest.sh" "$MODPATH"
 . "$MODPATH/attest.sh"
 attest_install
 
-# --- PIF zygisk + dex ----------------------------------------------------
+# PIF zygisk + dex
 # Ship whatever ABIs upstream built. PlayIntegrityFork covers all four;
 # PlayIntegrityFix inject-s is ARM-only, so on x86 that build has no zygisk to
-# install — the TEE half still runs, the Play Integrity spoof can't, and the
+# install - the TEE half still runs, the Play Integrity spoof can't, and the
 # install says so rather than half-working in silence.
 #
 # A PIF-less "Lite" line (engine.sh sets ENGINE=none) ships no zygisk and no
-# classes.dex at all — only the TEE/TSOSS attestation + keybox fetcher. Skip the
+# classes.dex at all - only the TEE/TSOSS attestation + keybox fetcher. Skip the
 # whole Play Integrity install for it.
 if [ "$ENGINE" = "none" ]; then
-  ui_print "PIF-less build — hardware attestation + keybox only"
+  ui_print "PIF-less build - hardware attestation + keybox only"
   ui_print "no Play Integrity fingerprint spoof in this build"
 else
 mkdir -p "$MODPATH/zygisk"
@@ -166,15 +167,15 @@ HAS_ZYGISK_SO=0
 [ -f "$MODPATH/zygisk/$ABI_DIR.so" ] && HAS_ZYGISK_SO=1
 
 if [ $HAS_ZYGISK_SO -eq 0 ]; then
-  ui_print "⚠️ no PIF zygisk for $ABI_DIR ($ENGINE_NAME is ARM-only)"
-  ui_print "⚠️ TEE works, Play Integrity spoof won't"
-  ui_print "⚠️ use the default build for $ABI_DIR"
-# --- Zygisk provider check — PIF's zygisk needs a Zygisk host --------------
+  ui_print "[!] no PIF zygisk for $ABI_DIR ($ENGINE_NAME is ARM-only)"
+  ui_print "[!] TEE works, Play Integrity spoof won't"
+  ui_print "[!] use the default build for $ABI_DIR"
+# Zygisk provider check - PIF's zygisk needs a Zygisk host
 # The common silent-failure setup is Zygisk-less KernelSU: KSU has NO built-in
 # Zygisk, so without ZygiskNext / ReZygisk the PIF spoof never loads and STRONG
 # quietly fails. Magisk / APatch ship (or host) Zygisk themselves. Warn only on
 # the real footgun to avoid false alarms.
-elif [ "$KSU" = "true" ]; then
+elif [ "$KSU" = "true" ] || [ "$APATCH" = "true" ]; then
   _zygisk_active=0
   for _zmod in zygisksu rezygisk neozygisk; do
     if [ -d "/data/adb/modules/$_zmod" ] && [ ! -f "/data/adb/modules/$_zmod/disable" ]; then
@@ -184,17 +185,34 @@ elif [ "$KSU" = "true" ]; then
   done
   if [ $_zygisk_active -eq 0 ]; then
     ui_print "****************************************************"
-    ui_print "⚠️  WARNING: Zygisk Next is MISSING or DISABLED!   ⚠️"
-    ui_print "⚠️  KernelSU requires active Zygisk Next (zygisksu)⚠️"
-    ui_print "⚠️  Without it, PIF spoofing and STRONG will fail! ⚠️"
+    ui_print "[!]  WARNING: Zygisk provider is MISSING or DISABLED![!]"
+    ui_print "[!]  Install/enable ZygiskNext, ReZygisk or NeoZygisk[!]"
+    ui_print "[!]  Without it, PIF spoofing and STRONG will fail! [!]"
     ui_print "****************************************************"
+  else
+    ui_print "zygisk found"
+  fi
+else
+  _zygisk_active=0
+  for _zmod in zygisksu rezygisk neozygisk; do
+    if [ -d "/data/adb/modules/$_zmod" ] && [ ! -f "/data/adb/modules/$_zmod/disable" ]; then
+      _zygisk_active=1
+      break
+    fi
+  done
+  if [ $_zygisk_active -eq 0 ] && command -v magisk >/dev/null 2>&1; then
+    _mzyg=$(magisk --sqlite "select value from settings where key='zygisk'" 2>/dev/null | sed 's/.*value=//')
+    [ "$_mzyg" = "1" ] && _zygisk_active=1
+  fi
+  if [ $_zygisk_active -eq 0 ]; then
+    ui_print "[!] WARNING: Magisk Zygisk is OFF and no Zygisk module found"
   else
     ui_print "zygisk found"
   fi
 fi
 fi
 
-# --- aswatcher native binary (inotify target.txt + Xposed exclude + conflict)
+# aswatcher native binary (inotify target.txt + Xposed exclude + conflict)
 mkdir -p "$MODPATH/bin/$ABI_DIR"
 if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "bin/$ABI_DIR/aswatcher"; then
   install_file "bin/$ABI_DIR/aswatcher" "$MODPATH/bin/$ABI_DIR"
@@ -203,7 +221,7 @@ else
   ui_print "warning: no aswatcher binary for $ABI_DIR"
 fi
 
-# --- asfetch native HTTPS fetcher (arm devices only; TLS fallback for CDNs)
+# asfetch native HTTPS fetcher (arm devices only; TLS fallback for CDNs)
 if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "bin/$ABI_DIR/asfetch"; then
   install_file "bin/$ABI_DIR/asfetch" "$MODPATH/bin/$ABI_DIR"
   chmod 755 "$MODPATH/bin/$ABI_DIR/asfetch"
@@ -212,8 +230,7 @@ fi
 chmod 755 "$MODPATH/daemon" "$MODPATH/supervisor" "$MODPATH/inject" \
           "$MODPATH"/*.sh 2>/dev/null
 
-# --- WebUI (KSU / APatch / MMRL) — single self-contained index.html
-mkdir -p "$MODPATH/webroot"
+# WebUI (KSU / APatch / MMRL) - single self-contained index.htmlmkdir -p "$MODPATH/webroot"
 if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "webroot/index.html"; then
   install_file "webroot/index.html" "$MODPATH/webroot"
   chmod 644 "$MODPATH/webroot/index.html"
@@ -225,17 +242,15 @@ if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "webroot/index.html"; then
     install_file "webroot/app.css" "$MODPATH/webroot"
     chmod 644 "$MODPATH/webroot/app.css"
   fi
-  # Magisk has no built-in WebUI host. The standalone WebUI app is fetched
-  # from GitHub and installed on the first [Action] press (see action.sh).
+  # Magisk has no built-in WebUI host.
   if [ "$KSU" != true ] && [ "$APATCH" != true ]; then
-    ui_print "WebUI: app downloads + installs on first Action tap"
+    ui_print "WebUI: use KsuWebUIStandalone or MMRL on Magisk"
   fi
 else
   ui_print "warning: WebUI index.html missing from package"
 fi
 
-# --- /data/adb/tricky_store config ----------------------------------------
-mkdir -p "$CONFIG_DIR"
+# /data/adb/tricky_store configmkdir -p "$CONFIG_DIR"
 
 # Everything of OURS (settings, state, logs) goes under one directory there;
 # import it now so an upgrade from the old one-file-per-toggle layout keeps
@@ -249,14 +264,14 @@ if [ -f "$CONFIG_DIR/keybox.xml" ]; then
 else
   install_file "keybox.xml" "$CONFIG_DIR"
   chmod 600 "$CONFIG_DIR/keybox.xml" 2>/dev/null || :
-  ui_print "✅ default working keybox seeded (offline STRONG ready)"
+  ui_print "default keybox seeded (online keybox will be fetched on boot/Action)"
 fi
 
 # Restore an imported / beta fingerprint that this reinstall just wiped. On Fork
 # and inject-s the active pif lives in the module dir, which was re-extracted
 # empty; import_pif.sh keeps a persistent source copy at
 # $CONFIG_DIR/custom.pif.prop. If the user had a custom pif (custom_pif=1) and
-# that copy is present, re-install it into the fresh module dir now — otherwise
+# that copy is present, re-install it into the fresh module dir now - otherwise
 # the update strands the device with custom_pif=1 and no spoof identity, and
 # STRONG silently drops to whatever Fork's own boot autopif fetches. No-op on
 # Lite (ENGINE=none already keeps its pif under CONFIG_DIR) and when the user
@@ -268,8 +283,7 @@ if [ "${ENGINE:-none}" != "none" ] && [ -s "$CONFIG_DIR/custom.pif.prop" ] && \
   fi
 fi
 
-# --- Deploy Bundled HMA Zygisk Hook Engine (MatrixModule - Hiding Engine) ---
-HMA_MODDIR="/data/adb/modules/matrixmodule_hiding_engine"
+# Deploy Bundled HMA Zygisk Hook Engine (MatrixModule - Hiding Engine)HMA_MODDIR="/data/adb/modules/matrixmodule_hiding_engine"
 rm -rf /data/adb/modules/hma_oss_zygisk 2>/dev/null || :
 if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "hma_backend/"; then
   ui_print "Deploying MatrixModule Hiding Engine..."
@@ -301,6 +315,7 @@ if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "hma_backend/"; then
   unzip -qqjo "$ZIPFILE" "hma_backend/zygisk/$ABI_DIR.so" -d "$HMA_MODDIR/zygisk" 2>/dev/null || :
   unzip -qqjo "$ZIPFILE" "hma_backend/zygisk/arm64-v8a.so" -d "$HMA_MODDIR/zygisk" 2>/dev/null || :
   unzip -qqjo "$ZIPFILE" "hma_backend/zygisk/armeabi-v7a.so" -d "$HMA_MODDIR/zygisk" 2>/dev/null || :
+  [ -f "$HMA_MODDIR/zygisk/$ABI_DIR.so" ] || ui_print "[!] HMA Engine has no zygisk lib for $ABI_DIR (ARM only)"
   
   chmod 755 "$HMA_MODDIR" "$HMA_MODDIR/zygisk" "$HMA_MODDIR/packages"
   chmod 755 "$HMA_MODDIR"/*.sh 2>/dev/null || :
@@ -326,10 +341,7 @@ if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "hma_backend/"; then
     pm uninstall org.frknkrc44.hma_oss >/dev/null 2>&1 || :
   fi
 
-  # Initialize description
-  [ -f "$HMA_MODDIR/update_desc.sh" ] && sh "$HMA_MODDIR/update_desc.sh" 2>/dev/null || :
-
-  ui_print "✅ MatrixModule - Hiding Engine deployed"
+  ui_print "[+] MatrixModule - Hiding Engine deployed"
 
   # Check for latest online HMA engine release if internet is available (with quick timeout)
   if [ -f "$MODPATH/hma_update.sh" ]; then
@@ -338,22 +350,23 @@ if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "hma_backend/"; then
     _up_res=$(HMA_MODDIR="$HMA_MODDIR" sh "$MODPATH/hma_update.sh" update 2>/dev/null || true)
     if echo "$_up_res" | grep -q '"updated"'; then
       _new_v=$(echo "$_up_res" | sed -n 's/.*"new_version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-      ui_print "✅ Online update applied: $_new_v"
+      ui_print "[+] Online update applied: $_new_v"
     elif echo "$_up_res" | grep -q '"up_to_date"'; then
-      ui_print "✅ HMA engine is up to date"
+      ui_print "[+] HMA engine is up to date"
     else
       ui_print "Using bundled offline HMA engine"
     fi
   fi
 fi
 
-# target.txt is (re)built on boot (service.sh) and on every [Action] tap — just
+# target.txt is (re)built on boot (service.sh) and on every [Action] tap - just
 # drop a default seed here so TrickyStore has something to read on first boot.
 [ -f "$CONFIG_DIR/target.txt" ] || install_file "target.txt" "$CONFIG_DIR"
 if [ -f "$MODPATH/hma_sync.sh" ]; then
   sh "$MODPATH/hma_sync.sh" init 2>/dev/null || :
   sh "$MODPATH/hma_sync.sh" sync "$CONFIG_DIR/target.txt" 2>/dev/null || :
-  ui_print "✅ HMA hiding architecture initialized"
+  [ -f "$HMA_MODDIR/update_desc.sh" ] && sh "$HMA_MODDIR/update_desc.sh" 2>/dev/null || :
+  ui_print "[+] HMA hiding architecture initialized"
 fi
 
 if [ ! -f "$CONFIG_DIR/hbk" ]; then

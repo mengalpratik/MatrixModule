@@ -33,6 +33,7 @@ if [ "${ENGINE:-none}" = none ]; then
 else
     engine_enforce_spoof
 fi
+[ -f "$MODPATH/prop_unify.sh" ] && sh "$MODPATH/prop_unify.sh" >/dev/null 2>&1 || true
 if command -v as_killpi >/dev/null 2>&1; then
     as_killpi
 else

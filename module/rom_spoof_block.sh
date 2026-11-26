@@ -2,7 +2,7 @@
 # Block ROM-level Play Integrity spoof engines.
 #
 # Adapted from dpejoh/specter (block_rom_spoof_engines in src/lib/common.sh).
-# Custom ROMs (LineageOS, EvolutionX, PixelOS, …) ship their own pixel-prop /
+# Custom ROMs (LineageOS, EvolutionX, PixelOS, ...) ship their own pixel-prop /
 # pihook / entryhook spoofers that fight ours: they re-set Build.* every boot,
 # corrupt the attestation chain, and on STRONG checks the leaked extra hooks
 # get flagged. We disable the ROM engines so AlwaysStrong is the single
@@ -18,7 +18,7 @@ as_on rom_spoof_block || exit 0
 
 GMS_PROPS_FILE="/data/system/gms_certified_props.json"
 
-# Detection — only act if a ROM spoof engine (or a spoofing custom ROM) is
+# Detection - only act if a ROM spoof engine (or a spoofing custom ROM) is
 # present. The prop/version list mirrors PlayIntegrityFork's common_setup.sh
 # (osm0sis), which tracks the current AOSPA / PixelOS / Afterlife / EvolutionX /
 # crDroid PropImitationHooks / PixelPropsUtils engines.
@@ -57,7 +57,7 @@ set_persist persist.sys.pp.gms                                    false
 set_persist persist.sys.pp.finsky                                 false
 
 # Wipe any leftover pihook/pixelprops props that we didn't explicitly handle
-# — keeps the prop table clean of identifiable spoof-engine markers that PI
+# - keeps the prop table clean of identifiable spoof-engine markers that PI
 # could fingerprint on.
 getprop 2>/dev/null | grep -E '(pihook|pixelprops)' | sed 's/^\[\(.*\)\]:.*/\1/' | \
 while IFS= read -r prop; do

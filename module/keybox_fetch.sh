@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# MatrixModule — keybox multi-provider auto-fetch & revocation protection.
+# MatrixModule - keybox multi-provider auto-fetch & revocation protection.
 #
 # Downloads, decodes (supporting raw XML, base64, and Specter substitution cipher),
 # verifies XML structure, extracts ASN.1 certificate serial number, checks Google
@@ -46,14 +46,14 @@ else
     exit 1
 fi
 
-# Custom-keybox mode: the user manages keybox.xml themselves via the WebUI —
+# Custom-keybox mode: the user manages keybox.xml themselves via the WebUI -
 # never fetch or overwrite it.
 if as_on custom_keybox; then
-    log "custom keybox active — skipping fetch."
+    log "custom keybox active - skipping fetch."
     exit 2
 fi
 
-# ---- Resolve tools ----
+# Resolve tools
 SELF_DIR=$(cd "${0%/*}" 2>/dev/null && pwd)
 [ -z "$SELF_DIR" ] && SELF_DIR=/data/adb/modules/tricky_store
 case "$(uname -m)" in
@@ -94,7 +94,7 @@ else
 fi
 [ -z "$SHA256" ] && { log "no sha256sum available."; exit 1; }
 
-# bounded SECS cmd... — run cmd under a hard wall-clock cap.
+# bounded SECS cmd... - run cmd under a hard wall-clock cap.
 TO=""
 if timeout -k 1 5 true >/dev/null 2>&1; then TO="timeout -k 3"
 elif timeout 5 true >/dev/null 2>&1; then TO="timeout"
@@ -103,7 +103,7 @@ elif [ -n "$BB" ] && "$BB" timeout 5 true >/dev/null 2>&1; then TO="$BB timeout"
 fi
 bounded() { _bs="$1"; shift; if [ -n "$TO" ]; then $TO "$_bs" "$@"; else "$@"; fi; }
 
-# run_engine NAME OUTFILE URL — one download attempt with named engine.
+# run_engine NAME OUTFILE URL - one download attempt with named engine.
 run_engine() {
     rm -f "$2"
     case "$1" in
@@ -115,7 +115,7 @@ run_engine() {
     [ -s "$2" ]
 }
 
-# download_url OUTFILE URL — downloads URL using available engines
+# download_url OUTFILE URL - downloads URL using available engines
 download_url() {
     _out="$1"
     _url="$2"
@@ -130,7 +130,7 @@ download_url() {
     return 1
 }
 
-# decode_megatron IN_FILE OUT_FILE — decodes MeowDump Megatron (10x Base64 -> Hex -> ROT13)
+# decode_megatron IN_FILE OUT_FILE - decodes MeowDump Megatron (10x Base64 -> Hex -> ROT13)
 decode_megatron() {
     _m_in="$1"
     _m_out="$2"
@@ -159,7 +159,7 @@ decode_megatron() {
     head -c 1024 "$_m_out" 2>/dev/null | grep -qi "<Keybox" || head -c 1024 "$_m_out" 2>/dev/null | grep -qi "<AndroidAttestation"
 }
 
-# decode_payload IN_FILE OUT_FILE — handles raw XML, standard Base64, Specter cipher, and MeowDump Megatron
+# decode_payload IN_FILE OUT_FILE - handles raw XML, standard Base64, Specter cipher, and MeowDump Megatron
 decode_payload() {
     _in="$1"
     _out="$2"
@@ -193,40 +193,55 @@ decode_payload() {
     return 1
 }
 
-# Parse ASN.1 DER certificate serial from hex string
+# Parse ASN.1 DER certificate serial from hex string (portable across dash/ash/mksh)
 _parse_serial() {
-    _h="$1"
-    case "${_h:0:1}" in "") return 1 ;; esac 2>/dev/null || return 1
-    case "$_h" in 30*) _h="${_h#30}" ;; *) return 1 ;; esac
-    _l_hex="${_h:0:2}" _l_dec=$((16#$_l_hex))
-    [ $_l_dec -ge 128 ] && _h="${_h:2 + ($_l_dec - 128) * 2}" || _h="${_h:2}"
-
-    case "$_h" in 30*) _h="${_h#30}" ;; *) return 1 ;; esac
-    _l_hex="${_h:0:2}" _l_dec=$((16#$_l_hex))
-    [ $_l_dec -ge 128 ] && _h="${_h:2 + ($_l_dec - 128) * 2}" || _h="${_h:2}"
-
-    case "$_h" in
-        a0*)
-            _ctx_len_hex="${_h:2:2}"
-            _ctx_len=$((16#$_ctx_len_hex))
-            _h="${_h:4 + _ctx_len * 2}"
-            ;;
-    esac
-
-    case "$_h" in 02*) _h="${_h#02}" ;; *) return 1 ;; esac
-    _l_hex="${_h:0:2}" _l_dec=$((16#$_l_hex))
-    if [ $_l_dec -ge 128 ]; then
-        _n=$((_l_dec - 128))
-        _sl=$((16#${_h:2:_n * 2}))
-        _serial_hex="${_h:2 + _n * 2:$_sl * 2}"
-    else
-        _serial_hex="${_h:2:$_l_dec * 2}"
-    fi
-
-    _serial=$(echo "$_serial_hex" | sed "s/^0*//")
-    [ -z "$_serial" ] && _serial="0"
-    echo "$_serial"
-    return 0
+    [ -n "$1" ] || return 1
+    printf '%s' "$1" | awk '
+    function h2d(s,   i,c,v,n) {
+        s = tolower(s); n = length(s); v = 0
+        for (i = 1; i <= n; i++) {
+            c = index("0123456789abcdef", substr(s, i, 1)) - 1
+            if (c < 0) return -1
+            v = v * 16 + c
+        }
+        return v
+    }
+    function skip_tl(h, pos,   tag,l,nbytes) {
+        tag = tolower(substr(h, pos, 2))
+        l = h2d(substr(h, pos + 2, 2))
+        if (l < 0) return -1
+        if (l >= 128) {
+            nbytes = l - 128
+            return pos + 4 + nbytes * 2
+        }
+        return pos + 4
+    }
+    {
+        h = $0
+        if (tolower(substr(h, 1, 2)) != "30") exit 1
+        p = skip_tl(h, 1); if (p < 0) exit 1
+        if (tolower(substr(h, p, 2)) != "30") exit 1
+        p = skip_tl(h, p); if (p < 0) exit 1
+        if (tolower(substr(h, p, 2)) == "a0") {
+            ctx_len = h2d(substr(h, p + 2, 2))
+            if (ctx_len < 0) exit 1
+            p = p + 4 + ctx_len * 2
+        }
+        if (tolower(substr(h, p, 2)) != "02") exit 1
+        l = h2d(substr(h, p + 2, 2))
+        if (l < 0) exit 1
+        if (l >= 128) {
+            nb = l - 128
+            sl = h2d(substr(h, p + 4, nb * 2))
+            if (sl < 0) exit 1
+            ser = substr(h, p + 4 + nb * 2, sl * 2)
+        } else {
+            ser = substr(h, p + 4, l * 2)
+        }
+        sub(/^0+/, "", ser)
+        if (ser == "") ser = "0"
+        print tolower(ser)
+    }'
 }
 
 decode_keybox_serial() {
@@ -314,16 +329,16 @@ try_candidate() {
         check_google_revocation "$_ser" "$_rev_f"
         _rc=$?
         if [ $_rc -eq 0 ]; then
-            log "candidate $_cname (serial $_ser): REVOKED by Google 🔴"
+            log "candidate $_cname (serial $_ser): REVOKED by Google"
             cp -f "$_dec" "$TMP/last_revoked.xml" 2>/dev/null || :
             printf '%s' "$_cname" > "$TMP/last_revoked.src" 2>/dev/null || :
             printf '%s' "$_ser" > "$TMP/last_revoked.ser" 2>/dev/null || :
             return 2 # REVOKED
         elif [ $_rc -eq 1 ]; then
-            log "candidate $_cname (serial $_ser): valid & NOT revoked 🟢"
+            log "candidate $_cname (serial $_ser): valid & NOT revoked"
             _rev_status=0
         else
-            log "candidate $_cname (serial $_ser): revocation status unknown ⏳"
+            log "candidate $_cname (serial $_ser): revocation status unknown [*]"
             _rev_status=0
         fi
     else
@@ -356,6 +371,7 @@ try_fetch() {
 
     case "$KB_PROVIDER" in
         custom_url)
+            [ -n "$CUSTOM_URL" ] || CUSTOM_URL=$(as_get custom_keybox_url)
             log "targeted provider: Community Repo ($CUSTOM_URL)"
             if [ -z "$CUSTOM_URL" ]; then
                 log "error: no custom url specified"
@@ -368,7 +384,7 @@ try_fetch() {
                 st_set kb_source "Community Repo"
                 st_set kb_serial "$(cat "$TMP/last_revoked.ser" 2>/dev/null || echo "")"
                 st_set kb_revoked "1"
-                log "warning: installed Community Repo keybox is marked revoked by Google 🔴"
+                log "warning: installed Community Repo keybox is marked revoked by Google"
                 return 0
             fi
             return 1
@@ -382,7 +398,7 @@ try_fetch() {
                 st_set kb_source "MeowDump"
                 st_set kb_serial "$(cat "$TMP/last_revoked.ser" 2>/dev/null || echo "")"
                 st_set kb_revoked "1"
-                log "warning: installed MeowDump keybox is marked revoked by Google 🔴"
+                log "warning: installed MeowDump keybox is marked revoked by Google"
                 return 0
             fi
             return 1
@@ -396,7 +412,7 @@ try_fetch() {
                 st_set kb_source "Evoker"
                 st_set kb_serial "$(cat "$TMP/last_revoked.ser" 2>/dev/null || echo "")"
                 st_set kb_revoked "1"
-                log "warning: installed Evoker keybox is marked revoked by Google 🔴"
+                log "warning: installed Evoker keybox is marked revoked by Google"
                 return 0
             fi
             return 1
@@ -410,7 +426,7 @@ try_fetch() {
                 st_set kb_source "Yurikey"
                 st_set kb_serial "$(cat "$TMP/last_revoked.ser" 2>/dev/null || echo "")"
                 st_set kb_revoked "1"
-                log "warning: installed Yurikey keybox is marked revoked by Google 🔴"
+                log "warning: installed Yurikey keybox is marked revoked by Google"
                 return 0
             fi
             return 1
@@ -435,7 +451,7 @@ try_fetch() {
                 st_set kb_source "$_sp_label"
                 st_set kb_serial "$(cat "$TMP/last_revoked.ser" 2>/dev/null || echo "")"
                 st_set kb_revoked "1"
-                log "warning: installed Specter keybox is marked revoked by Google 🔴"
+                log "warning: installed Specter keybox is marked revoked by Google"
                 return 0
             fi
             return 1
@@ -496,7 +512,7 @@ try_fetch() {
                 st_set kb_source "$_last_src"
                 st_set kb_serial "$(cat "$TMP/last_revoked.ser" 2>/dev/null || echo "")"
                 st_set kb_revoked "1"
-                log "warning: all available online keyboxes are revoked by Google; installed $_last_src as fallback 🔴"
+                log "warning: all available online keyboxes are revoked by Google; installed $_last_src as fallback"
                 return 0
             fi
 
@@ -506,21 +522,22 @@ try_fetch() {
     esac
 }
 
-# ---- Fetch Execution ----
-mkdir -p "$CONFIG_DIR"
+# Fetch Executionmkdir -p "$CONFIG_DIR"
 TMP=$(as_tmp "keybox.$$")
 mkdir -p "$TMP"
-trap 'rm -rf "$TMP"' EXIT INT TERM
+trap 'rm -rf "$TMP"' EXIT
+trap 'rm -rf "$TMP"; exit 143' TERM
+trap 'rm -rf "$TMP"; exit 130' INT
 
-try_fetch "$TMP/keybox.xml" || { log "download failed on all mirrors and engines — keeping existing keybox intact."; exit 1; }
+try_fetch "$TMP/keybox.xml" || { log "download failed on all mirrors and engines - keeping existing keybox intact."; exit 1; }
 
 if [ ! -s "$TMP/keybox.xml" ]; then
-    log "downloaded keybox is empty — keeping existing keybox intact."
+    log "downloaded keybox is empty - keeping existing keybox intact."
     exit 1
 fi
 
 if ! validate_keybox "$TMP/keybox.xml"; then
-    log "decoded payload does not contain complete valid keybox structure — keeping existing keybox intact."
+    log "decoded payload does not contain complete valid keybox structure - keeping existing keybox intact."
     exit 1
 fi
 
@@ -528,13 +545,13 @@ NEW_XML_HASH=$($SHA256 < "$TMP/keybox.xml" | awk '{print tolower($1)}')
 DISK_HASH=""
 [ -s "$TARGET" ] && DISK_HASH=$($SHA256 < "$TARGET" | awk '{print tolower($1)}')
 
-# ---- Change detection ---
+# Change detection
 if [ "$FORCE" != "1" ] && [ -n "$DISK_HASH" ] && [ "$DISK_HASH" = "$NEW_XML_HASH" ]; then
     log "already up to date."
     exit 2
 fi
 
-# ---- Atomic replace ----
+# Atomic replace
 mv -f "$TMP/keybox.xml" "$TARGET" || { log "mv to $TARGET failed."; exit 1; }
 chmod 600 "$TARGET"
 log "$TARGET updated ($(wc -c < "$TARGET") bytes)."

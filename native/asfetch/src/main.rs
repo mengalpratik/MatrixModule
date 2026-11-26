@@ -495,8 +495,83 @@ fn diag(url: &str) {
     }
 }
 
+// Rewrite/append key=value spoof flags in-place across one or more prop files.
+// Usage: asfetch enforce-spoof --kv "k1=v1 k2=v2 ..." file1 [file2 ...]
+fn enforce_spoof(args: &[String]) -> i32 {
+    let mut kv_str = String::new();
+    let mut files: Vec<String> = Vec::new();
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--kv" => {
+                i += 1;
+                if let Some(v) = args.get(i) {
+                    kv_str = v.clone();
+                }
+            }
+            s if !s.starts_with('-') => files.push(s.to_string()),
+            _ => {}
+        }
+        i += 1;
+    }
+    let pairs: Vec<(&str, &str)> = kv_str
+        .split_whitespace()
+        .filter_map(|tok| tok.split_once('='))
+        .collect();
+    if pairs.is_empty() || files.is_empty() {
+        return 1;
+    }
+    for path in &files {
+        let p = std::path::Path::new(path);
+        if !p.is_file() {
+            continue;
+        }
+        let Ok(content) = std::fs::read_to_string(p) else {
+            return 1;
+        };
+        let mut seen = vec![false; pairs.len()];
+        let mut out = String::with_capacity(content.len() + 64);
+        for line in content.lines() {
+            let mut replaced = false;
+            if let Some((k, _)) = line.split_once('=') {
+                for (idx, (pk, pv)) in pairs.iter().enumerate() {
+                    if k == *pk {
+                        out.push_str(pk);
+                        out.push('=');
+                        out.push_str(pv);
+                        out.push('\n');
+                        seen[idx] = true;
+                        replaced = true;
+                        break;
+                    }
+                }
+            }
+            if !replaced {
+                out.push_str(line);
+                out.push('\n');
+            }
+        }
+        for (idx, (pk, pv)) in pairs.iter().enumerate() {
+            if !seen[idx] {
+                out.push_str(pk);
+                out.push('=');
+                out.push_str(pv);
+                out.push('\n');
+            }
+        }
+        if std::fs::write(p, out).is_err() {
+            return 1;
+        }
+    }
+    0
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+
+    if args.len() >= 2 && args[1] == "enforce-spoof" {
+        exit(enforce_spoof(&args[2..]));
+    }
 
     if args.len() >= 2 && args[1] == "autopif" {
         // Each call inside is bounded by its own idle timeout; the watchdog only

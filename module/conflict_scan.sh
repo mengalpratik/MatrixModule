@@ -14,7 +14,7 @@
 # Build-spoof (PIF-family) modules. They double-hook the bundled PlayIntegrityFork
 # on the Fork/inject lines, so those lines disable them. The PIF-less "Lite" line
 # ships NO Build spoof and is meant to run alongside the user's own PIF, so Lite
-# KEEPS these — removing them there is exactly what stopped Lite + PlayIntegrityFork
+# KEEPS these - removing them there is exactly what stopped Lite + PlayIntegrityFork
 # from working.
 PIF_CONFLICTS='
 playintegrityfix
@@ -50,7 +50,7 @@ specter
 MODPATH="${MODPATH:-/data/adb/modules/tricky_store}"
 
 # The Lite line (ENGINE=none) bundles no PIF, so a standalone Build-spoof module
-# is a wanted companion, not a conflict — only fold the PIF family into the removal
+# is a wanted companion, not a conflict - only fold the PIF family into the removal
 # list on the Fork/inject lines that DO bundle their own.
 ENGINE=none
 [ -f "$MODPATH/engine.sh" ] && . "$MODPATH/engine.sh" 2>/dev/null
@@ -68,7 +68,7 @@ for c in $CONFLICTS; do
     # Belt-and-braces: mark for both disable and removal so the next boot
     # picks whichever the root manager honors first.
     touch "$d/disable" "$d/remove" 2>/dev/null
-    # Run upstream uninstall.sh if present — some modules use it to revert
+    # Run upstream uninstall.sh if present - some modules use it to revert
     # persist-prop changes that would otherwise survive removal.
     [ -f "$d/uninstall.sh" ] && sh "$d/uninstall.sh" 2>/dev/null
     # Stale modules_update copies become next-boot installs if we leave them.

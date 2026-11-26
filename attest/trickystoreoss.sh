@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# Attestation-engine adapter — TrickyStoreOSS (beakthoven, --engine trickystoreoss).
+# Attestation-engine adapter - TrickyStoreOSS (beakthoven, --engine trickystoreoss).
 #
 # The open-source TrickyStore. Unlike the 5ec1cff build it ships a plain
 # classes.dex + a per-arch libinject.so (no obfuscated machikado/mazoku, no
@@ -13,7 +13,7 @@ ATTEST=trickystoreoss
 ATTEST_NAME="TrickyStoreOSS"
 
 # Injects into keystore2 at the service stage (before sys.boot_completed), like
-# upstream — a late start misses the window. service.sh honours attest_early.
+# upstream - a late start misses the window. service.sh honours attest_early.
 attest_early() { return 0; }
 
 attest_install() {

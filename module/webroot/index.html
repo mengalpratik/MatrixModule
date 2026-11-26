@@ -421,31 +421,6 @@
                   Update
                 </button>
               </div>
-              <div class="row" data-k="auto targeting target list">
-                <div class="ic blue">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="8" />
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3" />
-                  </svg>
-                </div>
-                <div class="txt">
-                  <div class="h" data-i="at_t">Auto targeting</div>
-                  <div class="s" data-i="at_s">
-                    Add newly installed apps to the target list automatically
-                  </div>
-                </div>
-                <label class="sw"
-                  ><input type="checkbox" checked /><span class="sl"></span
-                ></label>
-              </div>
             </div>
           </div>
 
@@ -557,19 +532,67 @@
             <div class="card">
               <a
                 class="row tap linkrow"
-                href="https://t.me/NEUR0MATRIX"
+                href="https://github.com/mengalpratik/MatrixModule"
                 target="_blank"
                 rel="noopener"
               >
-                <span class="logo"
-                  ><img
-                    src="data:image/png;base64,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"
-                    alt=""
-                /></span>
+                <span class="ic slate"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path
+                      d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"
+                    /></svg
+                ></span>
                 <div class="txt">
-                  <div class="h">NEUR0MATRIX</div>
-                  <div class="s" data-i="comm_s2">
-                    Telegram · news &amp; support
+                  <div class="h">GitHub</div>
+                  <div class="s" data-i="gh_s">
+                    github.com/mengalpratik/MatrixModule
+                  </div>
+                </div>
+                <span class="ext"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M7 17 17 7M8 7h9v9" /></svg
+                ></span>
+              </a>
+              <a
+                class="row tap linkrow"
+                href="https://github.com/mengalpratik/MatrixModule/releases"
+                target="_blank"
+                rel="noopener"
+              >
+                <span class="ic green"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"
+                    />
+                    <circle
+                      cx="7.5"
+                      cy="7.5"
+                      r="1.5"
+                      fill="currentColor"
+                      stroke="none"
+                    /></svg
+                ></span>
+                <div class="txt">
+                  <div class="h" data-i="rel_t">Releases</div>
+                  <div class="s" data-i="rel_s">
+                    Latest builds &amp; changelogs
                   </div>
                 </div>
                 <span class="ext"
@@ -608,6 +631,37 @@
                 <div class="txt">
                   <div class="h" data-i="coffee_t">Buy me a coffee</div>
                   <div class="s" data-i="coffee_s">buymeacoffee.com/pratikmengal</div>
+                </div>
+                <span class="ext"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M7 17 17 7M8 7h9v9" /></svg
+                ></span>
+              </a>
+              <a
+                class="row tap linkrow"
+                href="upi://pay?pa=iampratikmengal-2@okaxis&amp;pn=Pratik%20Mengal&amp;cu=INR"
+              >
+                <span class="ic teal"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M6 5h12M6 9.5h12M11 5a4.2 4.2 0 0 1 0 8.4H7.5L15 20" /></svg
+                ></span>
+                <div class="txt">
+                  <div class="h" data-i="upi_t">Support via UPI</div>
+                  <div class="s">iampratikmengal-2@okaxis</div>
                 </div>
                 <span class="ext"
                   ><svg
@@ -732,7 +786,7 @@
                 ></span>
               </div>
               <div class="acc" id="betaAcc">
-                <div class="beta sel" data-c="bluejay">
+                <div class="beta" data-c="bluejay">
                   <div class="bn">
                     <div class="m">Pixel 6a</div>
                     <div class="c">bluejay · Android 12</div>
@@ -846,7 +900,7 @@
               <div class="flag" data-k="spoofvendingfinger">
                 <code>spoofVendingFinger</code
                 ><label class="sw"
-                  ><input type="checkbox" /><span class="sl"></span
+                  ><input type="checkbox" checked /><span class="sl"></span
                 ></label>
               </div>
               <div class="flag" data-k="spoofsignature">
@@ -1145,6 +1199,13 @@
             </div>
           </div>
           <div class="dbody">
+            <div class="srow" data-k="auto targeting target list" style="padding:2px 2px 10px">
+              <div style="min-width:0;flex:1">
+                <div class="h" data-i="at_t" style="font-size:13.5px;font-weight:600">Auto targeting</div>
+                <div class="s" data-i="at_s" style="font-size:11.5px;color:var(--sub)">Add newly installed apps to the target list automatically</div>
+              </div>
+              <label class="sw"><input type="checkbox" checked /><span class="sl"></span></label>
+            </div>
             <div class="search">
               <svg
                 viewBox="0 0 24 24"
@@ -1306,7 +1367,7 @@
                 >
               </div>
               <label class="sw"
-                ><input type="checkbox" checked /><span class="sl"></span
+                ><input type="checkbox" /><span class="sl"></span
               ></label>
             </div>
             <div class="srow">
@@ -1824,7 +1885,13 @@
             </button>
           </div>
           <div class="dbody">
-            <p class="sd" data-i="hide_s">Apps to hide from other apps</p>
+            <div class="srow" data-k="auto hide hma" style="padding:2px 2px 10px">
+              <div style="min-width:0;flex:1">
+                <div class="h" data-i="ah_t" style="font-size:13.5px;font-weight:600">Auto hide</div>
+                <div class="s" data-i="ah_s" style="font-size:11.5px;color:var(--sub)">Automatically hide newly granted root apps</div>
+              </div>
+              <label class="sw"><input type="checkbox" checked /><span class="sl"></span></label>
+            </div>
             <div class="search">
               <svg
                 viewBox="0 0 24 24"
@@ -1844,21 +1911,10 @@
               />
             </div>
             <div class="applist" id="hideList"></div>
-            <div
-              class="srow"
-              style="
-                justify-content: flex-end;
-                gap: 10px;
-                border-top: 0;
-                padding-top: 4px;
-              "
-            >
-              <button class="pill solid" id="hideDone" data-i="done">
-                Done
-              </button>
-            </div>
           </div>
         </div>
+      </div>
+
       <!-- Community Keybox Repo Modal -->
       <div class="modal" id="repoModal" hidden>
         <div class="dialog" style="height:84vh; max-height:680px; max-width:520px; display:flex; flex-direction:column; padding:0; overflow:hidden;">
@@ -1880,7 +1936,7 @@
               <div style="width:32px; height:32px; border:3px solid rgba(0,255,102,0.2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite;"></div>
               <div style="margin-top:14px; font-size:13px; color:var(--sub); font-weight:600;">Connecting to repository…</div>
             </div>
-            <iframe id="repoFrame" style="flex:1; width:100%; height:100%; border:none; background:#000000;" allow="clipboard-write"></iframe>
+            <iframe id="repoFrame" sandbox="allow-scripts allow-same-origin allow-forms" referrerpolicy="no-referrer" style="flex:1; width:100%; height:100%; border:none; background:#000000;" allow="clipboard-write"></iframe>
           </div>
         </div>
       </div>

@@ -1,9 +1,9 @@
 #!/system/bin/sh
-# Attestation-engine adapter — TEESimulator (JingMatrix, --engine teesim).
+# Attestation-engine adapter - TEESimulator (JingMatrix, --engine teesim).
 #
 # The ORIGINAL TEESimulator: a Kotlin control daemon (launched via app_process)
 # plus a native KeyMint/keystore interceptor injected into keystore2. Unlike
-# TEESimulator-RS and TrickyStoreOSS it does NOT read /data/adb/tricky_store/ —
+# TEESimulator-RS and TrickyStoreOSS it does NOT read /data/adb/tricky_store/ -
 # it has its own /data/adb/teesim/config.json. This adapter bridges the two: it
 # seeds that config, points TEESimulator's keybox at the AlwaysStrong-managed one
 # (so the auto keybox fetch feeds it), and regenerates the config's target-app
@@ -23,7 +23,7 @@ ATTEST=teesim
 ATTEST_NAME="TEESimulator (JingMatrix)"
 TEESIM_DATA=/data/adb/teesim
 
-# keystore2 injection happens at the service stage, before sys.boot_completed —
+# keystore2 injection happens at the service stage, before sys.boot_completed -
 # a late start misses the injection window. service.sh honours attest_early.
 attest_early() { return 0; }
 
@@ -36,7 +36,7 @@ attest_early() { return 0; }
 #
 # Rewriting config.json is also how the daemon learns about a NEW KEYBOX: its
 # FileObserver only watches /data/adb/teesim for config.json / *.xml events, and
-# our keybox.xml there is a symlink into /data/adb/tricky_store — inotify never
+# our keybox.xml there is a symlink into /data/adb/tricky_store - inotify never
 # reports a write to a symlink's target. The daemon re-reads the keybox bytes on
 # every config push, so a fresh config.json is enough to make it pick the new
 # keybox up (and to recover from the first-boot "keybox not found" state, where
@@ -47,13 +47,13 @@ teesim_gen_config() {
     mkdir -p "$TEESIM_DATA" 2>/dev/null
     _md="${MODDIR:-$MODPATH}"
 
-    # --- device identity: mirror the PIF-spoofed fingerprint --------------
+    # device identity: mirror the PIF-spoofed fingerprint    
     # CRITICAL for a fork/inject line: PIF spoofs android.os.Build to a Pixel,
     # so TEESimulator's attestation must report the SAME Pixel. Left blank, its
     # KeyMint fields harvest the REAL device, and Play Integrity fails because the
     # attested device (real) mismatches the Build device (Pixel). We copy the
     # brand/model/device/product/manufacturer and the security patch out of the
-    # active pif. (No pif — a nopif/Lite line — leaves them blank, which is
+    # active pif. (No pif - a nopif/Lite line - leaves them blank, which is
     # correct: nothing spoofs Build there, so attesting the real device matches.)
     _pif=""
     for _f in "$_md/custom.pif.prop" /data/adb/tricky_store/custom.pif.prop "$_md/pif.prop" /data/adb/tricky_store/pif.prop; do
@@ -68,7 +68,7 @@ teesim_gen_config() {
     _product=$(_pget PRODUCT)
     _patch=$(_pget SECURITY_PATCH)
     # The attested patch is the fingerprint's own SECURITY_PATCH, stamped on all
-    # three partitions — NOT bumped to the current month (that would mismatch the
+    # three partitions - NOT bumped to the current month (that would mismatch the
     # Pixel fingerprint and drop STRONG), and matching what sync_patch.sh writes
     # to the ro.*.security_patch props. The upstream "today"/"YYYY-MM-05" tokens
     # are only a fallback when the pif carries no valid SECURITY_PATCH.
@@ -87,12 +87,12 @@ teesim_gen_config() {
         _pboot=$(pr_partition "$(as_get patch_boot)" "$_sys")
     fi
 
-    # --- target apps from target.txt --------------------------------------
+    # target apps from target.txt    
     # target.txt is TrickyStore's format, NOT TEESimulator's. It carries syntax
     # teesim rejects: a trailing "!" (force-generate) or "?" (leaf-hack) on a
     # package, and "[keybox.xml]" marker lines that select a per-app keybox and are
     # not package ids at all. TEESimulator's schema only accepts package,
-    # package@user, or uid:N (APP_ENTRY_RE) — an unparseable entry silently drops
+    # package@user, or uid:N (APP_ENTRY_RE) - an unparseable entry silently drops
     # its target, which is exactly why GMS attestation used to fall through to the
     # real HAL. Sanitise every line and emit only valid entries.
     _apps=""
@@ -125,7 +125,7 @@ teesim_gen_config() {
     done
     _apps=$(printf '%s' "$_apps" | sed '$ s/,$//')   # drop the trailing comma
 
-    # --- root of trust: force a locked/Verified boot with a non-zero key+hash --
+    # root of trust: force a locked/Verified boot with a non-zero key+hash    
     # TEESimulator attests the device's REAL harvested root of trust: it derives
     # verifiedBootKey from ro.boot.vbmeta.public_key_digest and verifiedBootHash
     # from ro.boot.vbmeta.digest, and reads the lock state off the real TEE key.
@@ -203,11 +203,11 @@ teesim_gen_config() {
     chmod 0600 "$_ov" 2>/dev/null
 
     # mode=generation: mint the whole key in software under the keybox. "patch"
-    # keeps the real hardware key and only re-signs its attestation — fewer
+    # keeps the real hardware key and only re-signs its attestation - fewer
     # detection points, but it needs a working hardware KeyMint level. Many custom
     # ROMs (and this repo's target audience) run devices whose real TEE keystore is
     # unreachable (keystore2 reports HARDWARE_TYPE_UNAVAILABLE); there, patch has no
-    # base key to re-sign and falls through to the real HAL → BASIC. generation
+    # base key to re-sign and falls through to the real HAL -> BASIC. generation
     # always works and still yields a hardware-backed chain (the keybox is the root).
     cat > "$_cfg" <<EOF
 {
@@ -238,11 +238,11 @@ EOF
 }
 
 attest_install() {
-    # 64-bit only — the interceptor is injected into the 64-bit keystore2.
+    # 64-bit only - the interceptor is injected into the 64-bit keystore2.
     case "$ARCH" in
         arm64|x64) : ;;
-        *) ui_print "⚠️ TEESimulator (JingMatrix) is 64-bit only — $ARCH can't run it"
-           ui_print "⚠️ use a -tee or -TSOSS build on this device"
+        *) ui_print "[!] TEESimulator (JingMatrix) is 64-bit only - $ARCH can't run it"
+           ui_print "[!] use a -tee or -TSOSS build on this device"
            return 0 ;;
     esac
     # Stage the whole teesim/ payload from the flashed zip.
@@ -255,8 +255,8 @@ attest_install() {
 
     # The release zip ships arm64-v8a only. On x86_64 there is no payload to run.
     if [ ! -f "$MODPATH/teesim/$ABI_DIR/inject" ]; then
-        ui_print "⚠️ no TEESimulator (JingMatrix) payload for $ABI_DIR"
-        ui_print "⚠️ this build is arm64-v8a only — use a -tee or -TSOSS build here"
+        ui_print "[!] no TEESimulator (JingMatrix) payload for $ABI_DIR"
+        ui_print "[!] this build is arm64-v8a only - use a -tee or -TSOSS build here"
         return 0
     fi
 

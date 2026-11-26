@@ -433,14 +433,14 @@ if asfetch_needs_build && ! toolchain_ready \
    && have_all_prebuilts "$ASFETCH_PREBUILT" asfetch "${ASFETCH_ABIS[@]}"; then
     yellow "    no Rust/NDK toolchain — shipping the committed asfetch prebuilts"
 elif asfetch_needs_build; then
-    bold "==> Building native fetcher (Rust + rustls, 4 ABIs)"
+    bold "==> Building native fetcher (Rust + rustls, 2 ABIs)"
     command -v cargo    >/dev/null 2>&1 || die "cargo not found. Install Rust: https://rustup.rs"
     command -v cargo-ndk >/dev/null 2>&1 || die "cargo-ndk not found. Install: cargo install cargo-ndk"
     find_ndk || die "Android NDK not found. Set ANDROID_NDK_HOME or install via Android Studio (SDK Manager -> NDK)"
     green "    NDK: $ANDROID_NDK_HOME"
     bash "$ROOT/scripts/build-asfetch.sh"
 else
-    green "    cached: native fetcher (4 ABIs in $ASFETCH_PREBUILT)"
+    green "    cached: native fetcher (2 ABIs in $ASFETCH_PREBUILT)"
 fi
 
 # ---------- Build one release line ----------
@@ -602,6 +602,14 @@ if [[ "$ENGINE_KIND" == "tee" ]]; then
 
     [[ -f "$TEE_EXTRACT/classes.dex" ]] || die "TEESimulator ZIP missing classes.dex"
     cp "$TEE_EXTRACT/classes.dex" "$STAGE/tee_classes.dex"
+
+    if [[ -f "$TEE_EXTRACT/sepolicy.rule" ]]; then
+        while IFS= read -r rule || [[ -n "$rule" ]]; do
+            [[ -z "$rule" ]] && continue
+            grep -qxF "$rule" "$STAGE/sepolicy.rule" 2>/dev/null || echo "$rule" >> "$STAGE/sepolicy.rule"
+        done < "$TEE_EXTRACT/sepolicy.rule"
+        green "    merged TEESimulator-RS sepolicy rules"
+    fi
 
     if [[ -f "$MODULE_SRC/keybox.xml" ]]; then
         cp "$MODULE_SRC/keybox.xml" "$STAGE/keybox.xml"
@@ -853,6 +861,9 @@ fi
 if [[ -f "$STAGE/migrate.sh" ]]; then
     patch_migrate_eval "$STAGE/migrate.sh"
 fi
+if [[ -f "$STAGE/common_setup.sh" ]]; then
+    "${SED_I[@]}" '/elif \[ "\$MODPATH\/uninstall\.sh" \]/,+1d' "$STAGE/common_setup.sh"
+fi
 
 # Bound autopif4's wget calls so a hung IPv6 connect doesn't stall the whole
 # bootstrap. Use the short -T (timeout, seconds) option ONLY: it's the single
@@ -862,7 +873,7 @@ fi
 # option" and the fingerprint refresh silently fails.
 if [[ "$PATCH_AUTOPIF4_WGET" == "1" && -f "$STAGE/autopif4.sh" ]]; then
     bold "==> Patching autopif4.sh: wget -T 10"
-    "${SED_I[@]}" 's|wget -q |wget -q -T 10 |g' "$STAGE/autopif4.sh"
+    "${SED_I[@]}" 's|wget -q |wget -q -T 10 |g; s|-T 10 -T 10|-T 10|g' "$STAGE/autopif4.sh"
 
     # autopif4 only falls back to busybox wget when the system wget is missing
     # or is the wget-curl shim. On a Pixel the toybox wget exists but lacks the

@@ -6,7 +6,10 @@ MODDIR="${0%/*}"
 
 BASE_DESC="Dedicated App Isolation & Banking Protection Engine for MatrixModule."
 
-STATUS_FILE=$(printf '%s' /data/misc/hide_my_applist_*/status.json)
+STATUS_FILE=""
+for _sf in /data/misc/hide_my_applist_*/status.json; do
+    [ -s "$_sf" ] && { STATUS_FILE="$_sf"; break; }
+done
 
 echo "Status file: $STATUS_FILE"
 
@@ -17,11 +20,11 @@ else
 fi
 
 case "$MODE" in
-    1) STATUS="[☣️ Matrix Engine is Online]" ;;
-    2) STATUS="[⚠️ Sick mode - Disabled hooks]" ;;
-    3) STATUS="[⏳ Loading]" ;;
-    4) STATUS="[❌ System service crashed]"  ;;
-    *) STATUS="[❓ Unknown]" ;;
+    1) STATUS="[Matrix Engine is Online]" ;;
+    2) STATUS="[[!] Sick mode - Disabled hooks]" ;;
+    3) STATUS="[[*] Loading]" ;;
+    4) STATUS="[[-] System service crashed]"  ;;
+    *) STATUS="[[?] Unknown]" ;;
 esac
 
 echo "Detected status: $STATUS"

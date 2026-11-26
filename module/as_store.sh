@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# AlwaysStrong's own storage — one directory instead of two dozen loose files.
+# AlwaysStrong's own storage - one directory instead of two dozen loose files.
 #
 # Everything the module keeps between boots used to be its own file in
 # /data/adb/tricky_store: a marker file per toggle (no_auto_fp, no_auto_keybox,
@@ -23,11 +23,13 @@
 # directory next door is the engine's and this one should stay readable.
 #
 # Use it either way:
-#   . "$MODPATH/as_store.sh"        # helpers: as_on, as_get, as_set, st_get, ...
-#   sh as_store.sh get auto_fp      # or as a command, which is what the WebUI calls
+#   . "$MODPATH/as_store.sh"        
+# helpers: as_on, as_get, as_set, st_get, ...
+#   sh as_store.sh get auto_fp      
+# or as a command, which is what the WebUI calls
 #
 # Settings are named for what they DO (auto_fp=1 means the fingerprint refreshes
-# itself), never for what they switch off — the old "no_auto_fp exists" spelling
+# itself), never for what they switch off - the old "no_auto_fp exists" spelling
 # made every read a double negative. Legacy layouts are imported on the first
 # run by as_migrate, so an update keeps every setting the user had.
 
@@ -44,7 +46,7 @@ AS_TMP="$AS_DIR/tmp"
 
 # Every helper below swallows the status of commands whose failure is normal
 # (a key that is not there, a grep that matches nothing). A caller running under
-# `set -e` — the installer, a test harness — would otherwise die on a setting
+# `set -e` - the installer, a test harness - would otherwise die on a setting
 # simply being unset.
 as_init() {
     mkdir -p "$AS_LOGS" "$AS_TMP" 2>/dev/null || :
@@ -55,14 +57,14 @@ as_init() {
 }
 
 # Recycle the Play Integrity stack so a freshly applied fingerprint / keybox
-# takes effect at once — the user shouldn't have to force-close Play Store by
+# takes effect at once - the user shouldn't have to force-close Play Store by
 # hand for the new identity to show up.
 #
 # NOT `killall com.google.android.gms.unstable` / `killall com.android.vending`:
 #   * The DroidGuard sandbox (com.google.android.gms.unstable) runs in an
 #     isolated SELinux domain that denies SIGKILL from the shell/root domain
 #     (killall returns "Operation not permitted"), so the integrity sandbox was
-#     never actually recycled — the new fingerprint only took on the next cold
+#     never actually recycled - the new fingerprint only took on the next cold
 #     boot or when the user killed it from Settings.
 #   * killall matches a process's full argv[0], so `com.android.vending` kills
 #     the main process but leaves the :background / :quick_launch children (a
@@ -101,7 +103,7 @@ as_killpi() {
 
 # Every setting there is, in the order the config file lists them.
 AS_KEYS="auto_fp auto_keybox status_indicator rom_spoof_block spoof_patch_props
-         force_patch_props logcat_cleanup prop_unify denylist_gms auto_target hide_rom_markers
+         force_patch_props logcat_cleanup prop_unify denylist_gms auto_target auto_hide hide_rom_markers
          custom_keybox custom_pif patch_system patch_vendor patch_boot interval_sec auto_hma_update
          keybox_provider custom_keybox_url"
 
@@ -113,7 +115,7 @@ AS_KEYS="auto_fp auto_keybox status_indicator rom_spoof_block spoof_patch_props
 # rewritten to the attested date turns it on.
 as_default() {
     case "$1" in
-        auto_fp|auto_keybox|status_indicator|rom_spoof_block|logcat_cleanup|prop_unify|denylist_gms|auto_target|auto_hma_update) echo 1 ;;
+        auto_fp|auto_keybox|status_indicator|rom_spoof_block|logcat_cleanup|prop_unify|denylist_gms|auto_target|auto_hide|auto_hma_update) echo 1 ;;
         custom_keybox|custom_pif|spoof_patch_props|force_patch_props|hide_rom_markers) echo 0 ;;
         interval_sec) echo 3600 ;;
         keybox_provider) echo "auto" ;;
@@ -121,11 +123,11 @@ as_default() {
     esac
 }
 
-# --- key=value files ------------------------------------------------------
+# key=value files
 # Values are single-line and never quoted; a key that is not in the file is
 # simply unset, so a setting at its default costs no bytes at all.
 _kv_get() {
-    # _kv_get <file> <key> — empty when unset, and always a success status: a
+    # _kv_get <file> <key> - empty when unset, and always a success status: a
     # caller running under `set -e` must not die just because a setting has
     # never been written.
     [ -f "$1" ] || return 0
@@ -134,46 +136,39 @@ _kv_get() {
 }
 
 _kv_set() {
-    # _kv_set <file> <key> <value> — rewritten through a temp file, so a kill
+    # _kv_set <file> <key> <value> - rewritten through a temp file, so a kill
     # mid-write can never leave a half-line the next boot reads as garbage.
     as_init
     _kvf="$1"; _kvk="$2"; _kvv="$3"
     [ -f "$_kvf" ] || : > "$_kvf"
-    { grep -v "^$_kvk=" "$_kvf" 2>/dev/null; echo "$_kvk=$_kvv"; } > "$_kvf.new" 2>/dev/null &&
-        mv -f "$_kvf.new" "$_kvf" 2>/dev/null
+    { grep -v "^$_kvk=" "$_kvf" 2>/dev/null; echo "$_kvk=$_kvv"; } > "$_kvf.$$.new" 2>/dev/null &&
+        mv -f "$_kvf.$$.new" "$_kvf" 2>/dev/null
     chmod 600 "$_kvf" 2>/dev/null || :
     unset _kvf _kvk _kvv
     return 0
 }
 
 _kv_del() {
-    # _kv_del <file> <key> — dropping the only line in the file leaves grep with
+    # _kv_del <file> <key> - dropping the only line in the file leaves grep with
     # nothing to print, which is exit 1 and not an error here, so the status is
     # swallowed rather than handed to a caller running under `set -e`.
     [ -f "$1" ] || return 0
-    grep -v "^$2=" "$1" 2>/dev/null > "$1.new" || :
-    mv -f "$1.new" "$1" 2>/dev/null || :
+    grep -v "^$2=" "$1" 2>/dev/null > "$1.$$.new" || :
+    mv -f "$1.$$.new" "$1" 2>/dev/null || :
     return 0
 }
 
-# --- settings -------------------------------------------------------------
+# settings
 as_get() {
-    # as_get <key> [fallback] — the stored value, else the default
+    # as_get <key> [fallback] - the stored value, else the default
     _v=$(_kv_get "$AS_CONF" "$1")
-    # Auto-FP Freeze Protection: if custom_pif=0 or custom.pif.prop is missing/empty, auto_fp cannot freeze at 0
-    if [ "$1" = "auto_fp" ] && [ "$_v" = "0" ]; then
-        if [ "$(_kv_get "$AS_CONF" "custom_pif")" != "1" ] || [ ! -s "$AS_CFG_ROOT/custom.pif.prop" ]; then
-            _v="1"
-            _kv_set "$AS_CONF" "auto_fp" "1" 2>/dev/null || :
-        fi
-    fi
     [ -n "$_v" ] || _v=${2:-$(as_default "$1")}
     echo "$_v"
     unset _v
     return 0
 }
 
-# _proc_start <pid> — the process's start time from /proc/<pid>/stat. The comm
+# _proc_start <pid> - the process's start time from /proc/<pid>/stat. The comm
 # field is wrapped in parentheses and can itself contain spaces, so everything
 # up to the last ')' is dropped before counting fields; start time is then the
 # 20th.
@@ -187,7 +182,7 @@ _proc_start() {
     return 0
 }
 
-# as_notify — tell a running refresh loop that the interval changed, so the new
+# as_notify - tell a running refresh loop that the interval changed, so the new
 # one starts counting from now instead of after the old one runs out. Called on
 # every interval write, and by hand through `sh as_store.sh reload` after the
 # file has been edited outside the module - nothing polls this file.
@@ -222,10 +217,10 @@ as_set() {
 }
 as_del() { _kv_del "$AS_CONF" "$1"; }
 
-# as_on <key> — true when the feature is on. `as_on auto_fp && do_the_thing`
+# as_on <key> - true when the feature is on. `as_on auto_fp && do_the_thing`
 as_on() { [ "$(as_get "$1")" = "1" ]; }
 
-# as_int <key> [min] — a number, with garbage and anything below the floor
+# as_int <key> [min] - a number, with garbage and anything below the floor
 # clamped, so a hand-edited config can never busy-spin a loop.
 as_int() {
     _n=$(as_get "$1"); _min=${2:-0}
@@ -237,7 +232,7 @@ as_int() {
     return 0
 }
 
-# as_seed — write the whole set out, every key with its effective value. The
+# as_seed - write the whole set out, every key with its effective value. The
 # config file is meant to be read and edited by hand, so it lists every setting
 # rather than only the ones that differ from the default: install, first boot and
 # a reset each leave a complete file behind. Stored values are kept as they are,
@@ -248,18 +243,18 @@ as_seed() {
     for _k in $AS_KEYS; do
         printf '%s=%s
 ' "$_k" "$(as_get "$_k")"
-    done > "$AS_CONF.new" 2>/dev/null && mv -f "$AS_CONF.new" "$AS_CONF" 2>/dev/null
+    done > "$AS_CONF.$$.new" 2>/dev/null && mv -f "$AS_CONF.$$.new" "$AS_CONF" 2>/dev/null
     chmod 600 "$AS_CONF" 2>/dev/null || :
     unset _k
     return 0
 }
 
-# --- internal state -------------------------------------------------------
+# internal state
 st_get() { _kv_get "$AS_STATE" "$1"; }
 st_set() { _kv_set "$AS_STATE" "$1" "$2"; }
 st_del() { _kv_del "$AS_STATE" "$1"; }
 
-# _kv_set_multi <file> <k1> <v1> [<k2> <v2> ...] — set several keys in ONE rewrite
+# _kv_set_multi <file> <k1> <v1> [<k2> <v2> ...] - set several keys in ONE rewrite
 # of the file (one temp + mv) instead of a read-modify-write per key. Use when a
 # caller sets a batch of keys back to back (e.g. import_pif.sh): one grep + one
 # write for the lot, and as_set_multi reseeds the config just once instead of per
@@ -276,8 +271,8 @@ _kv_set_multi() {
         shift 2
     done
     [ -n "$_pat" ] || return 0
-    { grep -vE "$_pat" "$_kvf" 2>/dev/null; printf '%s' "$_add"; } > "$_kvf.new" 2>/dev/null &&
-        mv -f "$_kvf.new" "$_kvf" 2>/dev/null
+    { grep -vE "$_pat" "$_kvf" 2>/dev/null; printf '%s' "$_add"; } > "$_kvf.$$.new" 2>/dev/null &&
+        mv -f "$_kvf.$$.new" "$_kvf" 2>/dev/null
     chmod 600 "$_kvf" 2>/dev/null || :
     unset _kvf _pat _add
     return 0
@@ -285,14 +280,14 @@ _kv_set_multi() {
 as_set_multi() { _kv_set_multi "$AS_CONF" "$@"; as_seed; }
 st_set_multi() { _kv_set_multi "$AS_STATE" "$@"; }
 
-# --- scratch space --------------------------------------------------------
-# as_tmp <name> — a path under tmp/, created on demand. Callers append $$ when
+# scratch space
+# as_tmp <name> - a path under tmp/, created on demand. Callers append $$ when
 # they need a per-process file.
 as_tmp() { as_init; echo "$AS_TMP/$1"; }
 
-# --- migration ------------------------------------------------------------
+# migration
 # Import the pre-1.0.5 layout: one marker file per toggle, loose logs and state
-# in /data/adb/tricky_store. Idempotent and safe to run on every boot — once the
+# in /data/adb/tricky_store. Idempotent and safe to run on every boot - once the
 # old files are gone it does nothing. The old names are removed after import so
 # the directory actually gets tidier instead of holding both layouts.
 as_migrate() {
@@ -370,7 +365,7 @@ as_migrate() {
     return 0
 }
 
-# --- command line ---------------------------------------------------------
+# command line
 # The verbs run only when this file is RUN, never when it is sourced: a script
 # that sources it passes its own arguments along ("$1" is still the caller's),
 # so `sh status_fetch.sh manual` or `sh sync_patch.sh boot` would otherwise be
@@ -394,7 +389,7 @@ as_cli() {
                 *) echo "$AS_DIR" ;;
             esac ;;
         dump)
-            # every setting with its effective value — what the WebUI paints
+            # every setting with its effective value - what the WebUI paints
             # from, in one shell round trip
             for _k in $AS_KEYS; do echo "$_k=$(as_get "$_k")"; done ;;
         reload)     as_notify ;;   # like `nginx -s reload`: tell the loop to re-read

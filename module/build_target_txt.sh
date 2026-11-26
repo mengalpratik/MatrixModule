@@ -105,8 +105,8 @@ com.scottyab.rootbeer.sample
 is_installed() { printf '%s\n' "$ALL" | grep -Fxq "$1"; }
 
 # The base app pool (user installs + installed OEM wallet/store apps + the forced
-# Google trio) as PLAIN package names. The `!` suffix — TrickyStore's generate /
-# "cert-generating" mode — is applied per app below, from the forced defaults and
+# Google trio) as PLAIN package names. The `!` suffix - TrickyStore's generate /
+# "cert-generating" mode - is applied per app below, from the forced defaults and
 # the WebUI overrides, so it lives in exactly one place.
 build_default() {
     # Prepare banking exclusions flags
@@ -147,11 +147,14 @@ build_default() {
                         -e com.google.android.gms \
                         -e com.google.android.gsf
     fi
+    if [ -f "$AS_APPS" ]; then
+        awk -F'\t' '$1!="" && $2!="off" { split($2,b,"|"); if(b[1]=="" || b[1]=="-") print $1 }' "$AS_APPS" 2>/dev/null
+    fi
 }
 
 DEF=$(build_default | sort -u)
 
-# Per-app overrides managed by the WebUI — the single source of truth, re-read on
+# Per-app overrides managed by the WebUI - the single source of truth, re-read on
 # every rebuild so a choice survives regeneration (aswatcher only re-runs THIS
 # script, it never appends packages itself). Each line: "pkg<TAB>spec":
 #   spec = "off"          -> unticked: dropped from target.txt, never re-added.
@@ -169,7 +172,7 @@ MAP="$AS_APPS"
 FORCED="com.android.vending com.google.android.gms com.google.android.gsf $(echo $DETECTORS_LIST)"
 
 {
-    # --- default-keybox section (kb == "-"): plain list + per-app ! suffix ---
+    # default-keybox section (kb == "-"): plain list + per-app ! suffix
     printf '%s\n' "$DEF" | sed '/^$/d' | awk -v mapf="$MAP" -v forced="$FORCED" '
         function sfx(p, spec,   n,b,mode){
             mode="";
@@ -191,7 +194,7 @@ FORCED="com.android.vending com.google.android.gms com.google.android.gsf $(echo
           if(kbof(spec)!="-") next;         # assigned to a keybox file -> a section
           print p sfx(p,spec); }
     '
-    # --- one "[file.xml]" section per assigned keybox (sorted -> stable output) ---
+    # one "[file.xml]" section per assigned keybox (sorted -> stable output)    
     if [ -n "$MAP" ]; then
         awk -F'\t' -v forced="$FORCED" '
             BEGIN{ split(forced,a," "); for(i in a) F[a[i]]=1 }
@@ -203,12 +206,12 @@ FORCED="com.android.vending com.google.android.gms com.google.android.gsf $(echo
             }' "$MAP" | sort | awk -F'\t' '
             $1!=prev{ printf "\n[%s]\n", $1; prev=$1 } { print $2 }'
     fi
-} > "${TGT}.tmp" && mv -f "${TGT}.tmp" "$TGT"
+} > "${TGT}.$$.tmp" && mv -f "${TGT}.$$.tmp" "$TGT"
 
-# --- GC orphaned WebUI-imported keyboxes ---------------------------------
+# GC orphaned WebUI-imported keyboxes
 # The WebUI records every keybox it imports into alwaysstrong/imported (one
 # file name per line). A file listed there that no map
-# entry references anymore is a dead import — delete it so the config dir does
+# entry references anymore is a dead import - delete it so the config dir does
 # not accumulate stale keyboxes. ONLY files we imported are ever touched:
 # manually-dropped keyboxes are never in the manifest, so they are left alone.
 # keybox.xml (the default) is never a managed import and is skipped defensively.
@@ -235,7 +238,7 @@ if [ -f "$MANIFEST" ]; then
             rm -f "$CFG_DIR/$fn" 2>/dev/null    # orphan -> delete the keybox file
         fi
     done < "$MANIFEST"
-    printf '%s' "$NEWMAN" > "$MANIFEST.tmp" && mv -f "$MANIFEST.tmp" "$MANIFEST"
+    printf '%s' "$NEWMAN" > "$MANIFEST.$$.tmp" && mv -f "$MANIFEST.$$.tmp" "$MANIFEST"
 fi
 
 # Tell the attestation engine target.txt changed. TEESimulator-RS and
