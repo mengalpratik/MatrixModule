@@ -1,7 +1,7 @@
 id=tricky_store
 name=MatrixModule
-version=v1.0.1
-versionCode=101
+version=v1.0.2
+versionCode=102
 author=Pratik Mengal
 donate=https://buymeacoffee.com/pratikmengal
 description=Hardware key attestation and App Isolation Engine ⚔️

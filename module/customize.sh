@@ -230,7 +230,8 @@ fi
 chmod 755 "$MODPATH/daemon" "$MODPATH/supervisor" "$MODPATH/inject" \
           "$MODPATH"/*.sh 2>/dev/null
 
-# WebUI (KSU / APatch / MMRL) - single self-contained index.htmlmkdir -p "$MODPATH/webroot"
+# WebUI (KSU / APatch / MMRL) - single self-contained index.html
+mkdir -p "$MODPATH/webroot"
 if unzip -l "$ZIPFILE" 2>/dev/null | grep -q "webroot/index.html"; then
   install_file "webroot/index.html" "$MODPATH/webroot"
   chmod 644 "$MODPATH/webroot/index.html"

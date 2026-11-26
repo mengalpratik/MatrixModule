@@ -322,120 +322,6 @@
     });
   });
 
-  // Community Keybox Repo (KOWX712)
-  var btnOpenKowxRepo = document.getElementById("btnOpenKowxRepo");
-  var repoModal = document.getElementById("repoModal");
-  var repoClose = document.getElementById("repoClose");
-  var repoRefresh = document.getElementById("repoRefresh");
-  var repoLoading = document.getElementById("repoLoading");
-  var repoFrame = document.getElementById("repoFrame");
-  var REPO_BASE = "https://keybox.kowx712.cc";
-  var _repoHandshakeTimer = null;
-  var _repoLoaded = false;
-
-  function stopRepoHandshake(){
-    if(_repoHandshakeTimer){ clearInterval(_repoHandshakeTimer); _repoHandshakeTimer = null; }
-  }
-
-  function sendRepoHandshake(){
-    try {
-      if(repoFrame && repoFrame.contentWindow){
-        repoFrame.contentWindow.postMessage({ type: "handshake" }, REPO_BASE);
-      }
-    } catch(e){}
-  }
-
-  function loadRepoFrame(){
-    if(!repoFrame) return;
-    _repoLoaded = false;
-    if(repoLoading) repoLoading.style.display = "flex";
-    stopRepoHandshake();
-    var lang = ((navigator.language||"en").split("-")[0] || "en");
-    repoFrame.src = REPO_BASE + "/" + lang + "?_t=" + Date.now();
-  }
-
-  if(btnOpenKowxRepo){
-    btnOpenKowxRepo.addEventListener("click", function(){
-      openM(repoModal);
-      loadRepoFrame();
-    });
-  }
-
-  if(repoClose){
-    repoClose.addEventListener("click", function(){
-      stopRepoHandshake();
-      closeM(repoModal);
-      if(repoFrame) repoFrame.src = "about:blank";
-    });
-  }
-
-  if(repoRefresh){
-    repoRefresh.addEventListener("click", function(){
-      loadRepoFrame();
-    });
-  }
-
-  if(repoModal){
-    repoModal.addEventListener("click", function(e){
-      if(e.target === repoModal){
-        stopRepoHandshake();
-        closeM(repoModal);
-        if(repoFrame) repoFrame.src = "about:blank";
-      }
-    });
-  }
-
-  if(repoFrame){
-    repoFrame.addEventListener("load", function(){
-      if(repoFrame.src && repoFrame.src.indexOf(REPO_BASE) === 0){
-        sendRepoHandshake();
-        stopRepoHandshake();
-        _repoHandshakeTimer = setInterval(sendRepoHandshake, 500);
-      }
-    });
-  }
-
-  window.addEventListener("message", function(event){
-    if(event.origin !== REPO_BASE || !event.data || typeof event.data !== "object") return;
-    if(event.data.type === "handshake_ack"){
-      _repoLoaded = true;
-      stopRepoHandshake();
-      if(repoLoading) repoLoading.style.display = "none";
-      return;
-    }
-    if(event.data.type === "download" && typeof event.data.url === "string"){
-      var dlUrl = event.data.url;
-      stopRepoHandshake();
-      closeM(repoModal);
-      if(repoFrame) repoFrame.src = "about:blank";
-      _kbSwitching = true;
-      setting("keybox_provider", "custom_url");
-      setting("custom_keybox_url", dlUrl);
-      flushNow();
-      paintKeyboxProvider("custom_url", null);
-      renderKeyboxBadge("");
-      renderKeyboxStatus(null, "Importing from Community Repo… ⏳");
-      toast("Importing keybox from Community Repo…", 3500);
-
-      ksuExec('sh '+shq(MOD+'/keybox_fetch.sh')+' custom_url '+shq(dlUrl)+' force').then(function(){
-        _kbSwitching = false;
-        refreshStatus().then(function(newS){
-          renderKeyboxStatus(newS);
-          var isRev = (newS && newS.kb_revoked !== undefined) ? newS.kb_revoked : _lastS.kb_revoked;
-          if(isRev === "0"){
-            toast("✅ Community Repo keybox applied (Google: Valid 🟢)", 3000);
-          } else if(isRev === "1"){
-            toast("⚠️ Community Repo keybox applied (Google: Revoked 🔴)", 3000);
-          } else {
-            toast("Community Repo keybox active", 2000);
-          }
-        });
-      }).catch(function(){
-        _kbSwitching = false;
-        refreshStatus().then(function(newS){ renderKeyboxStatus(newS); });
-      });
-    }
-  });
   // Advanced toggles
   var rsI=dkInput("block rom spoof pixelprops pihooks");
   if(rsI) rsI.addEventListener("change",function(e){ settingOn("rom_spoof_block",e.target.checked); });
@@ -748,7 +634,6 @@
   var hideList=document.getElementById("hideList");
   var hideq=document.getElementById("hideq");
   var hideClose=document.getElementById("hideClose");
-  var hideDone=document.getElementById("hideDone");
   var hideSub=document.getElementById("hideSub");
   var HIDDENF=AS+"/hidden_apps";
   var hiddenMap={};
@@ -998,6 +883,31 @@
   // import fingerprint (Advanced)
   var importRow=dkRow("import fingerprint pif json prop"); if(importRow) importRow.addEventListener("click",function(){ fmOpen("pif"); });
 
+  // UPI support modal (QR + Copy + intent fallback)
+  var upiModal=document.getElementById("upiModal");
+  var upiRow=document.getElementById("upiRow");
+  var UPI_ID="iampratikmengal-2@okaxis";
+  var UPI_URL="upi://pay?pa="+UPI_ID+"&pn=Pratik%20Mengal&cu=INR";
+  if(upiRow&&upiModal){
+    upiRow.addEventListener("click",function(){ openM(upiModal); });
+    document.getElementById("upiClose").addEventListener("click",function(){ closeM(upiModal); });
+    upiModal.addEventListener("click",function(e){ if(e.target===upiModal) closeM(upiModal); });
+    document.getElementById("upiCopy").addEventListener("click",function(){
+      function done(){ toast(tr("upi_copied","UPI ID copied: ")+UPI_ID,2400); }
+      function fallback(){
+        var ta=document.createElement("textarea"); ta.value=UPI_ID; ta.style.position="fixed"; ta.style.opacity="0";
+        document.body.appendChild(ta); ta.select();
+        try{ document.execCommand("copy"); done(); }catch(e){ toast(UPI_ID,3000); }
+        document.body.removeChild(ta);
+      }
+      if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(UPI_ID).then(done,fallback); }
+      else{ fallback(); }
+    });
+    document.getElementById("upiOpen").addEventListener("click",function(){
+      if(!openExternal(UPI_URL)) window.location.href=UPI_URL;
+    });
+  }
+
   // reset to defaults (Advanced)
   var rstModal=document.getElementById("rstModal");
   var resetRow=dkRow("reset defaults"); if(resetRow) resetRow.addEventListener("click",function(){ openM(rstModal); });
@@ -1030,10 +940,6 @@
   };
   var AS_RTL={ar:1,he:1,fa:1,ur:1};
   var AS_NAMES={en:"English",tr:"Türkçe",ru:"Русский",es:"Español",pt:"Português",de:"Deutsch",fr:"Français",it:"Italiano",id:"Bahasa Indonesia",vi:"Tiếng Việt",ar:"العربية",zh:"中文",ja:"日本語",ko:"한국어",hi:"हिन्दी"};
-  function i18nPick(){ try{ var s=localStorage.getItem("as_lang"); if(s&&AS_I[s]) return s; }catch(e){}
-    var ls=[navigator.language].concat(navigator.languages||[]);
-    for(var i=0;i<ls.length;i++){ var b=(ls[i]||"").toLowerCase().split("-")[0]; if(AS_I[b]) return b; }
-    return "en"; }
   function i18nApply(code){ var T=AS_I[code]||{}, r=document.documentElement; r.lang=code; r.dir=AS_RTL[code]?"rtl":"ltr";
     qa("[data-i]").forEach(function(el){ var k=el.getAttribute("data-i"), o=el.getAttribute("data-i0");
       if(o===null){ o=el.textContent; el.setAttribute("data-i0",o); }
